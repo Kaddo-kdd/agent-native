@@ -1,0 +1,41 @@
+package kaddo:commercial@0.1.0;
+
+interface types {
+    record order-result {
+        status-code: s32,
+        subtotal-cents: s32,
+        discount-cents: s32,
+        tax-cents: s32,
+        shipping-cents: s32,
+        total-cents: s32,
+    }
+}
+
+interface host-services {
+    kv-get: func(key: s32) -> s32;
+    check-credit: func(customer-id: s32, amount: s32) -> bool;
+    emit-audit: func(event-id: s32, payload: s32) -> s32;
+}
+
+interface order-calculator {
+    use types.{order-result};
+
+    calculate-order: func(
+        customer-id: s32,
+        price1: s32,
+        qty1: s32,
+        price2: s32,
+        qty2: s32,
+        shipping-cents: s32
+    ) -> order-result;
+
+    quote-shipping: func(
+        weight-grams: s32,
+        is-express: s32
+    ) -> s32;
+}
+
+world order-processor {
+    import host-services;
+    export order-calculator;
+}
