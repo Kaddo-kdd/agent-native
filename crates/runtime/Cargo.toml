@@ -1,0 +1,14 @@
+[package]
+name = "agent-native-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Standalone runtime that loads and executes Agent-Native WASM components."
+
+[lints]
+workspace = true
+
+[dependencies]
+agent-native-ir = { path = "../ir" }

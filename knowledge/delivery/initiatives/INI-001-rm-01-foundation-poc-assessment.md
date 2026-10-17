@@ -2,7 +2,8 @@
 type: initiative
 id: INI-001
 title: RM-01 — Foundation & POC Assessment
-status: in-progress
+status: completed
+completed_at: '2026-10-17'
 knowledge_level: K3
 domains:
   - Foundation & Governance
@@ -31,7 +32,8 @@ candidates:
     materialized_as: AN-003
   - id: INIT-01-01
     title: Workspace Rust y CI mínima
-    status: candidate
+    status: completed
+    materialized_as: AN-004
 ---
 
 # RM-01 — Foundation & POC Assessment
@@ -75,7 +77,7 @@ Ver `candidates:` en frontmatter. Orden de materialización:
 1. **INIT-01-04** → **AN-001** (completed, 2026-10-17).
 2. **INIT-01-02** → **AN-002** (completed, 2026-10-17).
 3. **INIT-01-03** → **AN-003** (completed, 2026-10-17).
-4. **INIT-01-01** — pendiente. Candidatos: `chore: init cargo workspace`, `chore: GitHub Actions`, `chore: rust-toolchain.toml`.
+4. **INIT-01-01** → **AN-004** (completed, 2026-10-17). 🎯 Hito **M1 — Baseline arquitectónico aprobado** alcanzado.
 
 ## Open Questions
 
