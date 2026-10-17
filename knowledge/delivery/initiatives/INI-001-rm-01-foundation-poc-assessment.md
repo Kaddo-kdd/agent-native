@@ -23,7 +23,8 @@ candidates:
     materialized_as: AN-001
   - id: INIT-01-02
     title: Matriz de extracción POC → productos
-    status: candidate
+    status: completed
+    materialized_as: AN-002
   - id: INIT-01-03
     title: ADRs bloqueantes (001..005)
     status: candidate
@@ -71,7 +72,7 @@ Ninguna aguas arriba. Es la primera ola del roadmap.
 Ver `candidates:` en frontmatter. Orden de materialización:
 
 1. **INIT-01-04** → **AN-001** (completed, 2026-10-17).
-2. **INIT-01-02** — pendiente. Candidatos: `spike: catálogo de pruebas POC`, `chore: redactar matriz final`.
+2. **INIT-01-02** → **AN-002** (completed, 2026-10-17).
 3. **INIT-01-03** — pendiente. Candidatos: un `chore` por ADR (ADR-001..005).
 4. **INIT-01-01** — pendiente. Candidatos: `chore: init cargo workspace`, `chore: GitHub Actions`, `chore: rust-toolchain.toml`.
 

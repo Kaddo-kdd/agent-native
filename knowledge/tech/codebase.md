@@ -67,6 +67,8 @@ El paquete de ejemplo `kaddo:canal@0.1.0` corresponde a un **fixture de prueba**
 
 Las reglas de uso de `_reference/poc-agent-native/` (solo lectura, prohibición de dependencias técnicas, consulta autorizada por agentes y procedimientos de verificación) están definidas en [reference-policy.md](reference-policy.md) — vinculada al WI AN-001.
 
+El mapa decisorio pieza-a-pieza de la POC (qué se migra, se rediseña o se descarta, con destino, pruebas asociadas y responsable candidato) vive en [extraction-matrix.md](extraction-matrix.md) — vinculado al WI AN-002.
+
 ### Límites y dependencias deseadas
 
 - `agent-native-ir` define estructuras, gramática y verificación; no depende del LLM, del runtime ni de Kaddo.
