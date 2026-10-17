@@ -1,0 +1,423 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaddo.local/schemas/agent-native-ir-0.3.json",
+  "title": "Kaddo Agent-Native Semantic IR 0.3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ir_version",
+    "spec_version",
+    "functions"
+  ],
+  "properties": {
+    "ir_version": {
+      "const": "0.3"
+    },
+    "spec_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+      }
+    },
+    "imports": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/importDef"
+      }
+    },
+    "types": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/recordType"
+      }
+    },
+    "functions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/function"
+      }
+    }
+  },
+  "$defs": {
+    "importDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module",
+        "name",
+        "capability",
+        "params",
+        "returns"
+      ],
+      "properties": {
+        "module": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "capability": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/param"
+          }
+        },
+        "returns": {
+          "$ref": "#/$defs/valueType"
+        }
+      }
+    },
+    "recordField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "type": {
+          "$ref": "#/$defs/valueType"
+        }
+      }
+    },
+    "recordType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "fields"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/recordField"
+          }
+        }
+      }
+    },
+    "valueType": {
+      "type": "string",
+      "pattern": "^(i32|bool|[A-Za-z_][A-Za-z0-9_]*)$"
+    },
+    "param": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "type": {
+          "$ref": "#/$defs/valueType"
+        }
+      }
+    },
+    "function": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "export",
+        "params",
+        "returns",
+        "body"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "export": {
+          "type": "boolean"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/param"
+          }
+        },
+        "returns": {
+          "$ref": "#/$defs/valueType"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "body": {
+          "$ref": "#/$defs/expr"
+        }
+      }
+    },
+    "expr": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/constExpr"
+        },
+        {
+          "$ref": "#/$defs/paramExpr"
+        },
+        {
+          "$ref": "#/$defs/unaryExpr"
+        },
+        {
+          "$ref": "#/$defs/binaryExpr"
+        },
+        {
+          "$ref": "#/$defs/ifExpr"
+        },
+        {
+          "$ref": "#/$defs/callExpr"
+        },
+        {
+          "$ref": "#/$defs/callImportExpr"
+        },
+        {
+          "$ref": "#/$defs/recordConstructExpr"
+        },
+        {
+          "$ref": "#/$defs/recordGetExpr"
+        }
+      ]
+    },
+    "constExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "type",
+        "value"
+      ],
+      "properties": {
+        "op": {
+          "const": "const"
+        },
+        "type": {
+          "enum": [
+            "i32",
+            "bool"
+          ]
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      }
+    },
+    "paramExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "name"
+      ],
+      "properties": {
+        "op": {
+          "const": "param"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        }
+      }
+    },
+    "unaryExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "arg"
+      ],
+      "properties": {
+        "op": {
+          "enum": [
+            "not"
+          ]
+        },
+        "arg": {
+          "$ref": "#/$defs/expr"
+        }
+      }
+    },
+    "binaryExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "left",
+        "right"
+      ],
+      "properties": {
+        "op": {
+          "enum": [
+            "eq",
+            "lt_s",
+            "gte_s",
+            "add",
+            "sub",
+            "mul",
+            "div_s",
+            "and",
+            "or"
+          ]
+        },
+        "left": {
+          "$ref": "#/$defs/expr"
+        },
+        "right": {
+          "$ref": "#/$defs/expr"
+        }
+      }
+    },
+    "ifExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "condition",
+        "then",
+        "else"
+      ],
+      "properties": {
+        "op": {
+          "const": "if"
+        },
+        "condition": {
+          "$ref": "#/$defs/expr"
+        },
+        "then": {
+          "$ref": "#/$defs/expr"
+        },
+        "else": {
+          "$ref": "#/$defs/expr"
+        }
+      }
+    },
+    "callExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "function",
+        "args"
+      ],
+      "properties": {
+        "op": {
+          "const": "call"
+        },
+        "function": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/expr"
+          }
+        }
+      }
+    },
+    "callImportExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "import",
+        "args"
+      ],
+      "properties": {
+        "op": {
+          "const": "call_import"
+        },
+        "import": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/expr"
+          }
+        }
+      }
+    },
+    "recordConstructExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "type",
+        "fields"
+      ],
+      "properties": {
+        "op": {
+          "const": "record.construct"
+        },
+        "type": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/expr"
+          }
+        }
+      }
+    },
+    "recordGetExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "target",
+        "field"
+      ],
+      "properties": {
+        "op": {
+          "const": "record.get"
+        },
+        "target": {
+          "$ref": "#/$defs/expr"
+        },
+        "field": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        }
+      }
+    }
+  }
+}
