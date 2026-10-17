@@ -12,9 +12,21 @@ Candidatos a ADR. **No son decisiones**: se materializan como ADR finales bajo `
 - **Bloqueantes (RM-01 / INIT-01-03):** 5 ADRs que deben materializarse antes de abrir INIT-01-01 (workspace).
 - **Diferidos:** candidatos que se materializan cuando su bloque los demande, no antes.
 
-## Bloqueantes — a materializar en INIT-01-03
+## Bloqueantes — materializados (AN-003)
 
-Prerrequisito del inicio efectivo de RM-02.
+**Estado:** los 5 ADRs bloqueantes fueron materializados como drafts el 2026-10-17 por AN-003. Aceptación formal (`status: accepted`) pendiente de revisión humana ADR por ADR.
+
+| Candidato | ADR materializado | Status |
+|---|---|---|
+| ADR-001 Arquitectura inicial | [ADR-001](../decisions/ADR-001-arquitectura-inicial.md) | draft |
+| ADR-002 Runtime independiente | [ADR-002](../decisions/ADR-002-runtime-independiente.md) | draft |
+| ADR-003 Modelo IR v0.5 | [ADR-003](../decisions/ADR-003-semantic-ir-v05-baseline.md) | draft |
+| ADR-004 Seguridad mínima transversal | [ADR-004](../decisions/ADR-004-seguridad-minima-transversal.md) | draft |
+| ADR-005 Modelo de memoria y Canonical ABI | [ADR-005](../decisions/ADR-005-modelo-memoria-canonical-abi.md) | draft |
+
+Las secciones de contexto completo se mantienen aquí como referencia histórica del origen de cada ADR.
+
+---
 
 ### [candidate] ADR-001 — Arquitectura inicial y dependencias entre módulos
 

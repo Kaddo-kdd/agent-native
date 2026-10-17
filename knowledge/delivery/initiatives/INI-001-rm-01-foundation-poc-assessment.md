@@ -27,7 +27,8 @@ candidates:
     materialized_as: AN-002
   - id: INIT-01-03
     title: ADRs bloqueantes (001..005)
-    status: candidate
+    status: completed
+    materialized_as: AN-003
   - id: INIT-01-01
     title: Workspace Rust y CI mínima
     status: candidate
@@ -73,7 +74,7 @@ Ver `candidates:` en frontmatter. Orden de materialización:
 
 1. **INIT-01-04** → **AN-001** (completed, 2026-10-17).
 2. **INIT-01-02** → **AN-002** (completed, 2026-10-17).
-3. **INIT-01-03** — pendiente. Candidatos: un `chore` por ADR (ADR-001..005).
+3. **INIT-01-03** → **AN-003** (completed, 2026-10-17).
 4. **INIT-01-01** — pendiente. Candidatos: `chore: init cargo workspace`, `chore: GitHub Actions`, `chore: rust-toolchain.toml`.
 
 ## Open Questions
