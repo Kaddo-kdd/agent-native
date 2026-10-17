@@ -1,0 +1,184 @@
+{
+  "generated_at": "2026-10-17T22:28:09.713Z",
+  "scope": "active",
+  "scope_reason": "No active Work Items found. Completed Work Items are excluded from active scope.",
+  "quality": "empty",
+  "summary": {
+    "nodes": 4,
+    "edges": 3,
+    "hints": 16
+  },
+  "metrics": {
+    "nodes_count": 4,
+    "edges_count": 3,
+    "connected_nodes_count": 4,
+    "isolated_nodes_count": 0,
+    "active_work_items_without_code": 0,
+    "active_work_items_without_capabilities": 0,
+    "work_items_without_source": 0,
+    "adrs_without_code": 0,
+    "capsules_without_related_work_items": 0
+  },
+  "hints": [
+    {
+      "artifact_id": "Capability Map",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Capability Map\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Specification Interpretation",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Specification Interpretation\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "LLM-driven Implementation",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"LLM-driven Implementation\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Semantic IR Verification",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Semantic IR Verification\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Component Compilation",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Component Compilation\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Independent Runtime Execution",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Independent Runtime Execution\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Acceptance Testing & Regression",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Acceptance Testing & Regression\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Versioned Publication & Evolution",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Versioned Publication & Evolution\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "CLI as Primary Interface",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"CLI as Primary Interface\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Host Capability Policy (futuro)",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Host Capability Policy (futuro)\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "External Component Interop (futuro)",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"External Component Interop (futuro)\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Cross-cutting Concerns",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Cross-cutting Concerns\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Risks",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Risks\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Open Questions",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Open Questions\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Suggested Next Step",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Suggested Next Step\" is not linked to any Work Item."
+    },
+    {
+      "artifact_id": "Diagrams",
+      "artifact_type": "capability",
+      "severity": "info",
+      "missing": [
+        "work-item"
+      ],
+      "reason": "This capability is declared but no Work Item references it yet.",
+      "message": "Capability \"Diagrams\" is not linked to any Work Item."
+    }
+  ]
+}

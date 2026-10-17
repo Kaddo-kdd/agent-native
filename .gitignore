@@ -1,0 +1,25 @@
+# Agent-Native — repository ignore rules
+# AN-001: la POC de referencia (`_reference/poc-agent-native/`) es solo lectura
+# y no puede entrar al índice de Git ni al build del producto nuevo.
+# Política: knowledge/tech/reference-policy.md
+/_reference/
+
+# Rust / Cargo (preparado para INIT-01-01)
+/target/
+Cargo.lock
+
+# Kaddo artefactos derivados y runtime local
+.kaddo/context-pack.md
+.kaddo/context-pack.json
+.kaddo/understand.md
+.kaddo/scan.json
+.kaddo/graph.json
+.kaddo/graph.mmd
+.kaddo/admin/
+
+# Sistema operativo e IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
