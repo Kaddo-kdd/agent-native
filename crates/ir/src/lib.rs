@@ -32,7 +32,9 @@
 pub mod context;
 pub mod diagnostic;
 pub mod model;
+pub mod verifier;
 
 pub use context::Context;
 pub use diagnostic::Diagnostic;
 pub use model::{FuncSignature, ImportSignature, IrType, RecordDef, WitContractDef};
+pub use verifier::verify_ir;
