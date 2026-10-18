@@ -92,6 +92,16 @@ pub struct Component {
     pub(crate) policy: HostPolicy,
 }
 
+impl Component {
+    /// Returns `true` when the loaded artifact is a Core WASM module,
+    /// `false` for a Component Model artifact. Lets callers pick the
+    /// matching `invoke_*_with_host_ctx` variant (AN-019).
+    #[must_use]
+    pub fn is_core_module(&self) -> bool {
+        matches!(self.payload, Payload::Module(_))
+    }
+}
+
 pub(crate) enum Payload {
     Component(WtComponent),
     Module(wasmtime::Module),

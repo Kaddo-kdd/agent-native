@@ -1,0 +1,41 @@
+suite: an-019-kv-read
+spec_version: 1
+host_stubs:
+  - interface: host
+    operation: kv_get
+    kind: state_reader
+    key_arg: 0
+cases:
+  - id: read-existing-key
+    requirement: KV-READ-001
+    function: read_key
+    args: [42]
+    host_state:
+      kv:
+        42: 1337
+    expected: 1337
+    expected_host_calls:
+      - function: host.kv_get
+        args: [42]
+  - id: read-missing-key-defaults-to-zero
+    requirement: KV-READ-002
+    function: read_key
+    args: [99]
+    host_state:
+      kv:
+        1: 10
+    expected: 0
+    expected_host_calls:
+      - function: host.kv_get
+        args: [99]
+  - id: read-another-existing-key
+    requirement: KV-READ-003
+    function: read_key
+    args: [7]
+    host_state:
+      kv:
+        7: -5
+    expected: -5
+    expected_host_calls:
+      - function: host.kv_get
+        args: [7]

@@ -13,6 +13,7 @@ use wasmtime::component::{Linker as ComponentLinker, Val};
 
 use crate::engine::{Component, Payload};
 use crate::error::RuntimeError;
+use crate::policy::HostPolicy;
 
 impl Component {
     /// Invokes an exported function by name with the supplied arguments.
@@ -33,30 +34,99 @@ impl Component {
             }
         }
     }
+
+    /// Invokes an exported Core WASM function with a caller-provided host
+    /// context and `wasmtime::Linker<T>` builder.
+    ///
+    /// The policy pre-check and function-resolution logic are shared with
+    /// [`Component::invoke`]; the caller only owns the `Linker` population,
+    /// which is where stubs for host imports are registered.
+    ///
+    /// Returns the lifted results **and** the final `T` so the caller can
+    /// read back mutable state (host-call log, kv store, etc.) populated by
+    /// stub closures.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same [`RuntimeError`] variants as [`Component::invoke`].
+    /// Returns [`RuntimeError::ExecutionFailed`] with a descriptive message
+    /// when called on a Component-Model payload.
+    pub fn invoke_core_with_host_ctx<T: Send + 'static>(
+        &self,
+        func_name: &str,
+        args: &[Val],
+        host_ctx: T,
+        build_linker: impl FnOnce(
+            &wasmtime::Engine,
+            &mut wasmtime::Linker<T>,
+        ) -> Result<(), wasmtime::Error>,
+    ) -> Result<(Vec<Val>, T), RuntimeError> {
+        let Payload::Module(module) = &self.payload else {
+            return Err(RuntimeError::ExecutionFailed(
+                "invoke_core_with_host_ctx called on a Component-Model payload".to_string(),
+            ));
+        };
+        invoke_core_with_host_ctx_impl(
+            &self.engine,
+            module,
+            &self.policy,
+            func_name,
+            args,
+            host_ctx,
+            build_linker,
+        )
+    }
+
+    /// Invokes an exported Component-Model function with a caller-provided
+    /// host context and `wasmtime::component::Linker<T>` builder.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same [`RuntimeError`] variants as [`Component::invoke`].
+    /// Returns [`RuntimeError::ExecutionFailed`] with a descriptive message
+    /// when called on a Core-WASM payload.
+    pub fn invoke_component_with_host_ctx<T: Send + 'static>(
+        &self,
+        func_name: &str,
+        args: &[Val],
+        host_ctx: T,
+        build_linker: impl FnOnce(
+            &wasmtime::Engine,
+            &mut ComponentLinker<T>,
+        ) -> Result<(), wasmtime::Error>,
+    ) -> Result<(Vec<Val>, T), RuntimeError> {
+        let Payload::Component(component) = &self.payload else {
+            return Err(RuntimeError::ExecutionFailed(
+                "invoke_component_with_host_ctx called on a Core-WASM payload".to_string(),
+            ));
+        };
+        invoke_component_with_host_ctx_impl(
+            &self.engine,
+            component,
+            &self.policy,
+            func_name,
+            args,
+            host_ctx,
+            build_linker,
+        )
+    }
 }
 
-fn invoke_component(
+/// Pre-instantiate policy check for a Component. Extracted so the AN-019
+/// executor shares exactly the same authorisation logic as
+/// [`Component::invoke`].
+pub(crate) fn precheck_component_imports(
     engine: &wasmtime::Engine,
     component: &wasmtime::component::Component,
-    policy: &crate::policy::HostPolicy,
-    func_name: &str,
-    args: &[Val],
-) -> Result<Vec<Val>, RuntimeError> {
-    // Pre-instantiate check (ADR-004, deny-by-default). Imports are
-    // identified by their REAL names and authorised by interface or
-    // operation, never by item-kind labels like "func" or "instance"
-    // (AN-015 precision 3).
+    policy: &HostPolicy,
+) -> Result<(), RuntimeError> {
     for (name, item) in component.component_type().imports(engine) {
         use wasmtime::component::types::ComponentItem;
         match item {
             ComponentItem::ComponentInstance(inst_ty) => {
-                // Interface-wide allow short-circuits the per-operation check.
                 if policy.is_wit_interface_allowed(name) {
                     continue;
                 }
-                // Otherwise every exported operation in the imported
-                // interface must be explicitly authorised; the first
-                // unauthorised one is surfaced with its REAL name.
                 for (op_name, _op_item) in inst_ty.exports(engine) {
                     if !policy.is_wit_operation_allowed(name, op_name) {
                         return Err(RuntimeError::UnauthorizedImport {
@@ -67,11 +137,6 @@ fn invoke_component(
                 }
             }
             ComponentItem::ComponentFunc(_) => {
-                // Top-level function import. The interface identifier
-                // Wasmtime gives us is `name`; we treat the operation name
-                // as empty since the import is itself a function (rare in
-                // practice for Agent-Native, where WIT interfaces wrap
-                // operations).
                 if !policy.is_wit_interface_allowed(name)
                     && !policy.is_wit_operation_allowed(name, "")
                 {
@@ -82,8 +147,6 @@ fn invoke_component(
                 }
             }
             _ => {
-                // Modules, components, resources and types imported at the
-                // top level follow the interface-wide rule by default.
                 if !policy.is_wit_interface_allowed(name) {
                     return Err(RuntimeError::UnauthorizedImport {
                         module: name.to_string(),
@@ -93,6 +156,33 @@ fn invoke_component(
             }
         }
     }
+    Ok(())
+}
+
+/// Pre-instantiate policy check for a Core WASM module.
+pub(crate) fn precheck_core_imports(
+    module: &wasmtime::Module,
+    policy: &HostPolicy,
+) -> Result<(), RuntimeError> {
+    for import in module.imports() {
+        if !policy.is_allowed_core(import.module(), import.name()) {
+            return Err(RuntimeError::UnauthorizedImport {
+                module: import.module().to_string(),
+                name: import.name().to_string(),
+            });
+        }
+    }
+    Ok(())
+}
+
+fn invoke_component(
+    engine: &wasmtime::Engine,
+    component: &wasmtime::component::Component,
+    policy: &HostPolicy,
+    func_name: &str,
+    args: &[Val],
+) -> Result<Vec<Val>, RuntimeError> {
+    precheck_component_imports(engine, component, policy)?;
 
     let linker: ComponentLinker<()> = ComponentLinker::new(engine);
     let mut store = Store::new(engine, ());
@@ -146,20 +236,11 @@ fn invoke_component(
 fn invoke_core(
     engine: &wasmtime::Engine,
     module: &wasmtime::Module,
-    policy: &crate::policy::HostPolicy,
+    policy: &HostPolicy,
     func_name: &str,
     args: &[Val],
 ) -> Result<Vec<Val>, RuntimeError> {
-    // Pre-instantiate check for Core WASM modules: every declared import
-    // must be allowed by the policy (ADR-004, deny-by-default).
-    for import in module.imports() {
-        if !policy.is_allowed_core(import.module(), import.name()) {
-            return Err(RuntimeError::UnauthorizedImport {
-                module: import.module().to_string(),
-                name: import.name().to_string(),
-            });
-        }
-    }
+    precheck_core_imports(module, policy)?;
 
     let linker: wasmtime::Linker<()> = wasmtime::Linker::new(engine);
     let mut store = Store::new(engine, ());
@@ -204,9 +285,9 @@ fn invoke_core(
 /// Resolves an exported function. Supports top-level exports and functions
 /// nested inside an exported WIT interface, referenced as
 /// `interface_id#operation`.
-fn resolve_component_func(
+fn resolve_component_func<T>(
     instance: &wasmtime::component::Instance,
-    store: &mut Store<()>,
+    store: &mut Store<T>,
     func_name: &str,
 ) -> Option<wasmtime::component::Func> {
     if let Some((iface, op)) = func_name.split_once('#') {
@@ -215,6 +296,120 @@ fn resolve_component_func(
         return instance.get_func(&mut *store, fn_idx);
     }
     instance.get_func(&mut *store, func_name)
+}
+
+/// Core-WASM variant that runs with a caller-populated `Linker<T>` and
+/// returns the final `T` alongside the lifted results. Shares the policy
+/// pre-check and function-resolution logic with [`invoke_core`].
+fn invoke_core_with_host_ctx_impl<T: Send + 'static>(
+    engine: &wasmtime::Engine,
+    module: &wasmtime::Module,
+    policy: &HostPolicy,
+    func_name: &str,
+    args: &[Val],
+    host_ctx: T,
+    build_linker: impl FnOnce(
+        &wasmtime::Engine,
+        &mut wasmtime::Linker<T>,
+    ) -> Result<(), wasmtime::Error>,
+) -> Result<(Vec<Val>, T), RuntimeError> {
+    precheck_core_imports(module, policy)?;
+
+    let mut linker: wasmtime::Linker<T> = wasmtime::Linker::new(engine);
+    build_linker(engine, &mut linker)
+        .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
+    let mut store = Store::new(engine, host_ctx);
+
+    let instance = linker
+        .instantiate(&mut store, module)
+        .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
+
+    let func = instance
+        .get_func(&mut store, func_name)
+        .ok_or_else(|| RuntimeError::FunctionNotFound(func_name.to_string()))?;
+
+    let func_ty = func.ty(&store);
+    let param_count = func_ty.params().len();
+    if param_count != args.len() {
+        return Err(RuntimeError::ArityMismatch {
+            name: func_name.to_string(),
+            expected: param_count,
+            got: args.len(),
+        });
+    }
+
+    for (index, (expected_ty, provided)) in func_ty.params().zip(args.iter()).enumerate() {
+        if !core_val_matches_type(provided, &expected_ty) {
+            return Err(RuntimeError::ArgTypeMismatch {
+                function: func_name.to_string(),
+                index,
+                expected: format!("{expected_ty:?}"),
+                found: component_val_kind(provided).to_string(),
+            });
+        }
+    }
+
+    let core_args = component_vals_to_core(args, func_name)?;
+    let mut core_results = vec![wasmtime::Val::I32(0); func_ty.results().len()];
+    func.call(&mut store, &core_args, &mut core_results)
+        .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
+
+    let lifted = core_results_to_component(&core_results)?;
+    Ok((lifted, store.into_data()))
+}
+
+/// Component-Model variant with host context (symmetric to the core one).
+fn invoke_component_with_host_ctx_impl<T: Send + 'static>(
+    engine: &wasmtime::Engine,
+    component: &wasmtime::component::Component,
+    policy: &HostPolicy,
+    func_name: &str,
+    args: &[Val],
+    host_ctx: T,
+    build_linker: impl FnOnce(&wasmtime::Engine, &mut ComponentLinker<T>) -> Result<(), wasmtime::Error>,
+) -> Result<(Vec<Val>, T), RuntimeError> {
+    precheck_component_imports(engine, component, policy)?;
+
+    let mut linker: ComponentLinker<T> = ComponentLinker::new(engine);
+    build_linker(engine, &mut linker)
+        .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
+    let mut store = Store::new(engine, host_ctx);
+
+    let instance = linker
+        .instantiate(&mut store, component)
+        .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
+
+    let func = resolve_component_func(&instance, &mut store, func_name)
+        .ok_or_else(|| RuntimeError::FunctionNotFound(func_name.to_string()))?;
+
+    let params = func.params(&store);
+    let param_count = params.len();
+    if param_count != args.len() {
+        return Err(RuntimeError::ArityMismatch {
+            name: func_name.to_string(),
+            expected: param_count,
+            got: args.len(),
+        });
+    }
+
+    for (index, (expected_ty, provided)) in params.iter().zip(args.iter()).enumerate() {
+        if !component_val_matches_type(provided, expected_ty) {
+            return Err(RuntimeError::ArgTypeMismatch {
+                function: func_name.to_string(),
+                index,
+                expected: format!("{expected_ty:?}"),
+                found: component_val_kind(provided).to_string(),
+            });
+        }
+    }
+
+    let mut results = vec![Val::Bool(false); func.results(&store).len()];
+    func.call(&mut store, args, &mut results)
+        .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
+    func.post_return(&mut store)
+        .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
+
+    Ok((results, store.into_data()))
 }
 
 /// Returns a short, stable kebab-style name for an imported component item,

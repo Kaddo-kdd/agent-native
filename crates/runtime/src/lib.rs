@@ -29,6 +29,7 @@ pub mod error;
 pub mod invoke;
 pub mod policy;
 pub mod resolver;
+pub mod testing;
 
 pub use engine::{Component, Engine};
 pub use error::RuntimeError;

@@ -1,0 +1,16 @@
+suite: an-019-noop
+spec_version: 1
+host_stubs:
+  - interface: host
+    operation: ping
+    kind: noop
+    returns: 1
+cases:
+  - id: noop-returns-fixed
+    requirement: NOOP-001
+    function: trigger
+    args: []
+    expected: 1
+    expected_host_calls:
+      - function: host.ping
+        args: []

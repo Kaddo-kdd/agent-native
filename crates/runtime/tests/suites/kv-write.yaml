@@ -1,0 +1,25 @@
+suite: an-019-kv-write
+spec_version: 1
+host_stubs:
+  - interface: host
+    operation: kv_set
+    kind: state_writer
+    key_arg: 0
+    value_arg: 1
+cases:
+  - id: write-returns-value
+    requirement: KV-WRITE-001
+    function: write_key
+    args: [10, 500]
+    expected: 500
+    expected_host_calls:
+      - function: host.kv_set
+        args: [10, 500]
+  - id: write-negative-value
+    requirement: KV-WRITE-002
+    function: write_key
+    args: [3, -99]
+    expected: -99
+    expected_host_calls:
+      - function: host.kv_set
+        args: [3, -99]

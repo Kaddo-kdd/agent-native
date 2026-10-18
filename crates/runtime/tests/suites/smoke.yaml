@@ -1,0 +1,18 @@
+suite: an-019-smoke
+spec_version: 1
+cases:
+  - id: smoke-identity-42
+    requirement: SMOKE-001
+    function: identity
+    args: [42]
+    expected: 42
+  - id: smoke-identity-zero
+    requirement: SMOKE-001
+    function: identity
+    args: [0]
+    expected: 0
+  - id: smoke-identity-negative
+    requirement: SMOKE-001
+    function: identity
+    args: [-7]
+    expected: -7

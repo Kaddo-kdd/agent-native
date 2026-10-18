@@ -1,0 +1,27 @@
+suite: an-019-isolation
+spec_version: 1
+host_stubs:
+  - interface: host
+    operation: kv_get
+    kind: state_reader
+    key_arg: 0
+cases:
+  - id: isolation-case-A-populated
+    requirement: ISO-001
+    function: read_key
+    args: [1]
+    host_state:
+      kv:
+        1: 777
+    expected: 777
+    expected_host_calls:
+      - function: host.kv_get
+        args: [1]
+  - id: isolation-case-B-fresh-kv
+    requirement: ISO-002
+    function: read_key
+    args: [1]
+    expected: 0
+    expected_host_calls:
+      - function: host.kv_get
+        args: [1]
