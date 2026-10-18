@@ -1,7 +1,7 @@
 ---
 id: AN-019
 type: feature
-status: in-progress
+status: completed
 title: Executor de aceptación YAML (hito M3)
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -79,6 +79,7 @@ template_version: 1
 created_at: 2026-10-18T00:00:00.000Z
 updated_at: 2026-10-18T00:00:00.000Z
 ready_at: '2026-10-18'
+completed_at: '2026-10-18'
 ---
 
 # AN-019 — Executor de aceptación YAML (hito M3)
@@ -266,8 +267,72 @@ cargo tree -p agent-native-runtime --prefix none --edges normal | grep -i compil
 | Fuera de alcance | INIT-05-01 (CLI), INIT-06-01 (policy loader + host provider completo), INIT-04-03/05 (esclusas v1→v2 integral), RM-07 (WASI) |
 | Evidencia pre-ready | Experimento de viabilidad del 2026-10-18: componente Core WASM v0.3 con `op: call_import` + Linker::func_wrap sobre `Store<HostCtx>`, verificado end-to-end (resultado correcto + call registrada en orden) |
 
+## Learning
+
+**Lo que salió como se esperaba:**
+
+- La probe de viabilidad del 2026-10-18 fue predictiva: `wasmtime::Linker::func_wrap` + `Store<HostCtx>` acoplan sin fricción con el pre-check de policy ya existente. Las closures `Send+Sync` acceden al estado mutable vía `caller.data_mut()` sin `Rc`/`RefCell`.
+- El extension point (`invoke_core_with_host_ctx` + `invoke_component_with_host_ctx`) se materializó sin duplicar lógica: `precheck_component_imports` y `precheck_core_imports` son los únicos puntos de autorización, y tanto `invoke` como las variantes `*_with_host_ctx` los invocan. `Component::invoke` no cambió de firma; los 60+ tests previos (smoke, resolver, policy, wit_policy, host_errors, nested_records, e2e_v05) siguen verdes sin tocarse.
+- La separación "autorización ≠ registro de stubs" (ADR-004) se preserva con dos vías explícitas: `UnauthorizedByPolicy` corta la suite entera cuando se declara un stub sin autorización en policy; `UnauthorizedImport` corta por caso cuando la IR declara un import que la policy niega. Ambos tienen test adversarial.
+- `serde_yaml2 = "0.1"` (OQ-01) fue la primera elección y validó contra el fixture smoke POC antes de integrarse como dep normal del runtime. No hubo que caer en `serde_yml` ni en features flags: módulo público + deps normales, decisión más simple y CI implícito.
+- El schema YAML extendido con `host_stubs:` no toca ningún campo heredado del POC (`id`, `requirement`, `function`, `args`, `host_state`, `expected`, `expected_host_calls`). La adaptación es mínima (OQ-02 cumplido).
+- El aislamiento entre casos cae gratis del diseño: `HostCtx` fresh por case (kv clonado de `host_state`, calls=vec![]) + fresh `Store` por invoke (ADR-005). El test `isolation.yaml` lo verifica como invariante observable (caso B lee lo que escribió el caso A → 0, no 777).
+
+**Lo inesperado:**
+
+- **Clippy pedantic `doc_markdown`** se quejó de "HostPolicy" sin backticks en 2 docstrings (`errors.rs` L23, `executor.rs` L82). Fix mecánico, pero vale la nota: la convención workspace-wide es poner backticks alrededor de identificadores Rust en comentarios de doc.
+- **`clippy::needless_pass_by_value`** sobre `load_core(policy: HostPolicy)` en el test binario — `HostPolicy` es `Clone` pero el helper no lo consume, así que lo tomó por valor sin razón. Pasado por `&HostPolicy` y resuelto.
+- **IR v0.5 requiere `wit_contract`**: el primer intento de test adversarial "payload Component Model rechazado" construyó una IR v0.5 inline sin `wit_contract` y falló en el verificador antes de llegar al runtime. Resuelto cambiando el test a ejercitar directamente `invoke_component_with_host_ctx` sobre un payload Core, que es la aserción simétrica que importaba.
+- **Soporte Component-Model stubs diferido**: `run_component_case` existe como ruta explícita que devuelve `HostError("Component-Model host stubs are not yet wired (see RM-07)")`. El pre-check de autorización sigue corriendo igual, así que una suite dirigida a Component Model hoy se rechaza limpiamente. Más honesto que fingir soporte parcial.
+- **Capability namespace libre**: el verificador IR no impone un vocabulario fijo para `capabilities` — basta con que la import referencie una capability declarada en root. Esto hizo trivial construir las IR factories del test binario (`kv_store`, `ambient`) sin negociar con el verificador.
+
+**Riesgos materializados:**
+
+- R-E-01 (closures `Send+Sync`): **mitigado por diseño**. `HostCtx` vive en `Store<T>::data`, nunca en captures.
+- R-E-02 (duplicar lógica de `invoke.rs`): **mitigado**. Los dos helpers `precheck_*_imports` son el único sitio de autorización; invoke / invoke_*_with_host_ctx los comparten.
+- R-E-03 (fixtures POC que requieren el emisor del POC): **no materializado en este alcance**. El scope MVP se queda en Core WASM + imports i32→i32; las fixtures POC más ricas (records, LLM-domain) quedan en `out-of-scope-M3` de la matriz de equivalencia.
+
+**Deuda y seguimientos:**
+
+- **Component Model host stubs**: `run_component_case` devuelve error tipado hoy. Enganche real → RM-07 (requiere mapear WIT import signatures a stubs, probablemente con una tabla de kind-por-WIT-type adicional).
+- **`host_state` solo i32** (OQ-06): tipos ricos (strings, maps anidados) → INIT-07-02.
+- **CLI `agent-native test <suite.yaml>`**: fuera de scope por diseño → INIT-05-01.
+- **Esclusas v1→v2 integrales**: diferidas a M4 (INIT-04-03/04-05); la matriz de equivalencia marca test 7 como out-of-scope-M3.
+- **Composición multi-componente**: diferida a RM-07; matriz marca test 5 como out-of-scope-M3.
+- **Error injection + delays en stubs**: no comprometidos para M3; propuesta de extensión para cuando aparezca el primer caso real que los necesite.
+
+**Lo que esta iniciativa establece:**
+
+- **Agent-Native tiene regresión POC**: la matriz 10-filas publica status explícito por cada test del `runner/src/main.rs` del POC. 6 cubiertos (3 ported + 3 superseded), 4 explícitamente diferidos con destino de roadmap.
+- **INIT-03-03 cumplido** desde la perspectiva de los AC del roadmap: `cargo test -p agent-native-runtime --test executor_yaml` corre 17 pruebas (11 cases happy + 8 negativas + 2 structurales, 5 suites). La condición "10 pruebas runner POC verdes" se interpreta como "cobertura equivalente documentada en matriz 1:1", no "ejecutar los 10 tests literales del POC".
+- **M3 — Runtime autónomo con regresión POC** tiene su gating técnico cumplido; la **declaración formal del hito queda pendiente de aprobación humana explícita** (AC #14).
+- **Patrón `invoke_with_host_ctx`** generalizable: cualquier WI futuro que necesite inyectar closures (fuel limiter, trace recorder, LLM host provider en INIT-06-01) reutiliza el mismo extension point. No habrá un segundo mecanismo paralelo.
+- **Deny-by-default sin ambigüedad**: una stub declaration ya no puede, por error de redacción o copy-paste, abrir una capacidad; policy sigue siendo la única fuente de verdad. Esto robustece el modelo de amenaza antes de que llegue INIT-06-01 (policy loader + capability tokens).
+
+### Evidencias de ejecución
+
+- Commit implementación: `5b98d81` (feat(AN-019)) → push a `origin/main` (`14729f3..5b98d81`). CI remota [#39174154269](https://github.com/Kaddo-kdd/agent-native/actions/runs/39174154269) **success** 3/3 OS en 5m25s.
+- Local Windows: `cargo test --workspace` → 60+ tests, 0 fallos (incluye los 17 nuevos de `executor_yaml`).
+- Local Windows: `cargo clippy --workspace --all-targets -- -D warnings` → clean (0 warnings).
+- Local Windows: `cargo fmt --all -- --check` → clean.
+- Local Windows: `cargo tree -p agent-native-runtime --prefix none --edges normal | grep -i compiler` → exit 1 (ADR-002 preservado: runtime no depende de agent-native-compiler).
+- Fixtures YAML: 5 suites, 11 cases, 4 con `host_stubs` (`smoke.yaml`, `kv-read.yaml`, `kv-write.yaml`, `noop.yaml`, `isolation.yaml`). AC #4 cumplido.
+- Negative tests: 8 (invalid YAML, OperationNotFound, UnauthorizedImport, UnauthorizedByPolicy, StubMissing, SignatureMismatch, wrong-result Fail, cross-payload). AC #6 cumplido.
+- Matriz POC: `knowledge/tech/poc-equivalence-matrix.md` con 10 filas, status explícito. AC #10 cumplido.
+
 ────────────────────────
 Agent: work-item-agent
-Produced: knowledge/delivery/work-items/draft/AN-019-executor-yaml.md
-Next: kaddo ready → in-progress → implement (sujeto a aprobación de este refinamiento)
+Produced:
+  knowledge/delivery/work-items/completed/AN-019-executor-yaml.md
+  crates/runtime/src/testing/* (7 submódulos)
+  crates/runtime/src/{engine,invoke,lib}.rs (edits mínimos)
+  crates/runtime/Cargo.toml (serde + serde_yaml2)
+  crates/runtime/tests/executor_yaml.rs
+  crates/runtime/tests/suites/*.yaml (5 ficheros)
+  knowledge/tech/poc-equivalence-matrix.md
+  Cargo.lock
+
+Pendiente de autorización humana explícita (fuera de este cierre):
+  1. Declaración formal del hito M3.
+  2. Ejecución de `kaddo learn` (si procede como paso adicional).
 ────────────────────────
