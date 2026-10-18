@@ -1,7 +1,8 @@
 ---
 id: AN-017
 type: chore
-status: in-progress
+status: completed
+completed_at: 2026-10-18
 title: Consolidación de benchmarks y documentación
 knowledge_level: K2
 suggested_knowledge_level: K2
@@ -160,10 +161,57 @@ diff <(grep -oE "funcional[a-z]*" README.md | sort -u) \
 | Roadmap iniciativa | INIT-03-06 (principal), INIT-08-01 (prepara) |
 | ADRs | ADR-003 |
 | Technical Review | WI-D (ref 06d270d) |
-| Prerrequisitos | AN-012, AN-013 |
+| Prerrequisitos | AN-012, AN-013, AN-014, AN-016 |
+
+## Learning
+
+**Lo que salió como se esperaba:**
+
+- Los 9 benches corren limpios bajo `criterion --quick`; medianas estables en 2-3 corridas consecutivas.
+- La convención `<stage>_<path>_<fixture>` deja los nombres autodescriptivos sin necesidad de leer el código.
+- Reutilizar `program-005` + `compile_ir_to_wasm_with_context` como fixture Component Model funciona sin fricción; AN-014/AN-016 habían dejado todo listo.
+- La tabla segregada por path × etapa resuelve el problema del Technical Review: cada fila es comparable por sí sola, sin inducir conclusiones agregadas falsas.
+
+**Lo inesperado:**
+
+- **Clippy pedantic `doc_markdown`** se queja de los nombres técnicos en el header del bench file (p. ej. `wasm_component_model`). Suprimido a nivel de archivo con `#![allow(clippy::doc_markdown)]` dado que es doc narrativa, no API pública.
+- Las medianas AN-017 variaron ±5-10% vs AN-012/013 (p. ej. `load_only` 247 µs → `load_core_identity` 229 µs; `cached_cold_start` 2.09 µs → `cache_hit_run_core` 1.89 µs). Es ruido esperado de `--quick` en workstation personal; documentado en el historial del baseline doc.
+- `cold_run_component_model_point_sum` (~601 µs) es ~2.6× más caro que `cold_run_core_identity` (~230 µs). El gap refleja parsing + bindings WIT del Component Model, no una regresión; documentado en Observaciones del baseline.
+
+**Riesgos materializados:** ninguno. R-D-01 (romper comparaciones históricas) mitigado — el mapa old→new preservado en el historial permite leer commits anteriores.
+
+**Deuda y seguimientos:**
+
+- **ADR-003 L145** (versión exacta de Wasmtime baseline) sigue abierta; ADR-003 lo deferea con criterio objetivo.
+- **Memoria por instancia:** diferida a INIT-06-02 (ResourceLimiter).
+- **Cross-OS:** diferido a INIT-08-01.
+- **Comparación con nativo:** diferida a INIT-08-02 con metodología justa.
+- **Record anidado como escenario de bench:** no aplica — IR v0.5 lo rechaza por diseño (AN-016 Learning). Re-abrir cuando IR v0.6+ relaje la restricción.
+
+**Lo que esta iniciativa establece:**
+
+- **El Technical Review de 2026-10-17 queda cerrado al 100%:** AN-014 + AN-015 + AN-016 + AN-017 cumplieron los 4 WIs propuestos (WI-A/B/C/D).
+- **INIT-08-01** (harness formal cross-OS) tiene base clara: reutilizar `baseline.rs` + añadir matrix. Los 9 benches ya nombrados correctamente no requerirán renombrados futuros.
+- **INIT-05-01** (CLI) puede exponer flags que mapean 1:1 a los benches (`--benchmark=cold_run_core_identity`, etc.) sin crear nueva nomenclatura.
+- **INIT-06-02** (fuel + instance limits) tiene criterio objetivo cuantificado para evaluar su impacto: cualquier instrumentación adicional debe cuantificar su overhead en estas 9 filas.
+
+### Evidencias de ejecución
+
+- Commit implementación: `39c2182` → CI remota [#39147188886](https://github.com/Kaddo-kdd/agent-native/actions/runs/39147188886) **success** 3/3 OS.
+- Local Windows: `cargo test --workspace` → 43 pruebas, 0 fallos. `cargo bench --no-run` compila los 9 benches.
+- `kaddo verify AN-017 --json`: `"readiness": "READY_TO_COMPLETE"`, 0 blockers, 0 warnings, 0 AC not-verified.
 
 ────────────────────────
 Agent: work-item-agent
-Produced: knowledge/delivery/work-items/draft/AN-017-benchmarks-and-docs-consolidation.md
-Next: human review → kaddo ready
+
+Produced:
+knowledge/delivery/work-items/completed/AN-017-benchmarks-and-docs-consolidation.md
+crates/runtime/benches/baseline.rs (reescrito)
+knowledge/tech/baselines/runtime-baseline.md (reescrito)
+knowledge/tech/current-state.md (actualizado)
+knowledge/delivery/roadmap.md (INIT-08-01 referenciado)
+
+Next: Technical Review 2026-10-17 cerrado. Siguiente iniciativa del
+roadmap: INIT-03-03 (executor YAML) para alcanzar M3 — Runtime
+autónomo con regresión POC completa.
 ────────────────────────

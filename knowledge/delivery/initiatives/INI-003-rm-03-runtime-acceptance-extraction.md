@@ -40,7 +40,7 @@ candidates:
   - id: INIT-03-06
     title: Línea base técnica del runtime
     status: completed
-    materialized_as: AN-012
+    materialized_as: AN-012, AN-017 (consolidación + Component Model)
   - id: INIT-03-02
     title: Resolver de dependencias reutilizable
     status: completed
