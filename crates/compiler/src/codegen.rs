@@ -60,8 +60,24 @@ fn wit_interface_id(package: &str, iface: &str) -> String {
 }
 
 /// Backwards-compatible entry point: compiles the IR using a context
-/// anchored at the current working directory. Preserves byte-identical
-/// behaviour with AN-008/013/014 (same output as before AN-016).
+/// anchored at the current working directory.
+///
+/// # When to use
+///
+/// This shim is safe when the IR does **not** reference an external WIT
+/// file (IR v0.1–v0.3, or v0.4+ with embedded contracts). For those
+/// inputs the cwd is irrelevant and the output is byte-identical to
+/// [`compile_ir_to_wasm_with_context`].
+///
+/// # When to prefer `compile_ir_to_wasm_with_context`
+///
+/// If the IR carries `wit_contract.wit_file` referencing a file on disk
+/// (typical of IR v0.5 fixtures), **prefer**
+/// [`compile_ir_to_wasm_with_context`] with an explicit
+/// [`CompileContext`]. The explicit API is immune to the process working
+/// directory and resolves `wit_file` deterministically against
+/// `ctx.wit_root()`; this shim depends on the cwd and can silently pick
+/// up a wrong file (or `E_WIT_NOT_FOUND`) when invoked from a subcrate.
 pub fn compile_ir_to_wasm(root: &Value) -> Result<Vec<u8>, Vec<Diagnostic>> {
     compile_ir_to_wasm_with_context(root, &CompileContext::default())
 }

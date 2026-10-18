@@ -7,13 +7,21 @@
 
 ## Estado del proyecto
 
-🟡 **En desarrollo activo — fase temprana.** El baseline arquitectónico (hito **M1**) está aprobado y publicado como [`v0.0.2-m1`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.2-m1). Lo que ya funciona:
+🟡 **En desarrollo activo — fase temprana.** Hitos alcanzados:
 
-- Workspace Rust (4 crates) + CI matrix en Linux/Windows/macOS.
-- Modelo Semantic IR v0.5 + verifier portado desde la POC con tests verifier-only.
-- Compilador IR → WASM Component Model determinista con hash SHA-256.
+- [`v0.0.2-m1`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.2-m1) — **M1 Baseline arquitectónico** (RM-01 completo).
+- [`v0.0.3-hardening`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.3-hardening) — **Hardening pass** post Technical Review (AN-014 end-to-end v0.5 Component Model + AN-015 políticas WIT granulares + AN-016 `CompileContext` sin dependencia del cwd).
 
-Lo que **todavía no**: runtime autónomo, CLI usable, pipeline de publicación atómica, I/O WASI, línea base de rendimiento. Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
+Lo que ya funciona:
+
+- Workspace Rust (4 crates) + CI matrix en Linux/Windows/macOS (**43 tests** verdes).
+- Modelo Semantic IR v0.5 + verifier portado desde la POC (6 tests).
+- Compilador IR → WASM Component Model determinista con hash SHA-256 (10 tests: 2 determinism + 8 POC regression).
+- Runtime autónomo: carga + invocación tipada (incluye lookup WIT `interface#operation`), `HostPolicy` deny-by-default con granularidad por interfaz/operación, propagación tipada de errores, `Resolver` content-addressed (`~186× speedup` sobre cold start). 19 tests runtime (smoke + resolver + policy + host_errors + nested_records + wit_policy + e2e_v05).
+- `CompileContext` reproducible: mismo IR + mismo contexto → bytes idénticos independiente del cwd (3 tests `compile_context`).
+- Línea base técnica publicada en [`knowledge/tech/baselines/runtime-baseline.md`](knowledge/tech/baselines/runtime-baseline.md) (cold ~389 µs, warm ~1.99 µs, cache-hit ~2.09 µs; snapshot local, no SLA).
+
+Lo que **todavía no**: executor YAML de aceptación (INIT-03-03, último de RM-03 para alcanzar M3), pipeline de publicación atómica (RM-04 / INIT-04-05), CLI con subcomandos funcionales (RM-05), WASI, I/O interactiva, benchmarks cross-OS formales. Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
 
 > La POC histórica vive en [`Trycatch-tv/poc-agent-native`](https://github.com/Trycatch-tv/poc-agent-native) (commit `26b6a18`) y, en una clonación local, bajo `_reference/`. Es **sólo lectura** — ver [`knowledge/tech/reference-policy.md`](knowledge/tech/reference-policy.md).
 
@@ -41,7 +49,8 @@ git clone https://github.com/Kaddo-kdd/agent-native
 cd agent-native
 
 cargo build --workspace
-cargo test --workspace     # 8 tests actualmente (6 verifier + 2 compiler determinism)
+cargo test --workspace     # 43 tests (6 verifier + 10 compiler + 19 runtime + 3 compile_context + 5 extras)
+cargo bench -p agent-native-runtime --bench baseline -- --quick   # opcional
 ```
 
 El binario `agent-native` existe pero todavía no tiene subcomandos funcionales (ver INIT-05-01 en el roadmap).

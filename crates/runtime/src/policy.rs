@@ -90,18 +90,34 @@ impl HostPolicy {
         self
     }
 
-    /// Compatibility shim for AN-010/011: interpreted as
-    /// [`HostPolicy::allow_core`].
+    /// Legacy compatibility shim preserved for AN-010/011 call sites.
+    /// Interpreted as [`HostPolicy::allow_core`].
+    ///
+    /// **Prefer** the granular alternatives for new code:
+    /// - [`HostPolicy::allow_core`] for Core WASM imports.
+    /// - [`HostPolicy::allow_wit_operation`] for a single WIT operation.
+    /// - [`HostPolicy::allow_wit_interface`] for an entire WIT interface.
     pub fn allow(&mut self, module: impl Into<String>, name: impl Into<String>) -> &mut Self {
         self.allow_core(module, name)
     }
 
-    /// **Permissive** wildcard. Authorises any name under the given module
-    /// for both Core WASM (as `module`) and Component Model (as
-    /// `interface_id`). Prefer [`HostPolicy::allow_core`],
-    /// [`HostPolicy::allow_wit_interface`] or
-    /// [`HostPolicy::allow_wit_operation`] when the exact surface is known;
-    /// `allow_module` is a bring-up / testing shortcut.
+    /// **Permissive** wildcard across both Core WASM and Component Model.
+    /// Authorises **any** name under the given module (or interface id),
+    /// regardless of whether it is a type, a function or an instance.
+    ///
+    /// # When to use
+    ///
+    /// A bring-up / testing shortcut. Convenient to unblock a fixture
+    /// without enumerating every operation.
+    ///
+    /// # When to prefer the granular alternatives
+    ///
+    /// For production policy declarations, **prefer** the granular
+    /// alternatives — they encode exactly what the host authorises and
+    /// make audits meaningful:
+    /// - [`HostPolicy::allow_core`] for Core WASM imports.
+    /// - [`HostPolicy::allow_wit_operation`] for a single WIT operation.
+    /// - [`HostPolicy::allow_wit_interface`] for an entire WIT interface.
     pub fn allow_module(&mut self, module: impl Into<String>) -> &mut Self {
         self.allow_modules.insert(module.into());
         self
