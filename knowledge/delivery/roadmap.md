@@ -872,7 +872,7 @@ Harness formal, benchmarks reproducibles cross-OS, caché/warm pool, concurrenci
 
 **Status:** candidate · **Priority:** medium · **K3**
 
-**Source signals:** Business Goal — decisiones basadas en evidencia.
+**Source signals:** Business Goal — decisiones basadas en evidencia. INIT-03-06 produjo la línea base local inicial en [`knowledge/tech/baselines/runtime-baseline.md`](../tech/baselines/runtime-baseline.md); este bloque la generaliza a matrix cross-OS.
 
 **Dependencies:** INIT-03-06, INIT-05-01.
 

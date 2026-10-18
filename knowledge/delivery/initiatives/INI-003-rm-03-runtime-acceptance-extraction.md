@@ -39,7 +39,8 @@ candidates:
     materialized_as: AN-011
   - id: INIT-03-06
     title: Línea base técnica del runtime
-    status: candidate
+    status: completed
+    materialized_as: AN-012
   - id: INIT-03-02
     title: Resolver de dependencias reutilizable
     status: candidate

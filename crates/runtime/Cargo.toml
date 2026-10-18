@@ -24,4 +24,9 @@ wasmtime = { version = "27.0", default-features = false, features = [
 # forbids this dependency in [dependencies]; dev-dependencies do not reach
 # downstream consumers of agent-native-runtime.
 agent-native-compiler = { path = "../compiler" }
+criterion = "0.5"
 serde_json = "1.0"
+
+[[bench]]
+name = "baseline"
+harness = false
