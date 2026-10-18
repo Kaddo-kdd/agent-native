@@ -1,7 +1,8 @@
 ---
 id: AN-015
 type: feature
-status: in-progress
+status: completed
+completed_at: 2026-10-17
 title: Endurecimiento de errores y políticas por operación WIT
 knowledge_level: K3
 suggested_knowledge_level: K3
@@ -220,8 +221,58 @@ Esperado: ≥38 tests pass (33 + 5+ nuevos de WIT policy).
 | Prerrequisitos | AN-010, AN-011, AN-014 |
 | Precisiones usuario | Mensaje autorización AN-015 (7 reglas) |
 
+## Learning
+
+**Lo que salió como se esperaba:**
+
+- La separación en 4 sets internos de `HostPolicy` (`allow_core_pairs`, `allow_modules`, `allow_wit_interfaces`, `allow_wit_operations`) permite granularidad por operación y por interfaz sin romper las APIs previas. Las 33 pruebas de AN-010/011/014 pasaron intactas; el cambio quedó incremental.
+- `invoke_component` walker: para cada `ComponentInstance` import se consulta primero interface-wide; si no está autorizado se iteran operaciones con early-return en la primera denegación. Simple, auditado por los tests.
+- El fallback silencioso en `core_results_to_component` se convirtió en `Result<Vec<Val>, RuntimeError>` sin tocar los callers válidos (todos los retornos I32→S32 funcionan igual). La invariante queda en el tipo, no oculta.
+
+**Lo inesperado (confirmado experimentalmente, no supuesto):**
+
+- **Separación identificación / autorización / resolución (precisión 2):** los imports WIT **type-only** (como `use types.{pt}`) se resuelven **automáticamente** por Wasmtime una vez autorizados. No necesitan host function. Esto no significa que "imports del mismo paquete sean confiables" — significa que **para interfaces de solo tipos, resolución es un no-op**. Para function imports (host-services), la autorización no provee implementación; eso llega en INIT-06-01 / INIT-07-01.
+- Confirmación con el fixture `probe-use-types`: autorizar `an:probe/types@0.1.0` ejecuta el componente end-to-end, no falla con `InstantiationFailed`.
+- Los asserts iniciales de las pruebas asumían `InstantiationFailed`; se corrigieron tras observar la ejecución real. Esta corrección temprana es evidencia de disciplina "verificar, no asumir".
+
+**Observación sobre Kaddo (sin modificar en este WI):**
+
+- `kaddo verify AN-015 --json` reportó `"readiness": "READY_TO_COMPLETE"` desde el primer momento en `in-progress`, **antes** de que la CI remota corriera. El AC #11 ("CI remota verde 3 OS") es un criterio verificable solo por evidencia externa; kaddo no lo captura. Esto no cambió el flujo (yo esperé explícitamente la CI antes de `kaddo learn` como pediste), pero registra el hallazgo para una revisión posterior de Kaddo: la readiness de un WI con AC externos debería requerir evidencia registrada. **No modifico Kaddo en AN-015.**
+
+**Riesgos materializados:** ninguno.
+- R-B-01 (API breaking para AN-010/011): mitigado al mantener `allow`/`is_allowed`/`allow_module` como shims con semánticas documentadas.
+- R-B-02 (coste del walker): no observable con fixtures de 1-3 operaciones; early-return mitiga.
+
+**Deuda y OQs:**
+
+- OQ-AN-015-01 (deprecar `allow_module`): resuelta en diseño — no se deprecar, se queda con advertencia explícita.
+- OQ-AN-015-02 (interpretación de `allow(...)`): resuelta — redirige a `allow_core`.
+- OQ-AN-015-03 (fixture WAT para rama de error core non-I32): sigue abierta, cubierta por el type system del enum.
+
+**Lo que esta iniciativa establece:**
+
+- **AN-016**: la convención de nombres snake_case (IR) vs kebab-case (WIT) y la convención de identificadores reales de Wasmtime (`an:pkg/iface@ver`) quedan documentados en código, test y docstring; AN-016 productivo puede referenciar estos nombres sin ambigüedad.
+- **INIT-06-01** (policy loader completo): extiende `HostPolicy` con proveedores (`register_fn`) y lectura desde manifiesto, no cambia la taxonomía básica aquí definida.
+- **INIT-07-01** (WASI stdio): puede exponer `HostPolicy::wasi_cli_stdio()` como preset de `allow_wit_interface("wasi:cli/stdio@...")`.
+- **INIT-05-01** (CLI `run`): puede exponer `--allow-interface`, `--allow-operation`, `--allow-core` mapeando 1:1 a los métodos nuevos.
+
+### Evidencias de ejecución
+
+- Commit implementación: `20b23ff` → CI remota [`#39097746764`](https://github.com/Kaddo-kdd/agent-native/actions/runs/39097746764) **success** en ubuntu-latest, windows-latest, macos-latest.
+- Local Windows: `cargo test --workspace` → 39 pruebas, 0 fallos.
+- `kaddo verify AN-015 --json`: `"readiness": "READY_TO_COMPLETE"`, 0 blockers, 0 warnings, 0 AC `not-verified`.
+- `cargo tree -p agent-native-runtime --edges normal | grep compiler` → vacío (ADR-002 intacto).
+
 ────────────────────────
 Agent: work-item-agent
-Produced: knowledge/delivery/work-items/draft/AN-015-harden-errors-and-import-policies.md
-Next: kaddo ready → in-progress → implement
+
+Produced:
+knowledge/delivery/work-items/completed/AN-015-harden-errors-and-import-policies.md
+crates/runtime/src/{policy,invoke}.rs
+crates/compiler/tests/fixtures/{ir,wit}/probe-use-types.*
+crates/runtime/tests/wit_policy.rs (6 tests)
+
+Next (pending user authorisation):
+AN-016 productivo con los hallazgos de knowledge/tech/discovery/memory-model-experiments.md,
+o AN-017 (consolidación benchmarks/docs).
 ────────────────────────

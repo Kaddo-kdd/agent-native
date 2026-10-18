@@ -32,11 +32,11 @@ candidates:
   - id: INIT-03-04
     title: Propagación de errores host + imports
     status: completed
-    materialized_as: AN-010
+    materialized_as: AN-010, AN-015 (hardening + WIT-granular policy)
   - id: INIT-03-05
     title: Controles mínimos de ejecución (deny-by-default)
     status: completed
-    materialized_as: AN-011
+    materialized_as: AN-011, AN-015 (operation-level granularity)
   - id: INIT-03-06
     title: Línea base técnica del runtime
     status: completed
