@@ -111,7 +111,7 @@ Cifras y nombres actuales inducen a conclusiones falsas: lector asume "runtime e
 
 1. **Renombrados aplicados** en `baseline.rs` según target behavior.
 2. **Historial del baseline doc** preserva el mapeo antiguo → nuevo (no borra datos previos).
-3. **Tabla segregada** por tipo (Core / Component Model) y etapa (Engine / Load / Instantiate / Invoke).
+3. **Tabla segregada** por tipo (Core / Component Model) y etapa, usando las etapas realmente medidas por la suite: `engine_construct`, `load`, `cold_run`, `warm_run`, `cache_hit_run`. La **instanciación como etapa aislada no se mide** por este WI (requeriría un bench adicional específico y un split interno de `invoke` que excede el alcance; INIT-08-01 puede añadirlo).
 4. **Cada número publicado** especifica hardware + toolchain + método + alcance.
 5. **Afirmaciones de mejora acotadas** al tipo y etapa medidos (p. ej. "cache hit vs cold run, Core WASM, Windows local").
 6. **README y roadmap y current-state** no se contradicen entre sí sobre lo que está disponible E2E.
@@ -198,7 +198,9 @@ diff <(grep -oE "funcional[a-z]*" README.md | sort -u) \
 ### Evidencias de ejecución
 
 - Commit implementación: `39c2182` → CI remota [#39147188886](https://github.com/Kaddo-kdd/agent-native/actions/runs/39147188886) **success** 3/3 OS.
-- Local Windows: `cargo test --workspace` → 43 pruebas, 0 fallos. `cargo bench --no-run` compila los 9 benches.
+- Commit cierre: `90b3eb0` → CI remota [#39147372753](https://github.com/Kaddo-kdd/agent-native/actions/runs/39147372753) **success** 3/3 OS.
+- Local Windows: `cargo test --workspace` → 43 pruebas, 0 fallos.
+- Local Windows: `cargo bench -p agent-native-runtime --bench baseline --no-run` → **Finished `bench` profile [optimized]**, ejecutable `baseline-d679b4e2cfbb2ad1.exe` producido. Confirma que los 9 benches compilan bajo perfil release sin warnings bajo `clippy pedantic -D warnings` (incluido en el workflow CI).
 - `kaddo verify AN-017 --json`: `"readiness": "READY_TO_COMPLETE"`, 0 blockers, 0 warnings, 0 AC not-verified.
 
 ────────────────────────

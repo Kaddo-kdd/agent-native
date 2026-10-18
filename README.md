@@ -17,9 +17,9 @@ Lo que ya funciona:
 - Workspace Rust (4 crates) + CI matrix en Linux/Windows/macOS (**43 tests** verdes).
 - Modelo Semantic IR v0.5 + verifier portado desde la POC (6 tests).
 - Compilador IR → WASM Component Model determinista con hash SHA-256 (10 tests: 2 determinism + 8 POC regression).
-- Runtime autónomo: carga + invocación tipada (incluye lookup WIT `interface#operation`), `HostPolicy` deny-by-default con granularidad por interfaz/operación, propagación tipada de errores, `Resolver` content-addressed (`~186× speedup` sobre cold start). 19 tests runtime (smoke + resolver + policy + host_errors + nested_records + wit_policy + e2e_v05).
+- Runtime autónomo: carga + invocación tipada (incluye lookup WIT `interface#operation`), `HostPolicy` deny-by-default con granularidad por interfaz/operación, propagación tipada de errores, `Resolver` content-addressed. 19 tests runtime (smoke + resolver + policy + host_errors + nested_records + wit_policy + e2e_v05). Ver [`knowledge/tech/baselines/runtime-baseline.md`](knowledge/tech/baselines/runtime-baseline.md) para la tabla segregada por path × etapa; cifras agregadas tipo "N× speedup" sobre Core identity son históricas de AN-013 y han sido superadas por la nomenclatura segregada de AN-017.
 - `CompileContext` reproducible: mismo IR + mismo contexto → bytes idénticos independiente del cwd (3 tests `compile_context`).
-- Línea base técnica publicada en [`knowledge/tech/baselines/runtime-baseline.md`](knowledge/tech/baselines/runtime-baseline.md) (cold ~389 µs, warm ~1.99 µs, cache-hit ~2.09 µs; snapshot local, no SLA).
+- Línea base técnica publicada en [`knowledge/tech/baselines/runtime-baseline.md`](knowledge/tech/baselines/runtime-baseline.md): tabla segregada por path (Core WASM / Component Model) × etapa (Engine / Load / Cold-run / Warm-run / Cache-hit-run) sobre fixtures `identity` y `point_sum`, consolidada por AN-017. Snapshot local, no SLA. INIT-08-01 formaliza la matrix cross-OS.
 
 Lo que **todavía no**: executor YAML de aceptación (INIT-03-03, último de RM-03 para alcanzar M3), pipeline de publicación atómica (RM-04 / INIT-04-05), CLI con subcomandos funcionales (RM-05), WASI, I/O interactiva, benchmarks cross-OS formales. Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
 
@@ -62,8 +62,8 @@ agent-native/
 ├── crates/
 │   ├── ir/           # Semantic IR v0.5: modelo + verifier + schemas
 │   ├── compiler/     # IR → WASM Component Model + hash SHA-256
-│   ├── runtime/      # (planeado) carga + ejecución Wasmtime, sin LLM
-│   └── cli/          # bin agent-native (planeado: build/verify/test/run/publish)
+│   ├── runtime/      # carga + ejecución Wasmtime, HostPolicy, Resolver (sin LLM)
+│   └── cli/          # bin agent-native (scaffold: subcomandos planeados en INIT-05-01)
 ├── knowledge/        # Conocimiento del proyecto gestionado por Kaddo
 │   ├── business/     # Problema, usuarios, objetivos de negocio
 │   ├── product/      # Visión, journeys, capacidades

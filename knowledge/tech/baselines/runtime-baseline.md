@@ -25,8 +25,8 @@ Cualquier optimización futura debe **documentar su mejora cuantificada contra l
 ## Metodología
 
 - **Herramienta:** [`criterion`](https://bheisler.github.io/criterion.rs/book/) 0.5 como `[dev-dependencies]` del crate `agent-native-runtime`.
-- **Fixture Core WASM — `identity`:** función `(i32) -> i32` compilada desde IR v0.1. Diseñada para que el costo de dominio sea despreciable; mide el pipeline del runtime.
-- **Fixture Component Model — `point_sum`:** función `(i32, i32) -> record { sum, doubled }` compilada desde IR v0.5 (`program-005`) con contrato WIT (interface `an:test/ops@0.1.0`). Mide el camino completo con interfaces WIT y retorno de record. Compila vía `compile_ir_to_wasm_with_context` + `CompileContext` apuntando a `crates/compiler/` (AN-016).
+- **Fixture Core WASM — `identity`:** función `(i32) -> i32` compilada desde IR v0.1 vía el shim `compile_ir_to_wasm` (el IR no referencia `wit_file` externo, así que el cwd no afecta el output). Diseñada para que el costo de dominio sea despreciable; mide el pipeline del runtime.
+- **Fixture Component Model — `point_sum`:** función `(i32, i32) -> record { sum, doubled }` compilada desde IR v0.5 (`program-005`) con contrato WIT (interface `an:test/ops@0.1.0`). Mide el camino completo con interfaces WIT y retorno de record. Al referenciar un `wit_file` externo, se compila vía `compile_ir_to_wasm_with_context` + `CompileContext` apuntando a `crates/compiler/` (AN-016); el fixture `identity` **no** usa esta API.
 - **Separación por etapa:** cada bench aísla una porción del pipeline, de modo que optimizaciones futuras pueden compararse contra la fila que afectan.
 - **Store per invocación:** todos los benches de `*_run_*` crean un `wasmtime::Store` fresh por invocación (ADR-005 baseline operativa). El `warm_run` cachea el `wasmtime::Component`/`Module` parseado pero no la instancia.
 
@@ -75,11 +75,12 @@ donde `<path>` ∈ {`core`, `component_model`} y `<fixture>` ∈ {`identity`, `p
 
 ### Observaciones acotadas al alcance medido
 
-- **`cold_run_core_identity` ÷ `warm_run_core_identity` ≈ 139×.** El cold path para Core WASM `identity` está dominado (~99 %) por `load`. La reducción máxima teórica para repetidas invocaciones del mismo artefacto es la diferencia entre cold y warm; AN-013 (`Resolver`) la materializa (ver `cache_hit_run_core_identity`).
-- **`cache_hit_run_core_identity` ≈ `warm_run_core_identity` + 250 ns.** La overhead del cache lookup (`HashMap<[u8;32], _>` + SHA-256 del input) es despreciable comparada con una invocación.
-- **Component Model `point_sum` es ~28× más lento que Core WASM `identity` en warm.** Esto NO es "Component Model es lento"; es un conjunto de factores: (a) `point_sum` retorna un record, no un primitivo, (b) la invocación cruza el límite de interfaz WIT con conversión de tipos del Canonical ABI, (c) el fixture es más complejo. Comparar directamente los dos fixtures excede el alcance de esta tabla.
-- **Component Model cold `~601 µs` vs Core cold `~230 µs`:** la diferencia (~370 µs) refleja parsing + validación + bindings WIT de un artefacto más grande, no una regresión del runtime.
-- **Cache-hit Component Model ≈ warm Component Model.** Como en el caso Core, el `Resolver` evita el re-parseo y queda al nivel del warm invoke.
+Las medianas publicadas vienen de `criterion --quick`: son snapshots rápidos de un solo pase sobre workstation personal. Las comparaciones a continuación son **aproximadas** (orden de magnitud + sign) y no deben leerse como mediciones causales con precisión ns:
+
+- **Cold run ≫ warm run (Core WASM identity):** el cold path está mayoritariamente dominado por `load`. La reducción disponible para invocaciones repetidas del mismo artefacto es la diferencia entre cold y warm; AN-013 (`Resolver`) la materializa, lo que se ve en `cache_hit_run_core_identity` ≈ `warm_run_core_identity` en orden de magnitud.
+- **`cache_hit_run_*` del mismo orden que `warm_run_*`:** el overhead del cache lookup (`HashMap<[u8;32], _>` + SHA-256 del input) no cambia el orden de magnitud de una invocación. La diferencia puntual en µs varía entre corridas `--quick` y no se afirma como "overhead medido".
+- **Component Model `point_sum` es significativamente más lento que Core WASM `identity`:** se observa en todas las etapas comparables (load, cold-run, warm-run, cache-hit-run). Esto NO es "Component Model es lento"; es un conjunto de factores entremezclados: (a) `point_sum` retorna un record, no un primitivo, (b) la invocación cruza el límite de interfaz WIT con conversión del Canonical ABI, (c) el artefacto compilado es más grande. **Comparar directamente los dos fixtures excede el alcance de esta tabla.** INIT-08-02 formalizará comparaciones controladas.
+- **La instanciación no se mide como etapa separada.** La fase que ocurre entre `load_component` y la primera `invoke` (crear `Store`, instanciar en el linker vacío, resolver imports) está sumada en el delta `cold_run − load`. Un bench de "instantiate aislado" no existe en esta suite; INIT-08-01 puede añadirlo si justifica el valor.
 
 ### Qué NO mide esta tabla
 
@@ -119,7 +120,7 @@ Los números publicados arriba son `--quick`. Al añadir una fila al Historial, 
 |---|---|---|
 | 2026-10-17 | AN-012 | Línea base inicial local, snapshot `--quick`: `cold_start_identity` ~389 µs, `warm_invoke_identity` ~1.99 µs, `load_only` ~247 µs. |
 | 2026-10-17 | AN-013 | Añadido `cached_cold_start_identity` ~2.09 µs. 186× speedup sobre `cold_start_identity`. |
-| 2026-10-18 | AN-017 | **Nombres renombrados** siguiendo la convención `<stage>_<path>_<fixture>`, **añadidos 5 benches** (`engine_construct`, `load_core_identity`, `load_component_model_point_sum`, `cold_run_component_model_point_sum`, `warm_run_component_model_point_sum`, `cache_hit_run_component_model_point_sum`). Tabla segregada por path y etapa. Variaciones vs AN-012/013 ∈ ±5–10 % atribuibles al hardware (misma workstation) y a corridas independientes `--quick`. |
+| 2026-10-18 | AN-017 | **4 benches renombrados** (`cold_start_identity` → `cold_run_core_identity`, `warm_invoke_identity` → `warm_run_core_identity`, `cached_cold_start_identity` → `cache_hit_run_core_identity`, `load_only` → `load_core_identity`) + **5 benches añadidos** (`engine_construct`, `load_component_model_point_sum`, `cold_run_component_model_point_sum`, `warm_run_component_model_point_sum`, `cache_hit_run_component_model_point_sum`). Tabla segregada por path y etapa. **Nota de reproducibilidad:** las medianas AN-017 difieren de AN-012/013 en magnitudes variables (p. ej. `cold_run_core_identity` ~230 µs vs `cold_start_identity` ~389 µs, delta observado ≈ −41 %, mayor que el ruido típico de `--quick`). **No se afirma como cambio estructural demostrado ni se atribuye a una causa concreta**: se requiere una comparación controlada posterior (INIT-08-01, RM-08) con hardware y método no-`--quick` para discernir ruido de workstation, cambios de dependencias y evolución del compilador. Los números AN-012/013 permanecen como **históricos locales**, no como regresión demostrada. |
 
 ### Mapa de nombres antiguos → nuevos (preservado tras AN-017)
 
