@@ -31,7 +31,8 @@ candidates:
     status: candidate
   - id: INIT-03-04
     title: Propagación de errores host + imports
-    status: candidate
+    status: completed
+    materialized_as: AN-010
   - id: INIT-03-05
     title: Controles mínimos de ejecución (deny-by-default)
     status: candidate

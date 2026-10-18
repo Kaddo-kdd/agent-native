@@ -32,4 +32,19 @@ pub enum RuntimeError {
     /// Execution of the function trapped or returned a Wasmtime error.
     #[error("execution failed: {0}")]
     ExecutionFailed(String),
+
+    /// The component declares a host import that the runtime did not
+    /// provide. Detected pre-instantiate per ADR-004 (fail-explicit).
+    #[error("unauthorized or missing host import: {module}::{name}")]
+    UnauthorizedImport { module: String, name: String },
+
+    /// The caller supplied an argument whose type does not match the
+    /// function signature.
+    #[error("argument {index} of function '{function}' expected {expected}, found {found}")]
+    ArgTypeMismatch {
+        function: String,
+        index: usize,
+        expected: String,
+        found: String,
+    },
 }

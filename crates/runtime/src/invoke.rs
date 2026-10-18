@@ -3,10 +3,10 @@
 //! Per ADR-005 (baseline operativa), each invocation runs in a fresh
 //! `wasmtime::Store`; instances are not reused across invocations in MVP.
 //!
-//! Imports are intentionally **not** linked: this WI only accepts artifacts
-//! with no imports or with imports the host does not need to satisfy for
-//! the call to succeed. Allow-listed capability imports arrive in
-//! INIT-03-05.
+//! Imports are intentionally **not** linked in this baseline: any component
+//! that declares a host import without the runtime providing it fails
+//! pre-instantiate with [`RuntimeError::UnauthorizedImport`] (ADR-004,
+//! fail-explicit). Allow-listed capability imports arrive in INIT-03-05.
 
 use wasmtime::Store;
 use wasmtime::component::{Linker as ComponentLinker, Val};
@@ -20,7 +20,9 @@ impl Component {
     /// # Errors
     ///
     /// Returns [`RuntimeError`] variants on load/instantiation/execution
-    /// failures. See [`RuntimeError`] for the full taxonomy.
+    /// failures. See [`RuntimeError`] for the full taxonomy. In particular,
+    /// a component with declared imports fails pre-instantiate with
+    /// [`RuntimeError::UnauthorizedImport`].
     pub fn invoke(&self, func_name: &str, args: &[Val]) -> Result<Vec<Val>, RuntimeError> {
         match &self.payload {
             Payload::Component(component) => {
@@ -37,6 +39,16 @@ fn invoke_component(
     func_name: &str,
     args: &[Val],
 ) -> Result<Vec<Val>, RuntimeError> {
+    // Pre-instantiate check: with an empty linker, any declared import is
+    // unauthorized by definition. Surface the first offender as a typed
+    // error (ADR-004).
+    if let Some((name, item)) = component.component_type().imports(engine).next() {
+        return Err(RuntimeError::UnauthorizedImport {
+            module: name.to_string(),
+            name: component_item_name(&item).to_string(),
+        });
+    }
+
     let linker: ComponentLinker<()> = ComponentLinker::new(engine);
     let mut store = Store::new(engine, ());
 
@@ -48,13 +60,25 @@ fn invoke_component(
         .get_func(&mut store, func_name)
         .ok_or_else(|| RuntimeError::FunctionNotFound(func_name.to_string()))?;
 
-    let param_count = func.params(&store).len();
+    let params = func.params(&store);
+    let param_count = params.len();
     if param_count != args.len() {
         return Err(RuntimeError::ArityMismatch {
             name: func_name.to_string(),
             expected: param_count,
             got: args.len(),
         });
+    }
+
+    for (index, (expected_ty, provided)) in params.iter().zip(args.iter()).enumerate() {
+        if !component_val_matches_type(provided, expected_ty) {
+            return Err(RuntimeError::ArgTypeMismatch {
+                function: func_name.to_string(),
+                index,
+                expected: format!("{expected_ty:?}"),
+                found: component_val_kind(provided).to_string(),
+            });
+        }
     }
 
     let mut results = vec![Val::Bool(false); func.results(&store).len()];
@@ -72,6 +96,15 @@ fn invoke_core(
     func_name: &str,
     args: &[Val],
 ) -> Result<Vec<Val>, RuntimeError> {
+    // Pre-instantiate check for Core WASM modules: any import declared and
+    // not satisfied by the empty linker is `UnauthorizedImport` (ADR-004).
+    if let Some(import) = module.imports().next() {
+        return Err(RuntimeError::UnauthorizedImport {
+            module: import.module().to_string(),
+            name: import.name().to_string(),
+        });
+    }
+
     let linker: wasmtime::Linker<()> = wasmtime::Linker::new(engine);
     let mut store = Store::new(engine, ());
 
@@ -83,7 +116,6 @@ fn invoke_core(
         .get_func(&mut store, func_name)
         .ok_or_else(|| RuntimeError::FunctionNotFound(func_name.to_string()))?;
 
-    let core_args = component_vals_to_core(args, func_name)?;
     let func_ty = func.ty(&store);
     let param_count = func_ty.params().len();
     if param_count != args.len() {
@@ -94,11 +126,87 @@ fn invoke_core(
         });
     }
 
+    for (index, (expected_ty, provided)) in func_ty.params().zip(args.iter()).enumerate() {
+        if !core_val_matches_type(provided, &expected_ty) {
+            return Err(RuntimeError::ArgTypeMismatch {
+                function: func_name.to_string(),
+                index,
+                expected: format!("{expected_ty:?}"),
+                found: component_val_kind(provided).to_string(),
+            });
+        }
+    }
+
+    let core_args = component_vals_to_core(args, func_name)?;
     let mut core_results = vec![wasmtime::Val::I32(0); func_ty.results().len()];
     func.call(&mut store, &core_args, &mut core_results)
         .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
 
     Ok(core_results_to_component(&core_results))
+}
+
+/// Returns a short, stable kebab-style name for an imported component item,
+/// used only for error messages.
+fn component_item_name(item: &wasmtime::component::types::ComponentItem) -> &'static str {
+    use wasmtime::component::types::ComponentItem;
+    match item {
+        ComponentItem::ComponentFunc(_) => "func",
+        ComponentItem::CoreFunc(_) => "core-func",
+        ComponentItem::Module(_) => "module",
+        ComponentItem::Component(_) => "component",
+        ComponentItem::ComponentInstance(_) => "instance",
+        ComponentItem::Type(_) => "type",
+        ComponentItem::Resource(_) => "resource",
+    }
+}
+
+/// Returns a short kebab-style tag for a component `Val`, used in error
+/// messages.
+fn component_val_kind(v: &Val) -> &'static str {
+    match v {
+        Val::Bool(_) => "bool",
+        Val::S8(_) => "s8",
+        Val::U8(_) => "u8",
+        Val::S16(_) => "s16",
+        Val::U16(_) => "u16",
+        Val::S32(_) => "s32",
+        Val::U32(_) => "u32",
+        Val::S64(_) => "s64",
+        Val::U64(_) => "u64",
+        Val::Float32(_) => "float32",
+        Val::Float64(_) => "float64",
+        Val::Char(_) => "char",
+        Val::String(_) => "string",
+        Val::List(_) => "list",
+        Val::Record(_) => "record",
+        Val::Tuple(_) => "tuple",
+        Val::Variant(_, _) => "variant",
+        Val::Enum(_) => "enum",
+        Val::Option(_) => "option",
+        Val::Result(_) => "result",
+        Val::Flags(_) => "flags",
+        Val::Resource(_) => "resource",
+    }
+}
+
+fn component_val_matches_type(v: &Val, ty: &wasmtime::component::types::Type) -> bool {
+    use wasmtime::component::types::Type;
+    matches!(
+        (v, ty),
+        (Val::Bool(_), Type::Bool)
+            | (Val::S32(_), Type::S32)
+            | (Val::U32(_), Type::U32)
+            | (Val::S64(_), Type::S64)
+            | (Val::U64(_), Type::U64)
+    )
+}
+
+fn core_val_matches_type(v: &Val, ty: &wasmtime::ValType) -> bool {
+    matches!(
+        (v, ty),
+        (Val::S32(_) | Val::Bool(_), wasmtime::ValType::I32)
+            | (Val::S64(_), wasmtime::ValType::I64)
+    )
 }
 
 /// Lowers component-level `Val` arguments to core WASM `wasmtime::Val`.
