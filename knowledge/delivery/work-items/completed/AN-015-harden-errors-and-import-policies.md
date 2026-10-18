@@ -166,7 +166,9 @@ Caller en `invoke_core` encadena con `?`.
 2. **Policy consulta identificadores reales.** `is_allowed_component` (o equivalente) nunca recibe `"func"` ni `"instance"`.
 3. **Granularidad por operación.** `allow_wit_operation("an:probe/types@0.1.0", "pt")` autoriza `pt` y nada más. Autorizar otra operación de la misma interfaz la deja aún bloqueada.
 4. **Granularidad por interfaz.** `allow_wit_interface("an:probe/types@0.1.0")` autoriza TODAS las operaciones de esa interfaz.
-5. **`use types.{...}` fixture.** Fixture del probe (`an:probe` package con `use types.{pt}`) ejercita el camino: sin policy → `UnauthorizedImport { module: "an:probe/types@0.1.0", name: <op real> }`; con `allow_wit_interface` → pasa a instancia (y falla con `InstantiationFailed`, por diseño de este WI).
+5. **`use types.{...}` fixture.** Fixture del probe (`an:probe` package con `use types.{pt}`) ejercita el camino: sin policy → `UnauthorizedImport { module: "an:probe/types@0.1.0", name: <op real> }`; con `allow_wit_interface` → **el componente se ejecuta end-to-end y retorna el record correcto** (verificado en los tests `allow_wit_interface_authorises_whole_interface_and_type_import_resolves`, `allow_wit_operation_with_real_name_executes_type_import`, `allow_module_is_permissive_wildcard_and_documented`).
+
+> **Nota de corrección documental (post-implementación, 2026-10-18):** la redacción original de este AC esperaba que la autorización terminara en `InstantiationFailed` "por diseño". El Learning de este mismo WI documenta el descubrimiento real: para **imports WIT exclusivamente de tipos**, Wasmtime resuelve la referencia internamente y la ejecución procede sin host function. Los asserts de los tests se ajustaron antes del commit `20b23ff` para reflejar ese comportamiento. Para imports de función (host-services) sigue aplicando `InstantiationFailed` sin provider — ese caso llega en INIT-06-01/INIT-07-01. **La historia del descubrimiento se preserva en el Learning**, no se reescribe.
 6. **`allow_module` documentado y probado.** Docstring con advertencia; test demuestra que autoriza cualquier operación bajo ese módulo.
 7. **Deny-by-default intacto.** `HostPolicy::deny_all()` sigue siendo default. Un componente con imports y sin policy explícita devuelve `UnauthorizedImport`.
 8. **Core WASM:** tests independientes para `allow_core` y `allow_module` sobre Core WASM.
@@ -258,10 +260,13 @@ Esperado: ≥38 tests pass (33 + 5+ nuevos de WIT policy).
 
 ### Evidencias de ejecución
 
-- Commit implementación: `20b23ff` → CI remota [`#39097746764`](https://github.com/Kaddo-kdd/agent-native/actions/runs/39097746764) **success** en ubuntu-latest, windows-latest, macos-latest.
-- Local Windows: `cargo test --workspace` → 39 pruebas, 0 fallos.
+- **Commit implementación `20b23ff`** → CI remota [`#39098865023`](https://github.com/Kaddo-kdd/agent-native/actions/runs/39098865023) terminó **cancelled** (por `concurrency.cancel-in-progress` del workflow: el push de cierre llegó mientras aún corría).
+- **Commit cierre `b6f87f1`** → CI remota [`#39098929793`](https://github.com/Kaddo-kdd/agent-native/actions/runs/39098929793) terminó **success** en ubuntu-latest, windows-latest, macos-latest. Como `b6f87f1` incluye `20b23ff` en su árbol, este run valida el estado final del código.
+- Local Windows (ambos commits): `cargo test --workspace` → 39 pruebas, 0 fallos.
 - `kaddo verify AN-015 --json`: `"readiness": "READY_TO_COMPLETE"`, 0 blockers, 0 warnings, 0 AC `not-verified`.
 - `cargo tree -p agent-native-runtime --edges normal | grep compiler` → vacío (ADR-002 intacto).
+
+> **Nota de corrección documental (2026-10-18):** una versión anterior de este bloque citaba el run `#39097746764` como evidencia del commit `20b23ff`. Ese run corresponde al cierre de AN-014 (`8afbcb9`), no a AN-015. El run real de `20b23ff` fue cancelled; la validación efectiva del árbol de AN-015 es `#39098929793`.
 
 ────────────────────────
 Agent: work-item-agent
