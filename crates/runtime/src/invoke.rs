@@ -62,8 +62,16 @@ fn invoke_component(
         .instantiate(&mut store, component)
         .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
 
-    let func = instance
-        .get_func(&mut store, func_name)
+    // Function lookup supports two forms:
+    //
+    // - Top-level `name`: `instance.get_func(name)` — the only path AN-009
+    //   supported.
+    // - WIT interface `interface_id#operation`: resolves the interface as
+    //   an exported instance first, then the operation inside it. The
+    //   `interface_id` is the fully qualified WIT identifier Wasmtime
+    //   exports (e.g. `an:test/ops@0.1.0`); the operation uses the WIT
+    //   kebab-case name.
+    let func = resolve_component_func(&instance, &mut store, func_name)
         .ok_or_else(|| RuntimeError::FunctionNotFound(func_name.to_string()))?;
 
     let params = func.params(&store);
@@ -152,6 +160,22 @@ fn invoke_core(
         .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
 
     Ok(core_results_to_component(&core_results))
+}
+
+/// Resolves an exported function. Supports top-level exports and functions
+/// nested inside an exported WIT interface, referenced as
+/// `interface_id#operation`.
+fn resolve_component_func(
+    instance: &wasmtime::component::Instance,
+    store: &mut Store<()>,
+    func_name: &str,
+) -> Option<wasmtime::component::Func> {
+    if let Some((iface, op)) = func_name.split_once('#') {
+        let iface_idx = instance.get_export(&mut *store, None, iface)?;
+        let fn_idx = instance.get_export(&mut *store, Some(&iface_idx), op)?;
+        return instance.get_func(&mut *store, fn_idx);
+    }
+    instance.get_func(&mut *store, func_name)
 }
 
 /// Returns a short, stable kebab-style name for an imported component item,

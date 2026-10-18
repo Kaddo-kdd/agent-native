@@ -1,0 +1,66 @@
+{
+  "ir_version": "0.5",
+  "spec_version": 1,
+  "wit_contract": {
+    "package": "an:test@0.1.0",
+    "world": "math",
+    "export_interface": "ops",
+    "import_interfaces": [],
+    "wit_file": "crates/compiler/tests/fixtures/wit/program-005.wit"
+  },
+  "types": [
+    {
+      "name": "point_sum",
+      "fields": [
+        { "name": "sum", "type": "i32" },
+        { "name": "doubled", "type": "i32" }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "name": "double_value",
+      "export": true,
+      "wit_interface": "ops",
+      "params": [{ "name": "x", "type": "i32" }],
+      "returns": "i32",
+      "requirements": ["AN-014-01"],
+      "body": {
+        "op": "mul",
+        "left": { "op": "param", "name": "x" },
+        "right": { "op": "const", "type": "i32", "value": 2 }
+      }
+    },
+    {
+      "name": "make_point_sum",
+      "export": true,
+      "wit_interface": "ops",
+      "params": [
+        { "name": "x", "type": "i32" },
+        { "name": "y", "type": "i32" }
+      ],
+      "returns": "point_sum",
+      "requirements": ["AN-014-02"],
+      "body": {
+        "op": "record.construct",
+        "type": "point_sum",
+        "fields": {
+          "sum": {
+            "op": "add",
+            "left": { "op": "param", "name": "x" },
+            "right": { "op": "param", "name": "y" }
+          },
+          "doubled": {
+            "op": "mul",
+            "left": {
+              "op": "add",
+              "left": { "op": "param", "name": "x" },
+              "right": { "op": "param", "name": "y" }
+            },
+            "right": { "op": "const", "type": "i32", "value": 2 }
+          }
+        }
+      }
+    }
+  ]
+}

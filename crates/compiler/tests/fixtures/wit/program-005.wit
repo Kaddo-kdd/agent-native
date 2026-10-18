@@ -1,0 +1,15 @@
+package an:test@0.1.0;
+
+interface ops {
+    record point-sum {
+        sum: s32,
+        doubled: s32,
+    }
+
+    double-value: func(x: s32) -> s32;
+    make-point-sum: func(x: s32, y: s32) -> point-sum;
+}
+
+world math {
+    export ops;
+}
