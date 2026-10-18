@@ -2,7 +2,7 @@
 type: initiative
 id: INI-002
 title: RM-02 — Semantic IR & Compiler Extraction
-status: planned
+status: in-progress
 knowledge_level: K3
 domains:
   - Semantic IR & Verification
@@ -34,7 +34,14 @@ candidates:
     status: candidate
   - id: INIT-02-04
     title: Determinismo + verificación de integridad (SHA-256)
-    status: candidate
+    status: completed
+    materialized_as: AN-008 (sha256_hex + determinism.rs 2 tests), AN-004 (CI matrix 3 OS pin de rust-toolchain), AN-014 (E_WIT_NOT_FOUND diagnóstico explícito)
+    note: >-
+      Cubierto funcionalmente sin WI dedicado — `sha256_hex` + hash reproducible,
+      pin de rust-toolchain 1.85.0 + pin wasmtime 27.0 en workspace, pin
+      encoding_rs 0.8.35 vía Cargo.lock trackeado, CI matrix 3 OS valida hash
+      cross-OS en cada push. El baseline Wasmtime exacto permanece en ADR-003
+      como `[open]` hasta validación formal (fuera del scope de este INIT).
   - id: INIT-02-05
     title: Modelo de memoria y Canonical ABI
     status: completed

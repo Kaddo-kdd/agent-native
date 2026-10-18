@@ -2,7 +2,7 @@
 type: initiative
 id: INI-003
 title: RM-03 — Runtime & Acceptance Extraction
-status: planned
+status: in-progress
 knowledge_level: K3
 domains:
   - Runtime & Memory
