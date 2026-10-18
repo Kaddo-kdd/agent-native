@@ -42,16 +42,55 @@ fn invoke_component(
     func_name: &str,
     args: &[Val],
 ) -> Result<Vec<Val>, RuntimeError> {
-    // Pre-instantiate check: every declared import must be allowed by the
-    // policy. The first offender is surfaced as a typed error (ADR-004,
-    // deny-by-default).
+    // Pre-instantiate check (ADR-004, deny-by-default). Imports are
+    // identified by their REAL names and authorised by interface or
+    // operation, never by item-kind labels like "func" or "instance"
+    // (AN-015 precision 3).
     for (name, item) in component.component_type().imports(engine) {
-        let item_label = component_item_name(&item);
-        if !policy.is_allowed(name, item_label) {
-            return Err(RuntimeError::UnauthorizedImport {
-                module: name.to_string(),
-                name: item_label.to_string(),
-            });
+        use wasmtime::component::types::ComponentItem;
+        match item {
+            ComponentItem::ComponentInstance(inst_ty) => {
+                // Interface-wide allow short-circuits the per-operation check.
+                if policy.is_wit_interface_allowed(name) {
+                    continue;
+                }
+                // Otherwise every exported operation in the imported
+                // interface must be explicitly authorised; the first
+                // unauthorised one is surfaced with its REAL name.
+                for (op_name, _op_item) in inst_ty.exports(engine) {
+                    if !policy.is_wit_operation_allowed(name, op_name) {
+                        return Err(RuntimeError::UnauthorizedImport {
+                            module: name.to_string(),
+                            name: op_name.to_string(),
+                        });
+                    }
+                }
+            }
+            ComponentItem::ComponentFunc(_) => {
+                // Top-level function import. The interface identifier
+                // Wasmtime gives us is `name`; we treat the operation name
+                // as empty since the import is itself a function (rare in
+                // practice for Agent-Native, where WIT interfaces wrap
+                // operations).
+                if !policy.is_wit_interface_allowed(name)
+                    && !policy.is_wit_operation_allowed(name, "")
+                {
+                    return Err(RuntimeError::UnauthorizedImport {
+                        module: name.to_string(),
+                        name: String::new(),
+                    });
+                }
+            }
+            _ => {
+                // Modules, components, resources and types imported at the
+                // top level follow the interface-wide rule by default.
+                if !policy.is_wit_interface_allowed(name) {
+                    return Err(RuntimeError::UnauthorizedImport {
+                        module: name.to_string(),
+                        name: component_item_name(&item).to_string(),
+                    });
+                }
+            }
         }
     }
 
@@ -114,7 +153,7 @@ fn invoke_core(
     // Pre-instantiate check for Core WASM modules: every declared import
     // must be allowed by the policy (ADR-004, deny-by-default).
     for import in module.imports() {
-        if !policy.is_allowed(import.module(), import.name()) {
+        if !policy.is_allowed_core(import.module(), import.name()) {
             return Err(RuntimeError::UnauthorizedImport {
                 module: import.module().to_string(),
                 name: import.name().to_string(),
@@ -159,7 +198,7 @@ fn invoke_core(
     func.call(&mut store, &core_args, &mut core_results)
         .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
 
-    Ok(core_results_to_component(&core_results))
+    core_results_to_component(&core_results)
 }
 
 /// Resolves an exported function. Supports top-level exports and functions
@@ -264,17 +303,18 @@ fn component_vals_to_core(
 /// `Bool`; booleans round-trip as `S32` and the caller interprets using the
 /// function's declared IR signature.
 ///
-/// Non-`I32` return types are not produced by Agent-Native IR v0.5 Core WASM
-/// output; if a future IR extension changes this, the arm must be
-/// revisited.
-fn core_results_to_component(results: &[wasmtime::Val]) -> Vec<Val> {
+/// AN-015 (ADR-004): any non-`I32` return type produces a typed
+/// `RuntimeError::ExecutionFailed` instead of a silent `Val::S32(0)`
+/// fallback. Agent-Native IR v0.5 Core WASM output never emits such types,
+/// so this arm acts as an invariant guard rather than a silent coercion.
+fn core_results_to_component(results: &[wasmtime::Val]) -> Result<Vec<Val>, RuntimeError> {
     results
         .iter()
         .map(|v| match v {
-            wasmtime::Val::I32(i) => Val::S32(*i),
-            // Unreachable under IR v0.5 which only emits i32-returning
-            // Core WASM functions.
-            _ => Val::S32(0),
+            wasmtime::Val::I32(i) => Ok(Val::S32(*i)),
+            other => Err(RuntimeError::ExecutionFailed(format!(
+                "unsupported core result type: {other:?}"
+            ))),
         })
         .collect()
 }

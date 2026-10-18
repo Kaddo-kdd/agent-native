@@ -1,0 +1,41 @@
+{
+  "ir_version": "0.5",
+  "spec_version": 1,
+  "wit_contract": {
+    "package": "an:probe@0.1.0",
+    "world": "w",
+    "export_interface": "ops",
+    "import_interfaces": [],
+    "wit_file": "crates/compiler/tests/fixtures/wit/probe-use-types.wit"
+  },
+  "types": [
+    {
+      "name": "pt",
+      "fields": [
+        { "name": "x", "type": "i32" },
+        { "name": "y", "type": "i32" }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "name": "make_pt",
+      "export": true,
+      "wit_interface": "ops",
+      "params": [
+        { "name": "x", "type": "i32" },
+        { "name": "y", "type": "i32" }
+      ],
+      "returns": "pt",
+      "requirements": ["AN-015-PROBE"],
+      "body": {
+        "op": "record.construct",
+        "type": "pt",
+        "fields": {
+          "x": { "op": "param", "name": "x" },
+          "y": { "op": "param", "name": "y" }
+        }
+      }
+    }
+  ]
+}

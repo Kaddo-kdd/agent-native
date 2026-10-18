@@ -1,0 +1,18 @@
+package an:probe@0.1.0;
+
+interface types {
+    record pt {
+        x: s32,
+        y: s32,
+    }
+}
+
+interface ops {
+    use types.{pt};
+
+    make-pt: func(x: s32, y: s32) -> pt;
+}
+
+world w {
+    export ops;
+}
