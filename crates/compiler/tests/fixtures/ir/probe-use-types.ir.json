@@ -6,7 +6,7 @@
     "world": "w",
     "export_interface": "ops",
     "import_interfaces": [],
-    "wit_file": "crates/compiler/tests/fixtures/wit/probe-use-types.wit"
+    "wit_file": "tests/fixtures/wit/probe-use-types.wit"
   },
   "types": [
     {

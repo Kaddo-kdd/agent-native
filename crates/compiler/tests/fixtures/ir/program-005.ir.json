@@ -6,7 +6,7 @@
     "world": "math",
     "export_interface": "ops",
     "import_interfaces": [],
-    "wit_file": "crates/compiler/tests/fixtures/wit/program-005.wit"
+    "wit_file": "tests/fixtures/wit/program-005.wit"
   },
   "types": [
     {

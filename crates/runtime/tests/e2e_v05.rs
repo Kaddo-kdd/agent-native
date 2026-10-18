@@ -13,20 +13,32 @@
 //! 4. Negative path: an IR declaring an inexistent `wit_contract.wit_file`
 //!    is rejected during compilation with a diagnostic.
 
-use agent_native_compiler::compile_ir_to_wasm;
+use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
 use agent_native_runtime::{Engine, RuntimeError, Val};
 use serde_json::Value;
+use std::path::PathBuf;
 
 fn program_005_ir() -> Value {
     let text = include_str!("../../compiler/tests/fixtures/ir/program-005.ir.json");
     serde_json::from_str(text).expect("fixture must be valid JSON")
 }
 
+fn compiler_crate_ctx() -> CompileContext {
+    // Fixtures live under `crates/compiler/tests/fixtures/`; the WIT
+    // paths inside the IR are relative to `crates/compiler/`. Build the
+    // context explicitly so tests do not depend on the process cwd.
+    let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    root.pop(); // crates/runtime -> crates/
+    root.push("compiler");
+    CompileContext::new(root)
+}
+
 /// `double_value(21) -> 42` through the WIT interface `an:test/ops@0.1.0`.
 #[test]
 fn v05_component_model_primitive_invoke_through_wit_interface() {
     let ir = program_005_ir();
-    let wasm = compile_ir_to_wasm(&ir).expect("compile must succeed");
+    let wasm =
+        compile_ir_to_wasm_with_context(&ir, &compiler_crate_ctx()).expect("compile must succeed");
     let engine = Engine::new().expect("engine");
     let component = engine.load_component(&wasm).expect("load");
 
@@ -42,7 +54,8 @@ fn v05_component_model_primitive_invoke_through_wit_interface() {
 #[test]
 fn v05_component_model_record_return_fields_verified() {
     let ir = program_005_ir();
-    let wasm = compile_ir_to_wasm(&ir).expect("compile must succeed");
+    let wasm =
+        compile_ir_to_wasm_with_context(&ir, &compiler_crate_ctx()).expect("compile must succeed");
     let engine = Engine::new().expect("engine");
     let component = engine.load_component(&wasm).expect("load");
 
@@ -76,7 +89,8 @@ fn v05_component_model_record_return_fields_verified() {
 #[test]
 fn missing_operation_inside_wit_interface_is_not_found() {
     let ir = program_005_ir();
-    let wasm = compile_ir_to_wasm(&ir).expect("compile must succeed");
+    let wasm =
+        compile_ir_to_wasm_with_context(&ir, &compiler_crate_ctx()).expect("compile must succeed");
     let engine = Engine::new().expect("engine");
     let component = engine.load_component(&wasm).expect("load");
 
@@ -100,7 +114,7 @@ fn missing_wit_file_rejected_during_compilation() {
     ir["wit_contract"]["wit_file"] =
         Value::String("crates/compiler/tests/fixtures/wit/does-not-exist.wit".to_string());
 
-    let diags = compile_ir_to_wasm(&ir).unwrap_err();
+    let diags = compile_ir_to_wasm_with_context(&ir, &compiler_crate_ctx()).unwrap_err();
     assert!(
         diags.iter().any(|d| d.code == "E_WIT_NOT_FOUND"),
         "expected E_WIT_NOT_FOUND, got: {diags:?}"

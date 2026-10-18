@@ -8,18 +8,23 @@
 //! # Public API
 //!
 //! - [`compile_ir_to_wasm`] — compiles a verified IR document to deterministic
-//!   WASM Component Model bytes.
+//!   WASM Component Model bytes. Backwards-compatible shortcut that uses the
+//!   current working directory as WIT root.
+//! - [`compile_ir_to_wasm_with_context`] — explicit [`CompileContext`]
+//!   variant that eliminates the cwd dependency (AN-016).
+//! - [`CompileContext`] — carries the WIT resolution root.
 //! - [`validate_wasm_bytes`] — validates a WASM payload against the component
 //!   model.
 //! - [`print_wasm_to_wat`] — pretty-prints WASM bytes as WAT for debugging.
 //! - [`sha256_hex`] — canonical SHA-256 digest for artifact integrity
 //!   (ADR-004).
-//!
-//! AN-007 will materialize the full POC regression suite (8 tests covering
-//! verify + compile + validate + hash determinism) once this crate exists.
 
 pub mod codegen;
+pub mod context;
 pub mod hash;
 
-pub use codegen::{compile_ir_to_wasm, print_wasm_to_wat, validate_wasm_bytes};
+pub use codegen::{
+    compile_ir_to_wasm, compile_ir_to_wasm_with_context, print_wasm_to_wat, validate_wasm_bytes,
+};
+pub use context::{CompileContext, ResolveOutcome};
 pub use hash::sha256_hex;

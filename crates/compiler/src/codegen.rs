@@ -48,6 +48,8 @@ use wasm_encoder::{
     MemorySection, MemoryType, Module, TypeSection, ValType,
 };
 
+use crate::context::{CompileContext, ResolveOutcome};
+
 /// WIT interface identifier string used by the compiler to lower imports.
 fn wit_interface_id(package: &str, iface: &str) -> String {
     if let Some((ns_pkg, ver)) = package.split_once('@') {
@@ -57,7 +59,21 @@ fn wit_interface_id(package: &str, iface: &str) -> String {
     }
 }
 
+/// Backwards-compatible entry point: compiles the IR using a context
+/// anchored at the current working directory. Preserves byte-identical
+/// behaviour with AN-008/013/014 (same output as before AN-016).
 pub fn compile_ir_to_wasm(root: &Value) -> Result<Vec<u8>, Vec<Diagnostic>> {
+    compile_ir_to_wasm_with_context(root, &CompileContext::default())
+}
+
+/// AN-016 explicit-context entry point. The compiler resolves
+/// `wit_contract.wit_file` against `ctx.wit_root()` instead of relying on
+/// the process working directory, so the same IR + WIT produce the same
+/// bytes regardless of where the build runs. No `../../` fallback chains.
+pub fn compile_ir_to_wasm_with_context(
+    root: &Value,
+    wit_ctx: &CompileContext,
+) -> Result<Vec<u8>, Vec<Diagnostic>> {
     let diags = verify_ir(root);
     if !diags.is_empty() {
         return Err(diags);
@@ -376,19 +392,41 @@ pub fn compile_ir_to_wasm(root: &Value) -> Result<Vec<u8>, Vec<Diagnostic>> {
     if ir_version == "0.4" || ir_version == "0.5" {
         if let Some(ref wit_contract) = ctx.wit_contract {
             let wit_content = if let Some(ref p) = wit_contract.wit_file {
-                std::fs::read_to_string(p)
-                    .or_else(|_| std::fs::read_to_string(format!("../../{p}")))
-                    .or_else(|_| std::fs::read_to_string(format!("../../../{p}")))
-                    .map_err(|e| {
+                match wit_ctx.resolve(p) {
+                    ResolveOutcome::Found(path) => std::fs::read_to_string(&path).map_err(|e| {
                         vec![Diagnostic {
                             code: "E_WIT_NOT_FOUND".to_string(),
                             function: None,
                             path: "$.wit_contract.wit_file".to_string(),
-                            message: format!("Failed to read WIT file '{p}': {e}"),
-                            expected: Some("accessible .wit file".to_string()),
+                            message: format!(
+                                "Failed to read WIT file '{}' (resolved from '{p}'): {e}",
+                                path.display()
+                            ),
+                            expected: Some("readable .wit file".to_string()),
                             found: None,
                         }]
-                    })?
+                    })?,
+                    ResolveOutcome::NotFound { tried } => {
+                        return Err(vec![Diagnostic {
+                            code: "E_WIT_NOT_FOUND".to_string(),
+                            function: None,
+                            path: "$.wit_contract.wit_file".to_string(),
+                            message: format!(
+                                "WIT file '{p}' not found. Tried: [{}]. Compile with an explicit CompileContext whose wit_root points to the directory containing the file.",
+                                tried
+                                    .iter()
+                                    .map(|p| p.display().to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            ),
+                            expected: Some(
+                                "accessible .wit file resolvable from the CompileContext"
+                                    .to_string(),
+                            ),
+                            found: None,
+                        }]);
+                    }
+                }
             } else if ir_version == "0.4" {
                 // Embedded fallback for IR v0.4 compatibility only. v0.5
                 // (ADR-003) always expects an explicit `wit_file` field.
@@ -396,18 +434,33 @@ pub fn compile_ir_to_wasm(root: &Value) -> Result<Vec<u8>, Vec<Diagnostic>> {
             } else {
                 let p1 = format!("wit/{}.wit", wit_contract.world);
                 let p2 = format!("wit/{}.wit", wit_contract.export_interface);
-                std::fs::read_to_string(&p1)
-                    .or_else(|_| std::fs::read_to_string(&p2))
-                    .or_else(|_| std::fs::read_to_string(format!("../../{p1}")))
-                    .or_else(|_| std::fs::read_to_string(format!("../../{p2}")))
-                    .map_err(|_| vec![Diagnostic {
+                let candidates = [p1.clone(), p2.clone()];
+                let mut found: Option<String> = None;
+                for cand in &candidates {
+                    if let ResolveOutcome::Found(path) = wit_ctx.resolve(cand) {
+                        if let Ok(txt) = std::fs::read_to_string(&path) {
+                            found = Some(txt);
+                            break;
+                        }
+                    }
+                }
+                let Some(txt) = found else {
+                    return Err(vec![Diagnostic {
                         code: "E_WIT_NOT_FOUND".to_string(),
                         function: None,
                         path: "$.wit_contract".to_string(),
-                        message: format!("No WIT file found for world '{}' or export interface '{}'. Fallback defaults are disabled in IR v0.5.", wit_contract.world, wit_contract.export_interface),
-                        expected: Some(format!("wit/{}.wit or wit/{}.wit", wit_contract.world, wit_contract.export_interface)),
+                        message: format!(
+                            "No WIT file found for world '{}' or export interface '{}'. Fallback defaults are disabled in IR v0.5.",
+                            wit_contract.world, wit_contract.export_interface
+                        ),
+                        expected: Some(format!(
+                            "wit/{}.wit or wit/{}.wit, resolvable from the CompileContext",
+                            wit_contract.world, wit_contract.export_interface
+                        )),
                         found: None,
-                    }])?
+                    }]);
+                };
+                txt
             };
             let mut resolve = wit_parser::Resolve::new();
             let pkg = resolve

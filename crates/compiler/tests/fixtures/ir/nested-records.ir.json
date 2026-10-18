@@ -1,0 +1,56 @@
+{
+  "ir_version": "0.5",
+  "spec_version": 1,
+  "wit_contract": {
+    "package": "an:nested@0.1.0",
+    "world": "w",
+    "export_interface": "ops",
+    "import_interfaces": [],
+    "wit_file": "tests/fixtures/wit/nested-records.wit"
+  },
+  "types": [
+    {
+      "name": "inner",
+      "fields": [
+        { "name": "a", "type": "i32" },
+        { "name": "b", "type": "i32" }
+      ]
+    },
+    {
+      "name": "outer",
+      "fields": [
+        { "name": "inside", "type": "inner" },
+        { "name": "tag", "type": "i32" }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "name": "make_nested",
+      "export": true,
+      "wit_interface": "ops",
+      "params": [
+        { "name": "x", "type": "i32" },
+        { "name": "y", "type": "i32" },
+        { "name": "t", "type": "i32" }
+      ],
+      "returns": "outer",
+      "requirements": ["AN-016-NESTED"],
+      "body": {
+        "op": "record.construct",
+        "type": "outer",
+        "fields": {
+          "inside": {
+            "op": "record.construct",
+            "type": "inner",
+            "fields": {
+              "a": { "op": "param", "name": "x" },
+              "b": { "op": "param", "name": "y" }
+            }
+          },
+          "tag": { "op": "param", "name": "t" }
+        }
+      }
+    }
+  ]
+}

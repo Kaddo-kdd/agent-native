@@ -15,13 +15,21 @@
 //!   - Deny-by-default is intact — the probe fixture (which looks "internal"
 //!     because it uses the same package) still requires explicit allow.
 
-use agent_native_compiler::compile_ir_to_wasm;
+use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
 use agent_native_runtime::{Engine, HostPolicy, RuntimeError, Val};
+use std::path::PathBuf;
+
+fn compiler_crate_ctx() -> CompileContext {
+    let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    root.pop();
+    root.push("compiler");
+    CompileContext::new(root)
+}
 
 fn probe_wasm() -> Vec<u8> {
     let text = include_str!("../../compiler/tests/fixtures/ir/probe-use-types.ir.json");
     let ir: serde_json::Value = serde_json::from_str(text).expect("valid JSON");
-    compile_ir_to_wasm(&ir).expect("compile must succeed")
+    compile_ir_to_wasm_with_context(&ir, &compiler_crate_ctx()).expect("compile must succeed")
 }
 
 const PROBE_TYPES_IFACE: &str = "an:probe/types@0.1.0";

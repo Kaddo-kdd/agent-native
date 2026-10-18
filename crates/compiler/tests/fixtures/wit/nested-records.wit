@@ -1,0 +1,19 @@
+package an:nested@0.1.0;
+
+interface ops {
+    record inner {
+        a: s32,
+        b: s32,
+    }
+
+    record outer {
+        inside: inner,
+        tag: s32,
+    }
+
+    make-nested: func(x: s32, y: s32, t: s32) -> outer;
+}
+
+world w {
+    export ops;
+}

@@ -73,11 +73,23 @@ Antes de habilitar pool de instancias o reutilización entre invocaciones:
 - No mantener referencias a memoria del guest en el host más allá del scope de la invocación.
 - No optimizar prematuramente el allocator del guest sin evidencia.
 
-### Qué queda explícitamente `[open]`
+### Qué queda explícitamente `[deferred]` tras AN-016
 
-- `[open]` **Allocator alternativo** (p. ej. arena por invocación): a evaluar tras INIT-03-06.
-- `[open]` **Estrategia de liberación en instancias persistentes** del futuro: a definir en INIT-06-03.
-- `[open]` **Comportamiento ante allocación masiva o fuga en el guest**: fixtures en INIT-06-05 (fuel + instance limits como primera línea de defensa).
+Las tres preguntas que originalmente quedaron `[open]` fueron ejercitadas por los experimentos de AN-016 (ver [`memory-model-notes.md`](../discovery/memory-model-notes.md) §3-§5). Ninguna se cerró con una decisión productiva, pero cada una ganó un **criterio objetivo de cierre**:
+
+- **[deferred to: INIT-06-02]** — **Allocator alternativo** (p. ej. arena por invocación). AN-012/013 miden que el default `wit-bindgen` **no es el término dominante** del cold start (~2 µs warm vs ~389 µs cold está dominado por parsing + Cranelift, no por allocación). Criterio objetivo: antes de proponer un allocator alternativo hay que medir bytes allocados reales con `wasmtime::ResourceLimiter`, cuya integración vive en INIT-06-02 (fuel + instance limits). Hasta entonces, mantener el default.
+- **[deferred to: INIT-06-03]** — **Estrategia de liberación en instancias persistentes**. El baseline operativa (fresh `Store` per invoke) hace la pregunta vacua: no hay instancias persistentes. INIT-06-03 debe decidir si levantar esa restricción con garantías de aislamiento multi-tenant; sólo entonces aplica una decisión sobre liberación.
+- **[deferred to: RM-07 / INIT-07-02]** — **Comportamiento ante allocación masiva o fuga en el guest**. Los experimentos de AN-016 §3 muestran que la gramática v0.5 **impide** construir fixtures de estrés (sin loops, listas ni strings; records anidados rechazados por diseño — ver AN-016 §2 y `nested_records.rs`). El experimento se habilita cuando IR v0.6+ relaje esas restricciones. Mientras tanto, INIT-06-05 cubre fixtures de recursión a nivel WASM (fuera del dominio del compilador).
+
+### Canonical ABI — [chosen] copy-on-return + fresh Store per invoke
+
+Añadido por AN-016 con evidencia (`memory-model-notes.md` §4):
+
+- **Records y primitivos retornados por el guest se copian al host** vía `wasmtime::component::Val` (confirmado con `program-005`/`make-point-sum`).
+- **El `wasmtime::Store` se destruye al final de cada invocación**, liberando toda memoria lineal del guest sin acción del host.
+- **Resources, strings y listas quedan fuera de alcance** de esta decisión (no cubiertos por IR v0.5).
+
+Esta es la decisión productiva de ADR-005 sobre Canonical ABI: no quedó `[open]`; está documentada aquí.
 
 ## Consequences
 
@@ -95,9 +107,13 @@ Antes de habilitar pool de instancias o reutilización entre invocaciones:
 - R-11 (allocator incremental sin liberación general) — tratada por aislamiento por invocación.
 
 **Seguimientos abiertos:**
-- `[open]` Allocator alternativo.
-- `[open]` Estrategia para instancias persistentes.
-- `[open]` Comportamiento ante allocación masiva.
+- `[deferred to: INIT-06-02]` Allocator alternativo — criterio objetivo: medir bytes con `ResourceLimiter`.
+- `[deferred to: INIT-06-03]` Estrategia para instancias persistentes — criterio objetivo: aislamiento multi-tenant.
+- `[deferred to: RM-07 / INIT-07-02]` Comportamiento ante allocación masiva — criterio objetivo: IR relaje restricciones (loops/listas/strings).
+
+Cerrados por AN-016 (ver `memory-model-notes.md`):
+- `[chosen]` Canonical ABI: copy-on-return + fresh Store per invoke.
+- `[chosen]` Eliminación de la dependencia del cwd en la resolución de WIT via `CompileContext` (impacto cruzado con el modelo de memoria vía reproducibilidad de artefactos).
 
 ## Related Capabilities
 
@@ -108,5 +124,6 @@ Antes de habilitar pool de instancias o reutilización entre invocaciones:
 ## Related Work Items
 
 - AN-003 (este ADR).
+- AN-016: experimentos de memoria, Canonical ABI y resolución WIT por contexto (ver `memory-model-notes.md`).
 - Precondición de: INIT-02-05, INIT-03-01, INIT-06-02, INIT-06-03.
 - Habilita (una vez cerrado tras experimentos): INIT-08-03.
