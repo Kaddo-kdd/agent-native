@@ -2,7 +2,8 @@
 type: initiative
 id: INI-002
 title: RM-02 — Semantic IR & Compiler Extraction
-status: in-progress
+status: completed
+completed_at: '2026-10-18'
 knowledge_level: K3
 domains:
   - Semantic IR & Verification
@@ -31,7 +32,8 @@ candidates:
     materialized_as: AN-008, AN-014 (E2E v0.5 Component Model)
   - id: INIT-02-03
     title: Contratos WIT públicos vs internos
-    status: candidate
+    status: completed
+    materialized_as: AN-018 (convención documentada; reorganización física diferida hasta que RM-05/INIT-05-01 introduzca el primer contrato público)
   - id: INIT-02-04
     title: Determinismo + verificación de integridad (SHA-256)
     status: completed
