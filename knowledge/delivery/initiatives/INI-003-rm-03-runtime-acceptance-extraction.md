@@ -35,7 +35,8 @@ candidates:
     materialized_as: AN-010
   - id: INIT-03-05
     title: Controles mínimos de ejecución (deny-by-default)
-    status: candidate
+    status: completed
+    materialized_as: AN-011
   - id: INIT-03-06
     title: Línea base técnica del runtime
     status: candidate

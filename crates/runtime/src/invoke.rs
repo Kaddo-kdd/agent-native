@@ -26,9 +26,11 @@ impl Component {
     pub fn invoke(&self, func_name: &str, args: &[Val]) -> Result<Vec<Val>, RuntimeError> {
         match &self.payload {
             Payload::Component(component) => {
-                invoke_component(&self.engine, component, func_name, args)
+                invoke_component(&self.engine, component, &self.policy, func_name, args)
             }
-            Payload::Module(module) => invoke_core(&self.engine, module, func_name, args),
+            Payload::Module(module) => {
+                invoke_core(&self.engine, module, &self.policy, func_name, args)
+            }
         }
     }
 }
@@ -36,17 +38,21 @@ impl Component {
 fn invoke_component(
     engine: &wasmtime::Engine,
     component: &wasmtime::component::Component,
+    policy: &crate::policy::HostPolicy,
     func_name: &str,
     args: &[Val],
 ) -> Result<Vec<Val>, RuntimeError> {
-    // Pre-instantiate check: with an empty linker, any declared import is
-    // unauthorized by definition. Surface the first offender as a typed
-    // error (ADR-004).
-    if let Some((name, item)) = component.component_type().imports(engine).next() {
-        return Err(RuntimeError::UnauthorizedImport {
-            module: name.to_string(),
-            name: component_item_name(&item).to_string(),
-        });
+    // Pre-instantiate check: every declared import must be allowed by the
+    // policy. The first offender is surfaced as a typed error (ADR-004,
+    // deny-by-default).
+    for (name, item) in component.component_type().imports(engine) {
+        let item_label = component_item_name(&item);
+        if !policy.is_allowed(name, item_label) {
+            return Err(RuntimeError::UnauthorizedImport {
+                module: name.to_string(),
+                name: item_label.to_string(),
+            });
+        }
     }
 
     let linker: ComponentLinker<()> = ComponentLinker::new(engine);
@@ -93,16 +99,19 @@ fn invoke_component(
 fn invoke_core(
     engine: &wasmtime::Engine,
     module: &wasmtime::Module,
+    policy: &crate::policy::HostPolicy,
     func_name: &str,
     args: &[Val],
 ) -> Result<Vec<Val>, RuntimeError> {
-    // Pre-instantiate check for Core WASM modules: any import declared and
-    // not satisfied by the empty linker is `UnauthorizedImport` (ADR-004).
-    if let Some(import) = module.imports().next() {
-        return Err(RuntimeError::UnauthorizedImport {
-            module: import.module().to_string(),
-            name: import.name().to_string(),
-        });
+    // Pre-instantiate check for Core WASM modules: every declared import
+    // must be allowed by the policy (ADR-004, deny-by-default).
+    for import in module.imports() {
+        if !policy.is_allowed(import.module(), import.name()) {
+            return Err(RuntimeError::UnauthorizedImport {
+                module: import.module().to_string(),
+                name: import.name().to_string(),
+            });
+        }
     }
 
     let linker: wasmtime::Linker<()> = wasmtime::Linker::new(engine);

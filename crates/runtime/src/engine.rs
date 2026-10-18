@@ -12,6 +12,7 @@ use wasmtime::Config;
 use wasmtime::component::Component as WtComponent;
 
 use crate::error::RuntimeError;
+use crate::policy::HostPolicy;
 
 /// A reusable Wasmtime engine configured for Component Model execution and
 /// Core WASM module loading.
@@ -34,34 +35,55 @@ impl Engine {
         Ok(Self { inner })
     }
 
-    /// Loads a WASM artifact from its serialized bytes. Accepts both
-    /// Component Model and Core WASM modules.
+    /// Loads a WASM artifact under the default **deny-all** policy
+    /// (ADR-004). Equivalent to `load_component_with_policy(bytes,
+    /// &HostPolicy::deny_all())`.
     ///
     /// # Errors
     ///
     /// Returns [`RuntimeError::LoadFailed`] if the payload is neither a
     /// valid Component Model artifact nor a valid Core WASM module.
     pub fn load_component(&self, bytes: &[u8]) -> Result<Component, RuntimeError> {
-        if let Ok(component) = WtComponent::new(&self.inner, bytes) {
-            return Ok(Component {
-                payload: Payload::Component(component),
-                engine: self.inner.clone(),
-            });
-        }
-        let module = wasmtime::Module::new(&self.inner, bytes)
-            .map_err(|e| RuntimeError::LoadFailed(e.to_string()))?;
+        self.load_component_with_policy(bytes, &HostPolicy::deny_all())
+    }
+
+    /// Loads a WASM artifact under an explicit host-import policy. Accepts
+    /// both Component Model and Core WASM modules.
+    ///
+    /// The policy is consulted pre-instantiate during
+    /// [`Component::invoke`]; this method only parses and stores it with
+    /// the loaded artifact.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RuntimeError::LoadFailed`] if the payload is neither a
+    /// valid Component Model artifact nor a valid Core WASM module.
+    pub fn load_component_with_policy(
+        &self,
+        bytes: &[u8],
+        policy: &HostPolicy,
+    ) -> Result<Component, RuntimeError> {
+        let payload = if let Ok(component) = WtComponent::new(&self.inner, bytes) {
+            Payload::Component(component)
+        } else {
+            let module = wasmtime::Module::new(&self.inner, bytes)
+                .map_err(|e| RuntimeError::LoadFailed(e.to_string()))?;
+            Payload::Module(module)
+        };
         Ok(Component {
-            payload: Payload::Module(module),
+            payload,
             engine: self.inner.clone(),
+            policy: policy.clone(),
         })
     }
 }
 
 /// A loaded WASM artifact (Component Model or Core module), ready for
-/// invocation.
+/// invocation under a specific [`HostPolicy`].
 pub struct Component {
     pub(crate) payload: Payload,
     pub(crate) engine: wasmtime::Engine,
+    pub(crate) policy: HostPolicy,
 }
 
 pub(crate) enum Payload {
