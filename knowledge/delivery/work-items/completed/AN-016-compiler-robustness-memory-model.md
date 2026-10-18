@@ -1,7 +1,8 @@
 ---
 id: AN-016
 type: feature
-status: in-progress
+status: completed
+completed_at: 2026-10-18
 title: Robustez del compilador y modelo de memoria (ADR-005)
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -214,8 +215,64 @@ grep -c "^\[open\]" knowledge/tech/decisions/ADR-005-modelo-memoria-canonical-ab
 | Prerrequisitos | AN-005, AN-006, AN-008, AN-014 |
 | Evidencia exploratoria previa | `knowledge/tech/discovery/memory-model-experiments.md` (AN-016 pre-ready) |
 
+## Learning
+
+**Lo que salió como se esperaba:**
+
+- `CompileContext` + `ResolveOutcome` encajan en < 110 LOC y preservan `compile_ir_to_wasm(root)` byte-a-byte para los call sites previos (AN-008/013/014).
+- Los 3 tests de `compile_context.rs` capturan la invariante central: dado un contexto explícito, el cwd no influye en el output.
+- `memory-model-notes.md` quedó como documento productivo, con `memory-model-experiments.md` como historia pre-ready; ambos se referencian cruzadamente.
+
+**Lo inesperado y cómo se trató:**
+
+- **Primer intento del `resolve()` fue permisivo:** aceptaba path relativo "tal cual" como fallback antes de probar `wit_root`. El test de root incorrecto no lo detectaba y lo dejé pasar (los paths resolvían contra cwd=compiler-crate por casualidad). Corregido: rutas relativas resuelven **solo** contra `wit_root`. Ahora el AC #5 muerde.
+- **El supuesto defecto de record anidado es inalcanzable desde v0.5.** La disciplina "no asumir defecto hasta reproducir" evitó un refactor innecesario del emitter. El fixture queda como regresión documental para IR v0.6+.
+- **Tests existentes de AN-014/015 fallaron** al eliminar los fallbacks `../../` — reveló que la deuda era real. Resuelto cambiando el path dentro del fixture (`tests/fixtures/wit/...` relativo al compiler crate) y haciendo que los tests de `agent-native-runtime` construyan el contexto con `CARGO_MANIFEST_DIR + "/../compiler"`.
+- **ADR-005 queda sin ningún `[open]` sin criterio objetivo de cierre.** Dos menciones residuales de `[open]` en el texto son referencias históricas (texto en prosa), no estados activos.
+
+**Riesgos materializados:**
+
+- R-C-01 (API breaking): mitigado — `compile_ir_to_wasm` se mantiene como shim; firma pública intacta.
+- R-C-02 (fixtures de estrés para asignador): materializado parcialmente — bloqueado por limitaciones de IR v0.5; documentado como deferral en `memory-model-notes.md` §3 y en ADR-005.
+- R-C-03 (ResourceLimiter): materializado — bytes exactos requieren instrumentación de nivel bajo; diferido a INIT-06-02 con criterio objetivo en ADR-005.
+
+**Deuda y OQ no resueltas:**
+
+- `compile_ir_to_wasm(root)` sin contexto sigue leyendo cwd implícitamente (shim de compatibilidad). Para eliminarlo requiere migrar los 8 tests `poc_regression` (que compilan IR v0.1–v0.4 sin `wit_file` externo, por lo que el cwd no afecta su resultado, pero la firma depende de él). Fuera de alcance de AN-016.
+- Experimentos de allocación masiva pendientes hasta IR v0.6+ (documentado).
+
+**Lo que esta iniciativa establece:**
+
+- **AN-017** (benchmarks + docs) ya puede renombrar `warm_invoke_identity` y añadir un bench Component Model usando `compile_ir_to_wasm_with_context` + `program-005`.
+- **INIT-06-02** (fuel + instance limits) tiene criterio objetivo claro: integrar `ResourceLimiter` desbloquea las mediciones diferidas de ADR-005.
+- **INIT-06-03** (aislamiento multi-tenant) tiene la pregunta correctamente diferida.
+- **RM-07 / INIT-07-02** (IR v0.6 string/listas/loops): cuando se materialice, debe re-ejercer el experimento de records anidados y las mediciones de allocación masiva.
+- **ADR-005** queda listo como contrato invariante (`[chosen]` Canonical ABI + `[chosen]` CompileContext).
+
+### Evidencias de ejecución
+
+- Commit implementación: `d5fef8c` → CI remota [#39145534837](https://github.com/Kaddo-kdd/agent-native/actions/runs/39145534837) **success** en ubuntu-latest, windows-latest, macos-latest.
+- Local Windows: `cargo test --workspace` → 43 pruebas, 0 fallos.
+- `kaddo verify AN-016 --json`: `"readiness": "READY_TO_COMPLETE"`, 0 blockers, 0 warnings, 0 AC not-verified.
+- `cargo tree -p agent-native-runtime --edges normal | grep compiler` → vacío (ADR-002 intacto).
+- `cargo tree -p agent-native-ir | grep -iE "wasm|sha2"` → vacío (ADR-001 intacto).
+
 ────────────────────────
 Agent: work-item-agent
-Produced: knowledge/delivery/work-items/draft/AN-016-compiler-robustness-memory-model.md
-Next: kaddo ready → in-progress → implement
+
+Produced:
+knowledge/delivery/work-items/completed/AN-016-compiler-robustness-memory-model.md
+crates/compiler/src/context.rs
+crates/compiler/src/{codegen,lib}.rs (modificados)
+crates/compiler/tests/compile_context.rs (3 tests)
+crates/compiler/tests/fixtures/{ir,wit}/nested-records.*
+crates/runtime/tests/nested_records.rs (1 test)
+crates/runtime/tests/{e2e_v05,wit_policy}.rs (adaptados al contexto)
+knowledge/tech/decisions/ADR-005-modelo-memoria-canonical-abi.md (actualizado)
+knowledge/tech/discovery/memory-model-notes.md (nuevo, productivo)
+knowledge/tech/discovery/memory-model-experiments.md (exploratorio preservado)
+
+Next (pending user authorisation):
+AN-017 (benchmarks + docs consolidation; depende blandamente de program-005
+y compile_ir_to_wasm_with_context, ambos disponibles).
 ────────────────────────

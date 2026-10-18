@@ -37,7 +37,8 @@ candidates:
     status: candidate
   - id: INIT-02-05
     title: Modelo de memoria y Canonical ABI
-    status: candidate
+    status: completed
+    materialized_as: AN-016
 ---
 
 # RM-02 — Semantic IR & Compiler Extraction
