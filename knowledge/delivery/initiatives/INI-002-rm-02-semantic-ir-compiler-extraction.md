@@ -23,10 +23,12 @@ external_links:
 candidates:
   - id: INIT-02-01
     title: Crate `ir` — modelo + verifier v0.5
-    status: candidate
+    status: completed
+    materialized_as: AN-005, AN-006, AN-007
   - id: INIT-02-02
     title: Crate `compiler` — IR → WASM Component
-    status: candidate
+    status: completed
+    materialized_as: AN-008
   - id: INIT-02-03
     title: Contratos WIT públicos vs internos
     status: candidate

@@ -1,0 +1,104 @@
+{
+  "ir_version": "0.3",
+  "spec_version": 1,
+  "capabilities": [
+    "kv_store",
+    "audit_log"
+  ],
+  "imports": [
+    {
+      "module": "host",
+      "name": "kv_get",
+      "capability": "kv_store",
+      "params": [
+        {
+          "name": "key",
+          "type": "i32"
+        }
+      ],
+      "returns": "i32"
+    },
+    {
+      "module": "host",
+      "name": "emit_audit",
+      "capability": "audit_log",
+      "params": [
+        {
+          "name": "event_id",
+          "type": "i32"
+        },
+        {
+          "name": "payload",
+          "type": "i32"
+        }
+      ],
+      "returns": "i32"
+    }
+  ],
+  "types": [
+    {
+      "name": "OrderSummary",
+      "fields": [
+        {
+          "name": "discount_cents",
+          "type": "i32"
+        },
+        {
+          "name": "audit_status",
+          "type": "i32"
+        }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "name": "process_order",
+      "export": true,
+      "params": [
+        {
+          "name": "customer_id",
+          "type": "i32"
+        },
+        {
+          "name": "subtotal_cents",
+          "type": "i32"
+        }
+      ],
+      "returns": "OrderSummary",
+      "requirements": [
+        "SMOKE-001"
+      ],
+      "body": {
+        "op": "record.construct",
+        "type": "OrderSummary",
+        "fields": {
+          "discount_cents": {
+            "op": "call_import",
+            "import": "kv_get",
+            "args": [
+              {
+                "op": "param",
+                "name": "customer_id"
+              }
+            ]
+          },
+          "audit_status": {
+            "op": "call_import",
+            "import": "emit_audit",
+            "args": [
+              {
+                "op": "const",
+                "type": "i32",
+                "value": 1001
+              },
+              {
+                "op": "param",
+                "name": "subtotal_cents"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

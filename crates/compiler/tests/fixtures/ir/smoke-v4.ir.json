@@ -1,0 +1,194 @@
+{
+  "ir_version": "0.4",
+  "spec_version": 1,
+  "wit_contract": {
+    "package": "kaddo:commercial@0.1.0",
+    "world": "order-processor",
+    "export_interface": "order-calculator",
+    "import_interfaces": [
+      "host-services"
+    ]
+  },
+  "capabilities": [
+    "kv_store",
+    "audit_log",
+    "credit_service"
+  ],
+  "imports": [
+    {
+      "module": "host",
+      "name": "kv_get",
+      "capability": "kv_store",
+      "wit_interface": "host-services",
+      "params": [
+        {
+          "name": "key",
+          "type": "i32"
+        }
+      ],
+      "returns": "i32"
+    },
+    {
+      "module": "host",
+      "name": "check_credit",
+      "capability": "credit_service",
+      "wit_interface": "host-services",
+      "params": [
+        {
+          "name": "customer_id",
+          "type": "i32"
+        },
+        {
+          "name": "amount",
+          "type": "i32"
+        }
+      ],
+      "returns": "bool"
+    },
+    {
+      "module": "host",
+      "name": "emit_audit",
+      "capability": "audit_log",
+      "wit_interface": "host-services",
+      "params": [
+        {
+          "name": "event_id",
+          "type": "i32"
+        },
+        {
+          "name": "payload",
+          "type": "i32"
+        }
+      ],
+      "returns": "i32"
+    }
+  ],
+  "types": [
+    {
+      "name": "OrderResult",
+      "fields": [
+        {
+          "name": "status_code",
+          "type": "i32"
+        },
+        {
+          "name": "subtotal_cents",
+          "type": "i32"
+        },
+        {
+          "name": "discount_cents",
+          "type": "i32"
+        },
+        {
+          "name": "tax_cents",
+          "type": "i32"
+        },
+        {
+          "name": "shipping_cents",
+          "type": "i32"
+        },
+        {
+          "name": "total_cents",
+          "type": "i32"
+        }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "name": "calculate_order",
+      "export": true,
+      "wit_interface": "order-calculator",
+      "params": [
+        {
+          "name": "customer_id",
+          "type": "i32"
+        },
+        {
+          "name": "price1",
+          "type": "i32"
+        },
+        {
+          "name": "qty1",
+          "type": "i32"
+        },
+        {
+          "name": "price2",
+          "type": "i32"
+        },
+        {
+          "name": "qty2",
+          "type": "i32"
+        },
+        {
+          "name": "shipping_cents",
+          "type": "i32"
+        }
+      ],
+      "returns": "OrderResult",
+      "requirements": [
+        "SMOKE-001"
+      ],
+      "body": {
+        "op": "record.construct",
+        "type": "OrderResult",
+        "fields": {
+          "status_code": {
+            "op": "const",
+            "type": "i32",
+            "value": 0
+          },
+          "subtotal_cents": {
+            "op": "const",
+            "type": "i32",
+            "value": 0
+          },
+          "discount_cents": {
+            "op": "const",
+            "type": "i32",
+            "value": 0
+          },
+          "tax_cents": {
+            "op": "const",
+            "type": "i32",
+            "value": 0
+          },
+          "shipping_cents": {
+            "op": "const",
+            "type": "i32",
+            "value": 0
+          },
+          "total_cents": {
+            "op": "const",
+            "type": "i32",
+            "value": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "quote_shipping",
+      "export": true,
+      "wit_interface": "order-calculator",
+      "params": [
+        {
+          "name": "weight_grams",
+          "type": "i32"
+        },
+        {
+          "name": "is_express",
+          "type": "i32"
+        }
+      ],
+      "returns": "i32",
+      "requirements": [
+        "SMOKE-002"
+      ],
+      "body": {
+        "op": "const",
+        "type": "i32",
+        "value": 0
+      }
+    }
+  ]
+}
