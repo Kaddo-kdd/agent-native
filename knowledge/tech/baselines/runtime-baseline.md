@@ -48,11 +48,13 @@ Cualquier optimización futura debe **documentar su mejora cuantificada contra e
 | `cold_start_identity` (Engine + load + invoke) | **~389 µs** | 382.7 – 390.5 µs |
 | `warm_invoke_identity` (invoke sobre componente pre-cargado) | **~1.99 µs** | 1.98 – 1.99 µs |
 | `load_only` (Engine + load, sin invocar) | **~247 µs** | 245.7 – 247.6 µs |
+| `cached_cold_start_identity` (Resolver con cache hit + invoke; AN-013) | **~2.09 µs** | 2.05 – 2.10 µs |
 
 ### Observaciones
 
 - El **cold start** está dominado (~63%) por `load_only` (parsing + validación WASM + construcción de módulo Cranelift). El resto es la creación del `Engine` y la invocación en sí.
-- La **invocación warm es ~195× más rápida que la cold** — es la mejora teórica máxima disponible para INIT-03-02 (resolver cacheado) e INIT-08-03 (warm pool), si el objetivo es amortizar el costo de carga entre múltiples invocaciones.
+- La **invocación warm es ~195× más rápida que la cold** — era el techo teórico cuando se registró el snapshot inicial.
+- **AN-013 (Resolver content-addressed)** materializa ese techo: `cached_cold_start_identity` ~2.09 µs **vs** `cold_start_identity` ~389 µs = **~186× más rápido** sobre el cold uncached. Es ~5% más lento que `warm_invoke` puro (overhead del lookup en HashMap + hash SHA-256), diferencia despreciable al escalar a varios componentes.
 - **Memoria** no instrumentada aún; se añade cuando INIT-06-02 (fuel + instance limits) exponga la API o cuando INIT-08-02 lo requiera.
 
 ## Cómo reproducir
@@ -79,5 +81,6 @@ cargo bench -p agent-native-runtime --bench baseline
 | Fecha | Commit | Nota |
 |---|---|---|
 | 2026-10-17 | (AN-012) | Línea base inicial. Windows local. Snapshot `--quick`. |
+| 2026-10-17 | (AN-013) | Añadido `cached_cold_start_identity` ~2.09 µs. 186× speedup sobre `cold_start_identity`. |
 
 Snapshots futuros deben añadirse como filas, no reemplazar las existentes.

@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 agent-native-ir = { path = "../ir" }
+sha2 = "0.10"
 thiserror = "2.0"
 wasmtime = { version = "27.0", default-features = false, features = [
     "cranelift",

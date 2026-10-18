@@ -76,6 +76,12 @@ impl Engine {
             policy: policy.clone(),
         })
     }
+
+    /// Access to the inner Wasmtime engine. Used by `Resolver` to parse
+    /// bytes directly into a cached payload.
+    pub(crate) fn inner(&self) -> &wasmtime::Engine {
+        &self.inner
+    }
 }
 
 /// A loaded WASM artifact (Component Model or Core module), ready for

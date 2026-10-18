@@ -16,7 +16,7 @@
 //! run and reproduction steps.
 
 use agent_native_compiler::compile_ir_to_wasm;
-use agent_native_runtime::{Engine, Val};
+use agent_native_runtime::{Engine, Resolver, Val};
 use criterion::{Criterion, criterion_group, criterion_main};
 use serde_json::json;
 use std::hint::black_box;
@@ -78,10 +78,28 @@ fn bench_load_only(c: &mut Criterion) {
     });
 }
 
+fn bench_cached_cold_start(c: &mut Criterion) {
+    let wasm = identity_wasm();
+    let mut resolver = Resolver::new().expect("resolver");
+    // Prime the cache so iterations measure the hit path.
+    let _ = resolver.load(&wasm).expect("prime");
+
+    c.bench_function("cached_cold_start_identity", |b| {
+        b.iter(|| {
+            let component = resolver.load(black_box(&wasm)).expect("load");
+            let result = component
+                .invoke("identity", &[Val::S32(42)])
+                .expect("invoke");
+            black_box(result);
+        });
+    });
+}
+
 criterion_group!(
     benches,
     bench_cold_start,
     bench_warm_invoke,
-    bench_load_only
+    bench_load_only,
+    bench_cached_cold_start
 );
 criterion_main!(benches);

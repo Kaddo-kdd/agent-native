@@ -28,8 +28,10 @@ pub mod engine;
 pub mod error;
 pub mod invoke;
 pub mod policy;
+pub mod resolver;
 
 pub use engine::{Component, Engine};
 pub use error::RuntimeError;
 pub use policy::HostPolicy;
+pub use resolver::Resolver;
 pub use wasmtime::component::Val;
