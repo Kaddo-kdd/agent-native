@@ -1,7 +1,8 @@
 ---
 id: AN-014
 type: feature
-status: in-progress
+status: completed
+completed_at: 2026-10-17
 title: Recuperación E2E de Semantic IR v0.5 y Component Model
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -138,8 +139,52 @@ Esperado: ≥30 tests pass (29 + al menos 1 E2E v0.5; típicamente 3-4 nuevos).
 | Technical Review | WI-A (ref 06d270d) |
 | Prerrequisitos | AN-005, AN-006, AN-008, AN-009, AN-013 |
 
+## Learning
+
+**Lo que salió como se esperaba:**
+
+- Se puede construir un v0.5 IR **sin host imports** usando una interfaz WIT single-package con el record inlineado. OQ-AN-014-01 resuelta: ninguna de las alternativas (allow + stubs, imports vacíos) hizo falta.
+- `instance.get_export(store, None, iface)` → index → `get_export(Some(idx), op)` → `get_func(idx)` es el patrón correcto en wasmtime 27. Confirmado por prototipo antes de implementar. OQ-AN-014-02 resuelta.
+- Las 4 pruebas E2E pasan a la primera tras resolver dos problemas de syntax (dashes vs snake_case y `use types` vs record inlineado).
+- La extensión de `invoke_component` (helper `resolve_component_func`) añade < 15 LOC y es backward-compatible: top-level `instance.get_func(name)` sigue funcionando para los fixtures Core WASM existentes.
+
+**Lo inesperado (hallazgos documentados para AN-015/016):**
+
+- **AN-015 (import WIT vs host capability).** La primera versión del WIT usaba `use types.{point-sum}` para separar la definición del record. Wasmtime trata eso como un import de un sub-package WIT (`an:test/types@0.1.0`) y la deny-by-default policy lo bloquea. **Logicamente no es un host import** — es un import interno entre interfaces del mismo componente. AN-015 debe distinguir ambos: autorizar automáticamente los imports WIT que apuntan al propio package del componente, mantener deny-by-default para capabilities del host externas.
+- **AN-016 (nomenclatura).** IR exige `snake_case` (validado por `is_valid_identifier`), WIT exige `kebab-case` como convención idiomática. La POC traduce implícitamente en codegen. Hay que documentar formalmente esta convención — candidato de scope para INIT-02-05 cuando se formalice el modelo de identificadores + Canonical ABI.
+
+**Riesgos materializados:** ninguno. R-A-01 (resolución WIT no acotable) mitigado por prototipo exploratorio previo. R-A-02 (v0.5 sin host imports) resuelto en diseño.
+
+**Deuda y seguimientos:**
+
+- OQ-AN-014-03 (ubicación de fixtures WIT): actualmente en `crates/compiler/tests/fixtures/wit/`. INIT-02-03 decidirá si se consolidan a nivel workspace o permanecen co-ubicados con el crate.
+- `resolve_component_func` solo soporta un nivel de anidamiento (`iface#op`). Si WIT futuros requieren interfaces anidadas (p. ej. `pkg/outer/inner#op`), hay que extender el helper.
+- La nueva sintaxis `"interface_id#operation"` no está documentada en el `invoke` doc public API todavía — nota mínima añadida; AN-017 formaliza la documentación.
+
+**Lo que esta iniciativa establece para las siguientes:**
+
+- **INIT-03-03** (executor YAML) puede ahora correr fixtures v0.5 con WIT real.
+- **AN-015** tiene un caso de uso concreto (import WIT entre interfaces del mismo package) que debe quedar explícitamente autorizado por diseño, no por `allow_module`.
+- **INIT-05-01** (CLI `run`) puede exponer la sintaxis `interface#op` como argumento de CLI.
+- **INIT-07-02** (IR v0.6 `string`) tiene ahora un camino reproducible para añadir el tipo y verificarlo end-to-end.
+- **AN-017** incorporará un bench Component Model usando este fixture como base.
+
+### Evidencias de ejecución
+
+- CI remota 3/3 OS success: `windows-latest` ✓, `macos-latest` ✓, `ubuntu-latest` ✓ (commit `b69d7b7`).
+- Local Windows: `cargo test --workspace` → 33 pruebas, 0 fallos.
+- `kaddo verify AN-014 --json`: `"readiness": "READY_TO_COMPLETE"`, 0 blockers, 0 warnings.
+- `cargo tree -p agent-native-runtime --edges normal | grep compiler` → vacío (ADR-002 intacto).
+
 ────────────────────────
 Agent: work-item-agent
-Produced: knowledge/delivery/work-items/draft/AN-014-e2e-semantic-ir-v05-component-model.md
-Next: human review → kaddo ready
+
+Produced:
+knowledge/delivery/work-items/completed/AN-014-e2e-semantic-ir-v05-component-model.md
+crates/compiler/tests/fixtures/{ir,wit}/program-005.*
+crates/runtime/src/invoke.rs (extendido)
+crates/runtime/tests/e2e_v05.rs (4 tests)
+
+Next (pending user authorisation):
+AN-015 — endurecer errores y policies con el hallazgo de import WIT interno.
 ────────────────────────

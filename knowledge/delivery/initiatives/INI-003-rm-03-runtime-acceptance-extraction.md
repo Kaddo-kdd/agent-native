@@ -25,7 +25,7 @@ candidates:
   - id: INIT-03-01
     title: Crate `runtime` — carga + ejecución Wasmtime
     status: completed
-    materialized_as: AN-009
+    materialized_as: AN-009, AN-014 (WIT interface resolution)
   - id: INIT-03-03
     title: Executor de aceptación YAML
     status: candidate

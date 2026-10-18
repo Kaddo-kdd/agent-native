@@ -28,7 +28,7 @@ candidates:
   - id: INIT-02-02
     title: Crate `compiler` — IR → WASM Component
     status: completed
-    materialized_as: AN-008
+    materialized_as: AN-008, AN-014 (E2E v0.5 Component Model)
   - id: INIT-02-03
     title: Contratos WIT públicos vs internos
     status: candidate
