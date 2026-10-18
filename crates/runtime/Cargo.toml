@@ -12,3 +12,16 @@ workspace = true
 
 [dependencies]
 agent-native-ir = { path = "../ir" }
+thiserror = "2.0"
+wasmtime = { version = "27.0", default-features = false, features = [
+    "cranelift",
+    "runtime",
+    "component-model",
+] }
+
+[dev-dependencies]
+# Compiler used only to produce WASM artifacts for smoke tests. ADR-002
+# forbids this dependency in [dependencies]; dev-dependencies do not reach
+# downstream consumers of agent-native-runtime.
+agent-native-compiler = { path = "../compiler" }
+serde_json = "1.0"

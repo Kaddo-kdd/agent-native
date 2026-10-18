@@ -6,7 +6,8 @@
 
 # Rust / Cargo (preparado para INIT-01-01)
 /target/
-Cargo.lock
+# Cargo.lock se commitea: el workspace tiene un binary (agent-native) y
+# necesita resolución reproducible en CI y para release pipeline (RM-05).
 
 # Kaddo artefactos derivados y runtime local
 .kaddo/context-pack.md

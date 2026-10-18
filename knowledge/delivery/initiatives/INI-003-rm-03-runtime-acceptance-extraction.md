@@ -24,7 +24,8 @@ external_links:
 candidates:
   - id: INIT-03-01
     title: Crate `runtime` — carga + ejecución Wasmtime
-    status: candidate
+    status: completed
+    materialized_as: AN-009
   - id: INIT-03-03
     title: Executor de aceptación YAML
     status: candidate
