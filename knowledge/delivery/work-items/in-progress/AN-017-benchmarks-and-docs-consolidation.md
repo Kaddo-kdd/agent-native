@@ -1,7 +1,7 @@
 ---
 id: AN-017
 type: chore
-status: draft
+status: in-progress
 title: Consolidación de benchmarks y documentación
 knowledge_level: K2
 suggested_knowledge_level: K2
@@ -25,25 +25,35 @@ domains:
 related_capabilities:
   - Independent Runtime Execution
 expected_value: >-
-  Las cifras publicadas de rendimiento reflejan lo que realmente miden.
-  README y documentos técnicos describen capacidades disponibles sin
-  afirmaciones contradictorias. Base limpia para INIT-08-01 (harness formal
-  cross-OS).
+  Las cifras publicadas de rendimiento reflejan lo que realmente miden. README y
+  documentos técnicos describen capacidades disponibles sin afirmaciones
+  contradictorias. Base limpia para INIT-08-01 (harness formal cross-OS).
 risks:
-  - "R-D-01: renombrar benches rompe comparaciones históricas con la fila 'AN-012 original'; mitigado conservando ambos nombres o documentando el mapeo en el historial"
+  - >-
+    R-D-01: renombrar benches rompe comparaciones históricas con la fila 'AN-012
+    original'; mitigado conservando ambos nombres o documentando el mapeo en el
+    historial
 dependencies:
   - AN-012
   - AN-013
   - AN-014
   - AN-016
 source_signals:
-  - "Technical Review: cifras corresponden a fixture Core WASM muy pequeño; no generalizables"
-  - "Technical Review: warm_invoke_identity reutiliza componente pero crea nueva instancia/Store"
-  - "Technical Review: cached_cold_start_identity mide cache hit, no cold start real"
-  - "Technical Review: falta escenario Component Model v0.5"
-  - "Technical Review: README puede quedar fuera de sincronía con el estado real"
-  - "AN-014 cerrado: fixture program-005 (v0.5 Component Model) disponible"
-  - "AN-016 cerrado: compile_ir_to_wasm_with_context + CompileContext permiten benches reproducibles sin cwd"
+  - >-
+    Technical Review: cifras corresponden a fixture Core WASM muy pequeño; no
+    generalizables
+  - >-
+    Technical Review: warm_invoke_identity reutiliza componente pero crea nueva
+    instancia/Store
+  - >-
+    Technical Review: cached_cold_start_identity mide cache hit, no cold start
+    real
+  - 'Technical Review: falta escenario Component Model v0.5'
+  - 'Technical Review: README puede quedar fuera de sincronía con el estado real'
+  - 'AN-014 cerrado: fixture program-005 (v0.5 Component Model) disponible'
+  - >-
+    AN-016 cerrado: compile_ir_to_wasm_with_context + CompileContext permiten
+    benches reproducibles sin cwd
 decision_candidates: []
 related_decisions:
   - ADR-003
@@ -51,7 +61,8 @@ project_state: ai-assisted
 generated_by: work-item-agent
 refined_by: work-item-agent
 template_version: 1
-created_at: 2026-10-17
+created_at: 2026-10-17T00:00:00.000Z
+ready_at: '2026-10-18'
 ---
 
 # AN-017 — Consolidación de benchmarks y documentación

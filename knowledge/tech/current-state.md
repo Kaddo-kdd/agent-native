@@ -126,7 +126,7 @@ Reglas invariantes:
 - **Distribución:** GitHub Releases con tarball/zip firmado para `x86_64-unknown-linux-gnu`, `x86_64-pc-windows-msvc`, `aarch64-apple-darwin`.
 - **Hosting:** no se asume ningún servicio hosted en MVP (producto es CLI standalone).
 - **Observabilidad:** stdout/stderr estructurado como punto de partida; métricas y tracing diferidos.
-- **Baseline runtime:** [`knowledge/tech/baselines/runtime-baseline.md`](baselines/runtime-baseline.md) — snapshot inicial de cold start/warm invoke/load, generado por AN-012. No es SLA.
+- **Baseline runtime:** [`knowledge/tech/baselines/runtime-baseline.md`](baselines/runtime-baseline.md) — tabla segregada por path (Core WASM / Component Model) × etapa (Engine / Load / Cold-run / Warm-run / Cache-hit-run), fixtures `identity` + `point_sum` (v0.5 con WIT), 9 benches publicados por AN-017. No es SLA. INIT-08-01 formaliza la matrix cross-OS.
 
 ## Implicit Decisions (candidates)
 

@@ -872,7 +872,7 @@ Harness formal, benchmarks reproducibles cross-OS, caché/warm pool, concurrenci
 
 **Status:** candidate · **Priority:** medium · **K3**
 
-**Source signals:** Business Goal — decisiones basadas en evidencia. INIT-03-06 produjo la línea base local inicial en [`knowledge/tech/baselines/runtime-baseline.md`](../tech/baselines/runtime-baseline.md); este bloque la generaliza a matrix cross-OS.
+**Source signals:** Business Goal — decisiones basadas en evidencia. INIT-03-06 produjo la línea base local; AN-017 la consolidó con la convención `<stage>_<path>_<fixture>` y 9 benches en [`knowledge/tech/baselines/runtime-baseline.md`](../tech/baselines/runtime-baseline.md); este bloque la generaliza a matrix cross-OS.
 
 **Dependencies:** INIT-03-06, INIT-05-01.
 
