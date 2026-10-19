@@ -1,4 +1,4 @@
-suite: an-019-isolation
+suite: an-020-isolation
 spec_version: 1
 host_stubs:
   - interface: host
@@ -15,13 +15,16 @@ cases:
         1: 777
     expected: 777
     expected_host_calls:
-      - function: host.kv_get
+      - import: host.kv_get
         args: [1]
-  - id: isolation-case-B-fresh-kv
+  - id: isolation-case-B-same-kv-populated
     requirement: ISO-002
     function: read_key
     args: [1]
-    expected: 0
+    host_state:
+      kv:
+        1: 42
+    expected: 42
     expected_host_calls:
-      - function: host.kv_get
+      - import: host.kv_get
         args: [1]

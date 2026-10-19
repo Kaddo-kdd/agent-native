@@ -1,0 +1,13 @@
+suite: an-020-bool-args
+spec_version: 1
+cases:
+  - id: bool-arg-true-echo
+    requirement: BOOL-001
+    function: identity_bool
+    args: [true]
+    expected: 1
+  - id: bool-arg-false-echo
+    requirement: BOOL-002
+    function: identity_bool
+    args: [false]
+    expected: 0

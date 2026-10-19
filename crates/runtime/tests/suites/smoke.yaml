@@ -1,4 +1,4 @@
-suite: an-019-smoke
+suite: an-020-smoke
 spec_version: 1
 cases:
   - id: smoke-identity-42

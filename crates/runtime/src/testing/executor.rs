@@ -1,4 +1,4 @@
-//! YAML executor driver (AN-019).
+//! YAML executor driver (AN-019 + AN-020).
 //!
 //! Runs every case in a `Suite` against a loaded `Component`, builds a
 //! `wasmtime::Linker<HostCtx>` from the suite's `host_stubs:` block, and
@@ -8,15 +8,30 @@
 //! Isolation: a fresh `HostCtx` is built for every case — initial `kv` is
 //! cloned from `case.host_state`, `calls` starts empty. Combined with
 //! Wasmtime's fresh `Store` per invocation, two cases cannot share state.
+//!
+//! AN-020 changes vs AN-019:
+//!
+//! - `Expected::Record` compared by name + type + value, detecting both
+//!   missing and extra fields (H2).
+//! - `StateReader` miss (`host_state.kv` key absent) traps with a typed
+//!   `wasmtime::Error` surfaced as `CaseStatus::Error` (H3).
+//! - Component-Model artifacts without functional imports (type-only or
+//!   none) delegate to `Component::invoke`; artifacts with functional
+//!   imports keep returning a deferred-to-RM-07 error (H1).
+//! - `expected_host_calls[*].import` is the canonical field; the
+//!   recorded call name (`interface.operation`) is matched short or
+//!   qualified per the H4 rule.
 
-use wasmtime::component::Val;
+use std::collections::BTreeMap;
 
-use crate::engine::Component;
+use wasmtime::component::{Type, Val};
+
+use crate::engine::{Component, Payload};
 use crate::testing::errors::ExecutorError;
-use crate::testing::host_ctx::{HostCtx, RecordedCall};
+use crate::testing::host_ctx::{HostCtx, ReaderMiss, RecordedCall};
 use crate::testing::report::{CaseResult, CaseStatus, SuiteReport};
 use crate::testing::stub::{HostStubRegistry, StubKind};
-use crate::testing::suite::{Case, Expected, ExpectedHostCall, Suite};
+use crate::testing::suite::{ArgValue, Case, Expected, ExpectedHostCall, Suite};
 
 /// Executes a full suite and returns a report. Never panics on case
 /// failures: failing cases become `CaseStatus::Fail`, structural errors
@@ -107,13 +122,14 @@ fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> 
     let host_ctx = HostCtx {
         kv: case.host_state.kv.clone(),
         calls: Vec::new(),
+        misses: Vec::new(),
     };
-    let args: Vec<Val> = case.args.iter().map(|v| Val::S32(*v)).collect();
+    let args: Vec<Val> = case.args.iter().copied().map(arg_to_val).collect();
 
     let outcome = if component.is_core_module() {
         run_core_case(component, registry, &case.function, &args, host_ctx)
     } else {
-        run_component_case(component, registry, &case.function, &args, host_ctx)
+        run_component_case(component, &case.function, &args, host_ctx)
     };
 
     let (results, final_ctx) = match outcome {
@@ -128,17 +144,25 @@ fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> 
         }
     };
 
+    if !final_ctx.misses.is_empty() {
+        for miss in &final_ctx.misses {
+            evidence.push(format!(
+                "state_reader '{}' miss: key={}",
+                miss.import, miss.key
+            ));
+        }
+        return CaseResult {
+            id: case.id.clone(),
+            status: CaseStatus::Error,
+            evidence,
+        };
+    }
+
     let return_matches = match &case.expected {
         Expected::Primitive(expected_i32) => {
             check_primitive(&results, *expected_i32, &mut evidence)
         }
-        Expected::Record(_) => {
-            evidence.push(
-                "record expectations are not supported in AN-019 MVP; use the primitive form"
-                    .to_string(),
-            );
-            false
-        }
+        Expected::Record(expected_fields) => check_record(&results, expected_fields, &mut evidence),
     };
 
     let calls_match = match &case.expected_host_calls {
@@ -155,6 +179,13 @@ fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> 
         id: case.id.clone(),
         status,
         evidence,
+    }
+}
+
+fn arg_to_val(a: ArgValue) -> Val {
+    match a {
+        ArgValue::I32(i) => Val::S32(i),
+        ArgValue::Bool(b) => Val::Bool(b),
     }
 }
 
@@ -178,19 +209,51 @@ fn run_core_case(
     Ok((results, ctx))
 }
 
+/// Component Model path.
+///
+/// AN-020 H1: a CM artifact with **no functional imports** (either
+/// `component_type().imports(engine)` is empty, or every item is a type
+/// / resource / module / instance that only exports types) delegates to
+/// `Component::invoke`. Functional imports still produce a typed error
+/// deferred to RM-07.
 fn run_component_case(
-    _component: &Component,
-    _registry: &HostStubRegistry,
-    _func: &str,
-    _args: &[Val],
-    _host_ctx: HostCtx,
+    component: &Component,
+    func: &str,
+    args: &[Val],
+    host_ctx: HostCtx,
 ) -> Result<(Vec<Val>, HostCtx), ExecutorError> {
-    // Component Model stub wiring arrives in AN-020 (per RM-07 split).
-    // The pre-check still runs through `authorise_stubs`, so a suite that
-    // targets a Component-Model artifact today is rejected cleanly.
-    Err(ExecutorError::HostError(
-        "Component-Model host stubs are not yet wired (see RM-07)".to_string(),
-    ))
+    if let Some(blocker) = first_functional_import(component) {
+        return Err(ExecutorError::HostError(format!(
+            "functional import '{blocker}' requires a stub (RM-07)"
+        )));
+    }
+    let results = component.invoke(func, args).map_err(ExecutorError::from)?;
+    Ok((results, host_ctx))
+}
+
+/// Returns the first functional import (if any) found in a Component
+/// Model payload. Used by [`run_component_case`] to distinguish the
+/// type-only case (delegable to `invoke`) from the stub-dependent case
+/// (deferred to RM-07).
+fn first_functional_import(component: &Component) -> Option<String> {
+    use wasmtime::component::types::ComponentItem;
+    let Payload::Component(ref wt_component) = component.payload else {
+        return None;
+    };
+    for (name, item) in wt_component.component_type().imports(&component.engine) {
+        match item {
+            ComponentItem::ComponentFunc(_) => return Some(name.to_string()),
+            ComponentItem::ComponentInstance(inst_ty) => {
+                for (op_name, op_item) in inst_ty.exports(&component.engine) {
+                    if matches!(op_item, ComponentItem::ComponentFunc(_)) {
+                        return Some(format!("{name}#{op_name}"));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn register_core_stub(
@@ -213,7 +276,15 @@ fn register_core_stub(
                         function: name_for_log.clone(),
                         args: vec![arg0],
                     });
-                    data.kv.get(&arg0).copied().unwrap_or(0)
+                    if let Some(v) = data.kv.get(&arg0).copied() {
+                        v
+                    } else {
+                        data.misses.push(ReaderMiss {
+                            import: name_for_log.clone(),
+                            key: arg0,
+                        });
+                        0
+                    }
                 },
             )?;
         }
@@ -274,6 +345,92 @@ fn check_primitive(results: &[Val], expected: i32, evidence: &mut Vec<String>) -
     }
 }
 
+/// AN-020 H2: compare the first result's `Val::Record` fields by name,
+/// type and value. Detect both missing (expected but not in result) and
+/// extra (in result but not expected) fields.
+fn check_record(
+    results: &[Val],
+    expected: &BTreeMap<String, i32>,
+    evidence: &mut Vec<String>,
+) -> bool {
+    let Some(first) = results.first() else {
+        evidence.push("expected record result, got no results".to_string());
+        return false;
+    };
+    let Val::Record(got_fields) = first else {
+        evidence.push(format!(
+            "expected record result, got {}",
+            crate::testing::executor::val_kind(first)
+        ));
+        return false;
+    };
+
+    let mut got_map: BTreeMap<String, Val> = BTreeMap::new();
+    for (name, value) in got_fields {
+        got_map.insert(name.clone(), value.clone());
+    }
+
+    let mut ok = true;
+    for (name, expected_value) in expected {
+        match got_map.remove(name) {
+            Some(Val::S32(got_value)) => {
+                if got_value != *expected_value {
+                    evidence.push(format!(
+                        "record field '{name}': expected S32({expected_value}), got S32({got_value})"
+                    ));
+                    ok = false;
+                }
+            }
+            Some(other) => {
+                evidence.push(format!(
+                    "record field '{name}': expected S32({expected_value}), got {}",
+                    val_kind(&other)
+                ));
+                ok = false;
+            }
+            None => {
+                evidence.push(format!("expected field '{name}' missing in result record"));
+                ok = false;
+            }
+        }
+    }
+    for (name, _) in got_map {
+        evidence.push(format!("unexpected field '{name}' in result record"));
+        ok = false;
+    }
+    ok
+}
+
+/// Short kebab-style tag for a `Val`. Mirrors the private helper in
+/// `invoke.rs`; duplicated here because that one is `pub(crate)` and the
+/// executor only needs the names.
+fn val_kind(v: &Val) -> &'static str {
+    match v {
+        Val::Bool(_) => "bool",
+        Val::S8(_) => "s8",
+        Val::U8(_) => "u8",
+        Val::S16(_) => "s16",
+        Val::U16(_) => "u16",
+        Val::S32(_) => "s32",
+        Val::U32(_) => "u32",
+        Val::S64(_) => "s64",
+        Val::U64(_) => "u64",
+        Val::Float32(_) => "float32",
+        Val::Float64(_) => "float64",
+        Val::Char(_) => "char",
+        Val::String(_) => "string",
+        Val::List(_) => "list",
+        Val::Record(_) => "record",
+        Val::Tuple(_) => "tuple",
+        Val::Variant(_, _) => "variant",
+        Val::Enum(_) => "enum",
+        Val::Option(_) => "option",
+        Val::Result(_) => "result",
+        Val::Flags(_) => "flags",
+        Val::Resource(_) => "resource",
+    }
+}
+
 fn check_calls(
     recorded: &[RecordedCall],
     expected: &[ExpectedHostCall],
@@ -288,10 +445,10 @@ fn check_calls(
         return false;
     }
     for (idx, (rec, exp)) in recorded.iter().zip(expected.iter()).enumerate() {
-        if rec.function != exp.function {
+        if !import_matches(&exp.import, &rec.function) {
             evidence.push(format!(
-                "host-call #{idx} function mismatch: expected '{}', got '{}'",
-                exp.function, rec.function
+                "host-call #{idx} import mismatch: expected '{}', got '{}'",
+                exp.import, rec.function
             ));
             return false;
         }
@@ -306,17 +463,34 @@ fn check_calls(
     true
 }
 
+/// AN-020 H4 normalisation rule for `expected_host_calls[*].import`:
+///
+/// - If `expected` contains a `.`, match literally against `recorded`
+///   (which is always `interface.operation`).
+/// - Otherwise match against the operation part of `recorded` only
+///   (strip prefix up to the first `.`).
+fn import_matches(expected: &str, recorded: &str) -> bool {
+    if expected.contains('.') {
+        return expected == recorded;
+    }
+    match recorded.split_once('.') {
+        Some((_iface, op)) => op == expected,
+        None => recorded == expected,
+    }
+}
+
 impl HostStubRegistry {
     /// Snapshot for the Core executor path: `(interface, operation, kind)`
     /// triples that the linker builder iterates to register `func_wrap`
     /// closures.
     #[must_use]
     pub fn snapshot_for_core(&self) -> Vec<(String, String, StubKind)> {
-        // Intentional allocation: the executor passes this vector into a
-        // `move` closure (`build_linker`) so the registry itself can be
-        // held by reference elsewhere.
         self.iter_entries()
             .map(|(k, v)| (k.0.clone(), k.1.clone(), *v))
             .collect()
     }
 }
+
+// Silence unused-import if `Type` isn't needed in this build.
+#[allow(dead_code)]
+fn _type_import_sanity(_: Type) {}

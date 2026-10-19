@@ -1,0 +1,17 @@
+suite: an-020-records
+spec_version: 1
+cases:
+  - id: record-make-pt
+    requirement: REC-001
+    function: "an:probe/ops@0.1.0#make-pt"
+    args: [3, 7]
+    expected:
+      x: 3
+      y: 7
+  - id: record-make-pt-negative
+    requirement: REC-002
+    function: "an:probe/ops@0.1.0#make-pt"
+    args: [-1, 0]
+    expected:
+      x: -1
+      y: 0

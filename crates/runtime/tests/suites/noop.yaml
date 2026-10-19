@@ -1,4 +1,4 @@
-suite: an-019-noop
+suite: an-020-noop
 spec_version: 1
 host_stubs:
   - interface: host
@@ -12,5 +12,5 @@ cases:
     args: []
     expected: 1
     expected_host_calls:
-      - function: host.ping
+      - import: host.ping
         args: []

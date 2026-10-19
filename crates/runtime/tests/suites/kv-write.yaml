@@ -1,4 +1,4 @@
-suite: an-019-kv-write
+suite: an-020-kv-write
 spec_version: 1
 host_stubs:
   - interface: host
@@ -13,7 +13,7 @@ cases:
     args: [10, 500]
     expected: 500
     expected_host_calls:
-      - function: host.kv_set
+      - import: host.kv_set
         args: [10, 500]
   - id: write-negative-value
     requirement: KV-WRITE-002
@@ -21,5 +21,5 @@ cases:
     args: [3, -99]
     expected: -99
     expected_host_calls:
-      - function: host.kv_set
+      - import: host.kv_set
         args: [3, -99]
