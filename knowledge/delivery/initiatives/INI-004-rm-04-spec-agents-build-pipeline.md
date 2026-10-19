@@ -28,7 +28,8 @@ candidates:
     materialized_as: AN-023
   - id: INIT-04-02
     title: Adaptador LLM pluggable y modos de generación
-    status: candidate
+    status: completed
+    materialized_as: AN-024
   - id: INIT-04-03
     title: Evolución incremental de especificaciones
     status: candidate

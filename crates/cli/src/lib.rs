@@ -6,4 +6,5 @@
 //! lives here within `agent_native` as internal modules (`spec::`, `build::`, `publish::`)
 //! until extraction criteria of ADR-001 §Decision are met.
 
+pub mod agent;
 pub mod spec;
