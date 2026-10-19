@@ -712,7 +712,7 @@ Convierte el pipeline interno en herramienta distribuible.
 **Notes:** La ADR de empaquetado y firma es independiente de AN-028 per Decisión D5.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-05-03-01: ADR de empaquetado, firma y verificación (`chore`, AN-031).
+- WI-CANDIDATE-05-03-01: ADR de empaquetado, firma y verificación (`chore`, AN-031 — completado, ADR-006).
 - WI-CANDIDATE-05-03-02: pipeline multi-target CI (`chore`, AN-032).
 
 ---

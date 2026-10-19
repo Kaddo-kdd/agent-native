@@ -74,7 +74,7 @@ Ver `candidates:`.
 
 ## Open Questions
 
-- OQ-05-01: minisign vs cosign — resuelta en INIT-05-03.
+- OQ-05-01: minisign vs cosign — resuelta en INIT-05-03 a favor de Minisign (ADR-006).
 - OQ-05-02: política de versionado semántico de la CLI vs runtime vs IR — a definir.
 
 ## Learning
