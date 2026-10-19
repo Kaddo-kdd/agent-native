@@ -62,12 +62,12 @@ Fuentes:
 | INIT-02-04 | Determinismo + verificación de integridad | high | INIT-02-02 | Mismo input → mismo hash 3 OS; SHA-256 verificable | propuesto |
 | INIT-02-05 | Modelo de memoria y Canonical ABI | high | INIT-02-02 | Documento + experimentos + ADR-005 cerrado | propuesto |
 | **RM-03** | **Runtime & Acceptance Extraction** | — | — | Runtime autónomo con cobertura regresiva documentada + línea base de latencia | **M3 alcanzado 2026-10-19** bajo 7 criterios reformulados; ver INI-003 |
-| INIT-03-01 | Crate `runtime`: carga + ejecución Wasmtime | high | INIT-02-02, INIT-02-05 | Componentes publicados ejecutan sin cargo | parcial (POC) |
+| INIT-03-01 | Crate `runtime`: carga + ejecución Wasmtime | high | INIT-02-02, INIT-02-05 | Componentes Core WASM y CM (alcance soportado) ejecutan sin compiler ni LLM | completed (AN-009, AN-014) |
 | INIT-03-03 | Executor de aceptación YAML | high | INIT-03-01 | **completed 2026-10-19** (AN-019 + AN-020). Entrega: executor Core+CM dentro del alcance soportado, matriz POC 0+6+4, contrato YAML normativo. **Reinterpretado por decisión humana D1**: no se afirma reproducción literal de las 10 pruebas `runner` del POC. | AN-019 + AN-020 |
-| INIT-03-04 | Propagación de errores host + imports | high | INIT-03-01 | Imports no autorizados fallan explícitos | parcial (POC) |
-| INIT-03-05 | Controles mínimos de ejecución (deny-by-default) | high | INIT-03-04 | Capabilities del host en allow-list desde el primer runtime ejecutable | nuevo |
-| INIT-03-06 | Línea base técnica del runtime | medium | INIT-03-03 | Cold/warm/memoria medidos antes de cualquier caché | nuevo |
-| INIT-03-02 | Resolver de dependencias reutilizable | medium | INIT-03-06 | Resolver cacheado + reset por tenant | nuevo |
+| INIT-03-04 | Propagación de errores host + imports | high | INIT-03-01 | Imports no autorizados y tipos no soportados producen error tipado fail-explicit sin fallback | completed (AN-010, AN-015) |
+| INIT-03-05 | Controles mínimos de ejecución (deny-by-default) | high | INIT-03-04 | Deny-by-default pre-instantiate a 3 niveles verificado. **Decisión D2:** validación manifest-driven al cargar diferida a INIT-06-01 | completed (AN-011, AN-015) |
+| INIT-03-06 | Línea base técnica del runtime | medium | INIT-03-03 | Línea base de latencia publicada (cold/warm/cache-hit). **Decisión D3:** memoria por instancia diferida a INIT-06-02 | completed (AN-012, AN-017) |
+| INIT-03-02 | Resolver de dependencias reutilizable | medium | INIT-03-06 | Resolver cacheado con reset() implementado. Aislamiento multi-tenant avanzado e instancias diferido a INIT-06-03 | completed (AN-013) |
 | **RM-04** | **Specification, Agents & Build Pipeline** | — | — | Pipeline generación + evolución integrado | — |
 | INIT-04-01 | Intérprete narrativa Markdown → `SystemSpec` | medium | INIT-01-03 | Spec reproducible desde fixtures POC | parcial (POC) |
 | INIT-04-02 | Adaptador LLM pluggable y modos de generación | medium | INIT-04-01, INIT-02-01 | Modos real / fixtures / synthesizer separados | parcial (POC) |
@@ -413,7 +413,7 @@ Hace el runtime autónomo, con los controles mínimos de seguridad y una línea 
 
 #### INIT-03-01: Crate `runtime` — carga + ejecución Wasmtime
 
-**Status:** candidate · **Priority:** high · **K3**
+**Status:** completed (AN-009, AN-014) · **Priority:** high · **K3**
 
 **Related domain:** Runtime & Memory
 
@@ -464,7 +464,7 @@ Hace el runtime autónomo, con los controles mínimos de seguridad y una línea 
 
 #### INIT-03-04: Propagación de errores host + imports
 
-**Status:** candidate · **Priority:** high · **K3**
+**Status:** completed (AN-010, AN-015) · **Priority:** high · **K3**
 
 **Related domain:** Runtime & Memory
 
@@ -474,7 +474,7 @@ Hace el runtime autónomo, con los controles mínimos de seguridad y una línea 
 
 **Dependencies:** INIT-03-01.
 
-**Notes:** gate obligatorio para INIT-05-01 (no se distribuye un runtime sin esto).
+**Notes:** gate obligatorio para INIT-05-01 (no se distribuye un runtime sin esto). Verificado por M3-CRIT-2 (fail-explicit en lifting sin fallback a 0).
 
 **Suggested Work Items:**
 - WI-CANDIDATE-03-04-01: enum `RuntimeError` (`feature`)
@@ -484,7 +484,7 @@ Hace el runtime autónomo, con los controles mínimos de seguridad y una línea 
 
 #### INIT-03-05: Controles mínimos de ejecución (deny-by-default)
 
-**Status:** candidate · **Priority:** high · **K3**
+**Status:** completed (AN-011, AN-015) · **Priority:** high · **K3**
 
 **Related domain:** Runtime & Memory, Security
 
@@ -496,7 +496,7 @@ Hace el runtime autónomo, con los controles mínimos de seguridad y una línea 
 
 **Dependencies:** INIT-03-04.
 
-**Notes:** policy mínima declarada en manifiesto; RM-06 refina con policy loader completo y fuel.
+**Notes:** criterio de salida reformulado por **decisión humana D2 (2026-10-19)**: el requisito original de validación manifest-driven en `load_component` se difirió formalmente a **INIT-06-01** (policy loader manifest-driven). Para M3, se verificó el control deny-by-default pre-instantiate a tres niveles (core, WIT interface, WIT operation) con fallo explícito (`RuntimeError::UnauthorizedImport`) antes de ejecutar guest code (M3-CRIT-3).
 
 **Suggested Work Items:**
 - WI-CANDIDATE-03-05-01: allow-list mínima en manifiesto (`feature`)
@@ -506,42 +506,42 @@ Hace el runtime autónomo, con los controles mínimos de seguridad y una línea 
 
 #### INIT-03-06: Línea base técnica del runtime
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** completed (AN-012, AN-017) · **Priority:** medium · **K3**
 
 **Related domain:** Runtime & Memory, Performance
 
 **Source signals:** nuevo ajuste "benchmark inicial"; principio "mediciones antes que optimización".
 
-**Problem / opportunity:** medición mínima (cold start, warm invocation, memoria por instancia) **antes** de cualquier caché o reutilización — insumo obligatorio de INIT-03-02 y RM-08.
+**Problem / opportunity:** medición mínima de latencia (cold start, warm invocation, cache-hit) **antes** de cualquier caché o reutilización — insumo obligatorio de INIT-03-02 y RM-08.
 
 **Dependencies:** INIT-03-03.
 
-**Notes:** no es RM-08. Es una línea base mínima para no construir caché a ciegas.
+**Notes:** no es RM-08. Es una línea base mínima para no construir caché a ciegas. **Reformulado por decisión humana D3 (2026-10-19)**: la línea base de latencia (cold start, warm invocation, cache-hit) fue publicada en `knowledge/tech/baselines/runtime-baseline.md`. La **medición de memoria por instancia fue diferida formalmente a INIT-06-02** (fuel + instance limits + `ResourceLimiter`), por lo que no constituye una obligación pendiente de M3.
 
 **Suggested Work Items:**
 - WI-CANDIDATE-03-06-01: micro-bench cold start (`chore`)
 - WI-CANDIDATE-03-06-02: micro-bench warm invocation (`chore`)
-- WI-CANDIDATE-03-06-03: medición de memoria por instancia (`chore`)
+- WI-CANDIDATE-03-06-03: medición de memoria por instancia (`chore` — diferido a INIT-06-02 por decisión D3)
 
 ---
 
 #### INIT-03-02: Resolver de dependencias reutilizable
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** completed (AN-013) · **Priority:** medium · **K3**
 
 **Related domain:** Runtime & Memory
 
 **Source signals:** OQ L147 (recompilación por invocación en la POC).
 
-**Problem / opportunity:** eliminar compilación/instanciación repetida de dependencias, con reset explícito por tenant.
+**Problem / opportunity:** eliminar compilación/instanciación repetida de dependencias mediante caché content-addressed con capacidad de limpieza por sesión/tenant.
 
 **Dependencies:** INIT-03-06 (requiere línea base previa).
 
-**Notes:** su beneficio se expresa como mejora cuantificada vs INIT-03-06.
+**Notes:** materializado como resolver content-addressed de componentes (`Resolver`) en `crates/runtime/src/resolver.rs` (AN-013). La función `Resolver::reset()` ya está implementada y limpia activamente la caché de artefactos (`self.cache.clear()`). La gestión avanzada de aislamiento multi-tenant y ciclo de vida de instancias persistentes continúa formalmente diferida a **INIT-06-03**.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-03-02-01: resolver cacheado por sesión (`feature`)
-- WI-CANDIDATE-03-02-02: reset por tenant (`feature`)
+- WI-CANDIDATE-03-02-01: resolver cacheado por sesión (`feature` — materializado en AN-013)
+- WI-CANDIDATE-03-02-02: `Resolver::reset()` para limpieza de caché (`feature` — materializado en AN-013; aislamiento avanzado de instancias diferido a INIT-06-03)
 
 ---
 
@@ -748,6 +748,8 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 **Dependencies:** INIT-03-05.
 
+**Notes:** recibe formalmente la validación manifest-driven de capabilities al cargar (`load_component`), diferida de M3 (INIT-03-05) por la decisión humana D2 (2026-10-19).
+
 **Suggested Work Items:**
 - WI-CANDIDATE-06-01-01: policy loader `Policy` (`feature`)
 - WI-CANDIDATE-06-01-02: pruebas negativas por capability (`chore`)
@@ -762,10 +764,13 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 **Dependencies:** INIT-03-01, INIT-02-05.
 
+**Notes:** recibe formalmente la medición de memoria por instancia (`ResourceLimiter`), diferida de M3 (INIT-03-06) por la decisión humana D3 (2026-10-19).
+
 **Suggested Work Items:**
 - WI-CANDIDATE-06-02-01: fuel accounting (`feature`)
 - WI-CANDIDATE-06-02-02: `InstanceLimits` configurables (`feature`)
 - WI-CANDIDATE-06-02-03: defaults sanos documentados (`chore`)
+- WI-CANDIDATE-06-02-04: medición de memoria por instancia y límites de memoria (diferido de INIT-03-06 por D3) (`chore`)
 
 ---
 
