@@ -97,9 +97,10 @@ impl LlmProvider for FixtureLlmProvider {
         };
 
         let success = result.is_ok();
-        let mut metrics_guard = self.last_metrics.lock().map_err(|_| {
-            AgentError::Synthesis(self.name.clone(), "Lock poisoning".to_string())
-        })?;
+        let mut metrics_guard = self
+            .last_metrics
+            .lock()
+            .map_err(|_| AgentError::Synthesis(self.name.clone(), "Lock poisoning".to_string()))?;
         *metrics_guard = Some(AgentExecutionMetrics {
             provider_name: self.name.clone(),
             mode: GenerationMode::Fixtures,

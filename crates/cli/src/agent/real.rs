@@ -68,11 +68,17 @@ impl HttpLlmProvider {
         );
 
         if !diagnostics.is_empty() {
-            prompt.push_str("\nPrevious compilation or verification diagnostics (please fix these issues):\n");
+            prompt.push_str(
+                "\nPrevious compilation or verification diagnostics (please fix these issues):\n",
+            );
             for diag in diagnostics {
                 prompt.push_str(&format!(
                     "- [{}] {}: {}\n",
-                    if diag.code.starts_with('E') { "ERROR" } else { "WARNING" },
+                    if diag.code.starts_with('E') {
+                        "ERROR"
+                    } else {
+                        "WARNING"
+                    },
                     diag.code,
                     diag.message
                 ));

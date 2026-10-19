@@ -79,12 +79,16 @@ impl LlmProvider for FallbackLlmProvider {
             }
         }
 
-        let mut metrics_guard = self.last_metrics.lock().map_err(|_| {
-            AgentError::Synthesis(self.name.clone(), "Lock poisoning".to_string())
-        })?;
+        let mut metrics_guard = self
+            .last_metrics
+            .lock()
+            .map_err(|_| AgentError::Synthesis(self.name.clone(), "Lock poisoning".to_string()))?;
         *metrics_guard = Some(AgentExecutionMetrics {
             provider_name: self.name.clone(),
-            mode: self.providers.first().map_or(GenerationMode::Synthesizer, |p| p.mode()),
+            mode: self
+                .providers
+                .first()
+                .map_or(GenerationMode::Synthesizer, |p| p.mode()),
             duration: start.elapsed(),
             prompt_tokens: None,
             completion_tokens: None,

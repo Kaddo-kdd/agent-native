@@ -10,8 +10,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use agent_native_ir::{verify_ir, Diagnostic};
-use serde_json::{json, Value};
+use agent_native_ir::{Diagnostic, verify_ir};
+use serde_json::{Value, json};
 
 use crate::agent::error::AgentError;
 use crate::agent::provider::{AgentExecutionMetrics, GenerationMode, LlmProvider};
@@ -33,10 +33,7 @@ impl SynthesizerLlmProvider {
         }
     }
 
-    fn synthesize_function(
-        op: &OperationSpec,
-        spec: &SystemSpec,
-    ) -> Result<Value, AgentError> {
+    fn synthesize_function(op: &OperationSpec, spec: &SystemSpec) -> Result<Value, AgentError> {
         let params_json: Vec<Value> = op
             .params
             .iter()
@@ -92,7 +89,10 @@ impl SynthesizerLlmProvider {
                 } else {
                     return Err(AgentError::Synthesis(
                         op.name.clone(),
-                        format!("Unsupported field type '{}' for entity '{}'", field.field_type, entity.name),
+                        format!(
+                            "Unsupported field type '{}' for entity '{}'",
+                            field.field_type, entity.name
+                        ),
                     ));
                 };
                 fields_map.insert(field.name.clone(), field_expr);
@@ -216,10 +216,7 @@ impl LlmProvider for SynthesizerLlmProvider {
             }));
         }
 
-        let export_iface = comp
-            .export_interfaces
-            .first()
-            .map_or("ops", |s| s.as_str());
+        let export_iface = comp.export_interfaces.first().map_or("ops", |s| s.as_str());
 
         let wit_contract = json!({
             "package": "an:synthesized@0.1.0",
@@ -264,9 +261,10 @@ impl LlmProvider for SynthesizerLlmProvider {
             return Err(AgentError::InvalidIr(component_id.to_string(), error_msgs));
         }
 
-        let mut metrics_guard = self.last_metrics.lock().map_err(|_| {
-            AgentError::Synthesis(self.name.clone(), "Lock poisoning".to_string())
-        })?;
+        let mut metrics_guard = self
+            .last_metrics
+            .lock()
+            .map_err(|_| AgentError::Synthesis(self.name.clone(), "Lock poisoning".to_string()))?;
         *metrics_guard = Some(AgentExecutionMetrics {
             provider_name: self.name.clone(),
             mode: GenerationMode::Synthesizer,

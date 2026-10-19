@@ -9,11 +9,10 @@ use agent_native::agent::{
     AgentError, FallbackLlmProvider, FixtureLlmProvider, GenerationMode, HttpLlmProvider,
     LlmConfig, LlmProvider, SynthesizerLlmProvider,
 };
-use agent_native::spec::interpreter::MarkdownRequirementsInterpreter;
 use agent_native::spec::RequirementsInterpreter;
+use agent_native::spec::interpreter::MarkdownRequirementsInterpreter;
 use agent_native::spec::model::{
-    ComponentSpec, EntityField, EntitySpec, OperationParam, OperationSpec, SpecMetadata,
-    SystemSpec,
+    ComponentSpec, EntityField, EntitySpec, OperationParam, OperationSpec, SpecMetadata, SystemSpec,
 };
 use serde_json::json;
 
@@ -138,8 +137,13 @@ fn test_fixture_llm_provider_success_and_miss() {
     assert!(metrics.success);
 
     // Request non-existent component in spec -> ComponentNotFound
-    let err = fixture_provider.propose_ir("unknown_comp", &spec, &[]).unwrap_err();
-    assert_eq!(err, AgentError::ComponentNotFound("unknown_comp".to_string()));
+    let err = fixture_provider
+        .propose_ir("unknown_comp", &spec, &[])
+        .unwrap_err();
+    assert_eq!(
+        err,
+        AgentError::ComponentNotFound("unknown_comp".to_string())
+    );
 
     // Create a spec with another component without fixture -> FixtureNotFound
     let mut other_spec = spec.clone();
@@ -155,8 +159,13 @@ fn test_fixture_llm_provider_success_and_miss() {
         dependencies: vec![],
     });
 
-    let err2 = fixture_provider.propose_ir("unregistered", &other_spec, &[]).unwrap_err();
-    assert_eq!(err2, AgentError::FixtureNotFound("unregistered".to_string()));
+    let err2 = fixture_provider
+        .propose_ir("unregistered", &other_spec, &[])
+        .unwrap_err();
+    assert_eq!(
+        err2,
+        AgentError::FixtureNotFound("unregistered".to_string())
+    );
 }
 
 #[test]
@@ -166,7 +175,9 @@ fn test_synthesizer_llm_provider_generates_valid_ir() {
 
     assert_eq!(synth.mode(), GenerationMode::Synthesizer);
 
-    let ir_value = synth.propose_ir("math", &spec, &[]).expect("synthesis should succeed");
+    let ir_value = synth
+        .propose_ir("math", &spec, &[])
+        .expect("synthesis should succeed");
 
     assert_eq!(ir_value["ir_version"], "0.5");
     assert_eq!(ir_value["spec_version"], 1);
@@ -215,7 +226,9 @@ interface ops {
 ";
 
     let interpreter = MarkdownRequirementsInterpreter;
-    let spec = interpreter.interpret_narrative(narrative, "spec.md").unwrap();
+    let spec = interpreter
+        .interpret_narrative(narrative, "spec.md")
+        .unwrap();
     let synth = SynthesizerLlmProvider::default();
 
     let ir = synth.propose_ir("profile-manager", &spec, &[]).unwrap();
@@ -274,7 +287,9 @@ fn test_fallback_chain_from_http_to_synthesizer() {
 
     let fallback = FallbackLlmProvider::new("resilient-agent", vec![primary, secondary]);
 
-    let ir = fallback.propose_ir("math", &spec, &[]).expect("fallback should succeed via synthesizer");
+    let ir = fallback
+        .propose_ir("math", &spec, &[])
+        .expect("fallback should succeed via synthesizer");
     assert_eq!(ir["ir_version"], "0.5");
 
     let metrics = fallback.last_execution_metrics().unwrap();

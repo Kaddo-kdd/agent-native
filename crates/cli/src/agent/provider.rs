@@ -66,7 +66,12 @@ pub struct AgentExecutionMetrics {
 
 impl AgentExecutionMetrics {
     #[must_use]
-    pub fn new_offline(provider_name: impl Into<String>, mode: GenerationMode, duration: Duration, success: bool) -> Self {
+    pub fn new_offline(
+        provider_name: impl Into<String>,
+        mode: GenerationMode,
+        duration: Duration,
+        success: bool,
+    ) -> Self {
         Self {
             provider_name: provider_name.into(),
             mode,
@@ -109,9 +114,12 @@ impl LlmConfig {
     /// Loads configuration from standard environment variables with fallbacks.
     #[must_use]
     pub fn from_env() -> Self {
-        let provider = std::env::var("AGENT_NATIVE_LLM_PROVIDER").unwrap_or_else(|_| "anthropic".to_string());
-        let endpoint = std::env::var("AGENT_NATIVE_LLM_ENDPOINT").unwrap_or_else(|_| "https://api.anthropic.com/v1/messages".to_string());
-        let model = std::env::var("AGENT_NATIVE_LLM_MODEL").unwrap_or_else(|_| "claude-3-7-sonnet-20250219".to_string());
+        let provider =
+            std::env::var("AGENT_NATIVE_LLM_PROVIDER").unwrap_or_else(|_| "anthropic".to_string());
+        let endpoint = std::env::var("AGENT_NATIVE_LLM_ENDPOINT")
+            .unwrap_or_else(|_| "https://api.anthropic.com/v1/messages".to_string());
+        let model = std::env::var("AGENT_NATIVE_LLM_MODEL")
+            .unwrap_or_else(|_| "claude-3-7-sonnet-20250219".to_string());
         let api_key = std::env::var("AGENT_NATIVE_LLM_KEY").ok();
         let timeout_secs = std::env::var("AGENT_NATIVE_LLM_TIMEOUT")
             .ok()
