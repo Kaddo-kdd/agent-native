@@ -770,3 +770,76 @@ fn test_cli_json_purity_and_contract_invariants() {
     assert!(err_json["diagnostics"].is_array());
     assert!(!err_json["diagnostics"].as_array().unwrap().is_empty());
 }
+
+#[test]
+fn test_cli_publish_incorporates_explicit_source_wi() {
+    let dir = TestDir::new("publish_explicit_wi");
+    let spec_file = dir.path().join("spec.md");
+    let dist_dir = dir.path().join("dist");
+    fs::write(&spec_file, VALID_NARRATIVE_SPEC).unwrap();
+
+    let output = Command::new(cli_binary_path())
+        .arg("--format")
+        .arg("json")
+        .arg("publish")
+        .arg("-s")
+        .arg(&spec_file)
+        .arg("-d")
+        .arg(&dist_dir)
+        .arg("--source-wi")
+        .arg("AN-028")
+        .arg("--source-wi")
+        .arg("AN-CUSTOM-999")
+        .output()
+        .expect("must run CLI");
+
+    assert_eq!(output.status.code(), Some(0));
+
+    let active_path = dist_dir.join("active.json");
+    assert!(active_path.exists());
+    let active_content = fs::read_to_string(&active_path).unwrap();
+    let active_json: serde_json::Value = serde_json::from_str(&active_content).unwrap();
+
+    let source_wis = active_json["traceability"]["source_wi"]
+        .as_array()
+        .expect("source_wi must be an array");
+
+    let source_wi_strings: Vec<&str> = source_wis.iter().filter_map(|v| v.as_str()).collect();
+    assert!(
+        source_wi_strings.contains(&"AN-028"),
+        "active.json must contain explicit --source-wi AN-028"
+    );
+    assert!(
+        source_wi_strings.contains(&"AN-CUSTOM-999"),
+        "active.json must contain explicit --source-wi AN-CUSTOM-999"
+    );
+}
+
+#[test]
+fn test_cli_clap_parse_error_emits_json_when_format_json_requested() {
+    let output = Command::new(cli_binary_path())
+        .arg("--format")
+        .arg("json")
+        .arg("unknown-subcommand-xyz")
+        .output()
+        .expect("must run CLI");
+
+    assert_eq!(output.status.code(), Some(2));
+    let stdout_str = std::str::from_utf8(&output.stdout).expect("stdout must be utf-8");
+    let trimmed = stdout_str.trim();
+    assert!(
+        trimmed.starts_with('{') && trimmed.ends_with('}'),
+        "clap parse error must be pure JSON when --format json is passed. Got:\n{trimmed}"
+    );
+
+    let parsed: serde_json::Value =
+        serde_json::from_str(trimmed).expect("clap parse error must parse as JSON");
+    assert_eq!(parsed["success"], false);
+    assert_eq!(parsed["exit_code"], 2);
+    assert!(
+        parsed["error"]
+            .as_str()
+            .unwrap()
+            .contains("unknown-subcommand-xyz")
+    );
+}

@@ -29,7 +29,7 @@ pub struct PublishReport {
 pub fn execute_publish(
     spec_path: &Path,
     dist_dir: &Path,
-    _source_wi: &[String],
+    source_wi: &[String],
     git_commit: Option<&str>,
     mode: &str,
     format: OutputFormat,
@@ -76,6 +76,7 @@ pub fn execute_publish(
         wit_root: None,
         git_commit: git_commit.map(String::from),
         fail_point: None,
+        extra_source_wi: source_wi.to_vec(),
     };
 
     let publish_res = match mode.to_ascii_lowercase().as_str() {

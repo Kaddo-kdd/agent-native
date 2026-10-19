@@ -111,6 +111,7 @@ pub struct PublishOptions<'a> {
     pub wit_root: Option<&'a Path>,
     pub git_commit: Option<String>,
     pub fail_point: Option<BuildFailPoint>,
+    pub extra_source_wi: Vec<String>,
 }
 
 /// Compiles and atomically publishes all components of a [`SystemSpec`] to `out_dir`.
@@ -130,6 +131,7 @@ pub fn build_and_publish_components<P: LlmProvider>(
             wit_root,
             git_commit: None,
             fail_point,
+            extra_source_wi: Vec::new(),
         },
     )
 }
@@ -174,16 +176,47 @@ pub fn build_and_publish_components_with_options<P: LlmProvider>(
             ));
         }
 
-        // Compile IR to WASM Component Model
+        // Compile IR to WASM Component Model with targeted WIT fallback
         let wasm_bytes = compile_ir_to_wasm_with_context(&proposed_ir, &compile_context)
-            .or_else(|diags| {
-                let staging_wit = temp_staging.join("wit");
-                let _ = std::fs::create_dir_all(&staging_wit);
-                let fallback_file = staging_wit.join(format!("{comp_id}.wit"));
-                let content = crate::spec::generate_wit_for_component(spec, comp_id);
-                let _ = std::fs::write(&fallback_file, content);
-                let fallback_ctx = CompileContext::new(&temp_staging);
-                compile_ir_to_wasm_with_context(&proposed_ir, &fallback_ctx).map_err(|_| diags)
+            .or_else(|initial_diags| {
+                let is_wit_missing = initial_diags.iter().any(|d| d.code == "E_WIT_NOT_FOUND");
+                if is_wit_missing {
+                    let staging_wit = temp_staging.join("wit");
+                    std::fs::create_dir_all(&staging_wit).map_err(|e| {
+                        vec![agent_native_ir::Diagnostic {
+                            code: "E_WIT_STAGING_IO".to_string(),
+                            function: None,
+                            path: "$.wit_contract".to_string(),
+                            message: format!(
+                                "Failed to create temporary staging WIT directory: {e}"
+                            ),
+                            expected: None,
+                            found: None,
+                        }]
+                    })?;
+                    let fallback_file = staging_wit.join(format!("{comp_id}.wit"));
+                    let content = crate::spec::generate_wit_for_component(spec, comp_id);
+                    std::fs::write(&fallback_file, content).map_err(|e| {
+                        vec![agent_native_ir::Diagnostic {
+                            code: "E_WIT_STAGING_IO".to_string(),
+                            function: None,
+                            path: "$.wit_contract".to_string(),
+                            message: format!("Failed to write temporary synthesized WIT file: {e}"),
+                            expected: None,
+                            found: None,
+                        }]
+                    })?;
+                    let fallback_ctx = CompileContext::new(&temp_staging);
+                    compile_ir_to_wasm_with_context(&proposed_ir, &fallback_ctx).map_err(
+                        |second_diags| {
+                            let mut combined = initial_diags;
+                            combined.extend(second_diags);
+                            combined
+                        },
+                    )
+                } else {
+                    Err(initial_diags)
+                }
             })
             .map_err(|diags| PublishError::Compilation(comp_id.clone(), format!("{diags:?}")))?;
 
@@ -268,6 +301,11 @@ pub fn build_and_publish_components_with_options<P: LlmProvider>(
             if !target_file.is_empty() && !source_wi.contains(&target_file.to_string()) {
                 source_wi.push(target_file.to_string());
             }
+        }
+    }
+    for extra in &options.extra_source_wi {
+        if !extra.trim().is_empty() && !source_wi.contains(extra) {
+            source_wi.push(extra.clone());
         }
     }
     source_wi.sort();

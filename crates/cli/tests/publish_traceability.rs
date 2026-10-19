@@ -167,6 +167,7 @@ fn test_traceability_metadata_in_manifest_and_active() {
         wit_root: Some(&wit_root),
         git_commit: Some("abcdef1234567890".to_string()),
         fail_point: None,
+        extra_source_wi: Vec::new(),
     };
 
     let summary = agent_native::publish::build_and_publish_components_with_options(

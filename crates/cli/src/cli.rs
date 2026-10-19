@@ -168,21 +168,30 @@ pub fn dispatch(cli: Cli) -> CliExitCode {
     }
 }
 
+fn is_json_format_requested<I, T>(args: I) -> bool
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
+    let mut prev_is_format = false;
+    for arg in args {
+        let s = arg.into().to_string_lossy().to_string();
+        if prev_is_format && s.eq_ignore_ascii_case("json") {
+            return true;
+        }
+        if s == "--format=json" || s.starts_with("--format=json") {
+            return true;
+        }
+        prev_is_format = s == "--format" || s == "-f";
+    }
+    false
+}
+
 /// Parses CLI arguments from environment and executes the CLI.
 #[must_use]
 pub fn run() -> CliExitCode {
-    match Cli::try_parse() {
-        Ok(cli) => dispatch(cli),
-        Err(err) => {
-            // Print error/help per clap's configured behavior
-            let _ = err.print();
-            if err.use_stderr() {
-                CliExitCode::UsageOrIoError
-            } else {
-                CliExitCode::Success
-            }
-        }
-    }
+    let raw_args: Vec<OsString> = std::env::args_os().collect();
+    run_with_args(raw_args)
 }
 
 /// Parses custom arguments and executes the CLI (useful for in-process integration testing).
@@ -192,13 +201,30 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
-    match Cli::try_parse_from(args) {
+    let items: Vec<T> = args.into_iter().collect();
+    let json_requested = is_json_format_requested(items.iter().cloned());
+
+    match Cli::try_parse_from(items) {
         Ok(cli) => dispatch(cli),
         Err(err) => {
-            let _ = err.print();
             if err.use_stderr() {
+                if json_requested {
+                    let err_str = err.to_string();
+                    let clean_msg = err_str.lines().next().unwrap_or(&err_str).trim();
+                    let val = serde_json::json!({
+                        "success": false,
+                        "error": clean_msg,
+                        "exit_code": CliExitCode::UsageOrIoError as u8
+                    });
+                    if let Ok(json) = serde_json::to_string_pretty(&val) {
+                        println!("{json}");
+                    }
+                } else {
+                    let _ = err.print();
+                }
                 CliExitCode::UsageOrIoError
             } else {
+                let _ = err.print();
                 CliExitCode::Success
             }
         }

@@ -178,28 +178,71 @@ pub fn execute_build(
         );
     }
 
-    // Compile IR to WASM
-    let compile_res = agent_native_compiler::compile_ir_to_wasm(&ir_value).or_else(|diags| {
-        if let Some(spec) = spec_opt.as_ref() {
-            let temp_dir = std::env::temp_dir().join(format!(
-                "agent_native_cli_wit_{}_{}",
-                comp_name,
-                std::process::id()
-            ));
-            let staging_wit = temp_dir.join("wit");
-            let _ = std::fs::create_dir_all(&staging_wit);
-            let fallback_file = staging_wit.join(format!("{comp_name}.wit"));
-            let content = crate::spec::generate_wit_for_component(spec, &comp_name);
-            let _ = std::fs::write(&fallback_file, content);
-            let fallback_ctx = agent_native_compiler::CompileContext::new(&temp_dir);
-            let res =
-                agent_native_compiler::compile_ir_to_wasm_with_context(&ir_value, &fallback_ctx);
-            let _ = std::fs::remove_dir_all(&temp_dir);
-            res
-        } else {
-            Err(diags)
-        }
-    });
+    // Compile IR to WASM with targeted WIT fallback
+    let compile_res =
+        agent_native_compiler::compile_ir_to_wasm(&ir_value).or_else(|initial_diags| {
+            // Activate fallback ONLY when compilation failure is specifically due to a missing WIT file
+            let is_wit_missing = initial_diags.iter().any(|d| d.code == "E_WIT_NOT_FOUND");
+            if is_wit_missing {
+                if let Some(spec) = spec_opt.as_ref() {
+                    let temp_dir = std::env::temp_dir().join(format!(
+                        "agent_native_cli_wit_{}_{}",
+                        comp_name,
+                        std::process::id()
+                    ));
+                    let staging_wit = temp_dir.join("wit");
+                    if let Err(err) = std::fs::create_dir_all(&staging_wit) {
+                        let mut combined = initial_diags;
+                        combined.push(Diagnostic {
+                            code: "E_WIT_STAGING_IO".to_string(),
+                            function: None,
+                            path: "$.wit_contract".to_string(),
+                            message: format!(
+                                "Failed to create temporary WIT staging directory: {err}"
+                            ),
+                            expected: None,
+                            found: None,
+                        });
+                        return Err(combined);
+                    }
+                    let fallback_file = staging_wit.join(format!("{comp_name}.wit"));
+                    let content = crate::spec::generate_wit_for_component(spec, &comp_name);
+                    if let Err(err) = std::fs::write(&fallback_file, content) {
+                        let _ = std::fs::remove_dir_all(&temp_dir);
+                        let mut combined = initial_diags;
+                        combined.push(Diagnostic {
+                            code: "E_WIT_STAGING_IO".to_string(),
+                            function: None,
+                            path: "$.wit_contract".to_string(),
+                            message: format!(
+                                "Failed to write temporary synthesized WIT file: {err}"
+                            ),
+                            expected: None,
+                            found: None,
+                        });
+                        return Err(combined);
+                    }
+                    let fallback_ctx = agent_native_compiler::CompileContext::new(&temp_dir);
+                    let fallback_res = agent_native_compiler::compile_ir_to_wasm_with_context(
+                        &ir_value,
+                        &fallback_ctx,
+                    );
+                    let _ = std::fs::remove_dir_all(&temp_dir);
+                    match fallback_res {
+                        Ok(bytes) => Ok(bytes),
+                        Err(second_diags) => {
+                            let mut combined = initial_diags;
+                            combined.extend(second_diags);
+                            Err(combined)
+                        }
+                    }
+                } else {
+                    Err(initial_diags)
+                }
+            } else {
+                Err(initial_diags)
+            }
+        });
 
     let wasm_bytes = match compile_res {
         Ok(bytes) => bytes,
