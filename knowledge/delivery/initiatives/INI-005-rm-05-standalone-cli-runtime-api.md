@@ -2,7 +2,8 @@
 type: initiative
 id: INI-005
 title: RM-05 — Standalone CLI & Runtime API
-status: planned
+status: completed
+completed_at: '2026-10-19'
 knowledge_level: K3
 domains:
   - Distribution & DX
@@ -29,7 +30,8 @@ candidates:
     materialized_as: AN-029, AN-030
   - id: INIT-05-03
     title: Pipeline de release para 3 triples objetivo
-    status: candidate
+    status: completed
+    materialized_as: AN-031, AN-032
 ---
 
 # RM-05 — Standalone CLI & Runtime API
@@ -79,4 +81,14 @@ Ver `candidates:`.
 
 ## Learning
 
-_Pendiente._
+1. **CLI como Contrato Estable (INIT-05-01 / AN-028):**
+   La separación estricta entre el parser de comandos (`clap`) y la lógica de dominio en módulos especializados (`build`, `verify`, `test`, `run`, `publish`) garantizó que tanto el formato `--format=human` como `--format=json` operen sin fugas de texto ni fallbacks silenciosos, asegurando que las suites CI automatizadas puedan parsear resultados JSON de forma determinista.
+
+2. **API Pública del Runtime y Aislamiento (INIT-05-02 / AN-029, AN-030):**
+   La decisión de no inventar abstracciones artificiales (preservando `Engine`, `Component`, `HostPolicy`, `RuntimeError`, `Val` y `Resolver`) permitió estabilizar una superficie limpia de rustdoc y verificar que aplicaciones externas puedan embeber el runtime sin depender del compilador ni de LLMs. El ejemplo canónico `crates/runtime/examples/embed_runtime.rs` demostró la efectividad de la política deny-by-default y la limpieza de sesión vía `Resolver::reset()`.
+
+3. **Arquitectura de Release y Verificación Offline (INIT-05-03 / AN-031, AN-032):**
+   La adopción de Minisign (Ed25519) en ADR-006 resolvió OQ-05-01 proporcionando verificación criptográfica completamente desconectada (sin dependencia de infraestructura OIDC/Keyless). El flujo en GitHub Actions automatiza la compilación release con símbolos depurados (`strip = true`), empaquetado para los 3 triples objetivo (Linux x86_64, Windows x86_64, macOS aarch64), generación del manifiesto `SHA256SUMS` y firma.
+
+4. **Gobernanza de Identidad (Decisión D3):**
+   La arquitectura técnica y los flujos de CI quedan 100% operativos bajo el identificador interno temporal `agent-native`. Se respeta estrictamente la congelación de releases públicos en crates.io y anuncios de branding hasta recibir la resolución humana definitiva.

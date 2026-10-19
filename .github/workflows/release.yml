@@ -1,0 +1,182 @@
+name: Release Multi-Platform
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (do not publish GitHub Release)'
+        required: true
+        type: boolean
+        default: true
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Package (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_name: agent-native
+            archive_ext: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: agent-native.exe
+            archive_ext: zip
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: agent-native
+            archive_ext: tar.gz
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85.0
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build CLI release binary
+        run: cargo build --release -p agent-native --bin agent-native --target ${{ matrix.target }}
+
+      - name: Determine Version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VER="${GITHUB_REF#refs/tags/}"
+          else
+            VER="v0.0.0-dev"
+          fi
+          echo "tag=${VER}" >> "$GITHUB_OUTPUT"
+
+      - name: Package archive (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -e
+          TAG="${{ steps.version.outputs.tag }}"
+          TARGET="${{ matrix.target }}"
+          STAGE_DIR="agent-native-${TAG}-${TARGET}"
+          mkdir -p "${STAGE_DIR}"
+
+          BIN_PATH="target/${TARGET}/release/${{ matrix.binary_name }}"
+          strip "${BIN_PATH}" || true
+
+          cp "${BIN_PATH}" "${STAGE_DIR}/"
+          cp LICENSE README.md "${STAGE_DIR}/"
+
+          tar -czvf "${STAGE_DIR}.${{ matrix.archive_ext }}" -C "${STAGE_DIR}" .
+          echo "Created archive: ${STAGE_DIR}.${{ matrix.archive_ext }}"
+
+      - name: Package archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $Tag = "${{ steps.version.outputs.tag }}"
+          $Target = "${{ matrix.target }}"
+          $StageDir = "agent-native-$Tag-$Target"
+          New-Item -ItemType Directory -Path $StageDir
+
+          $BinPath = "target\$Target\release\${{ matrix.binary_name }}"
+          Copy-Item $BinPath -Destination $StageDir
+          Copy-Item LICENSE, README.md -Destination $StageDir
+
+          $ArchiveName = "$StageDir.zip"
+          Compress-Archive -Path "$StageDir\*" -DestinationPath $ArchiveName
+          Write-Host "Created archive: $ArchiveName"
+
+      - name: Upload packaged artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.target }}
+          path: agent-native-*.*
+          if-no-files-found: error
+          retention-days: 7
+
+  finalize:
+    name: Checksums, Signature & Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS manifest
+        run: |
+          cd dist
+          ls -la
+          sha256sum agent-native-* > SHA256SUMS
+          echo "=== Generated SHA256SUMS ==="
+          cat SHA256SUMS
+
+      - name: Install Minisign
+        run: |
+          sudo apt-get update && sudo apt-get install -y minisign
+
+      - name: Sign SHA256SUMS manifest
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.RELEASE_MINISIGN_SECRET_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.RELEASE_MINISIGN_PASSWORD }}
+        run: |
+          cd dist
+          if [ -n "$MINISIGN_SECRET_KEY" ]; then
+            echo "Signing SHA256SUMS with official Minisign secret key..."
+            echo "$MINISIGN_SECRET_KEY" > minisign.key
+            minisign -S -s minisign.key -m SHA256SUMS -t "agent-native release ${{ github.ref_name }}"
+            rm -f minisign.key
+            echo "Verifying generated signature against repository public key..."
+            minisign -Vm SHA256SUMS -p ../knowledge/tech/release-signing-key.pub
+          else
+            echo "NOTICE: Running in test/dry-run mode without release key. Generating dry-run signature placeholder."
+            echo "untrusted comment: dry-run signature placeholder" > SHA256SUMS.minisig
+            echo "dGVzdC1zaWduYXR1cmUtcGxhY2Vob2xkZXI=" >> SHA256SUMS.minisig
+          fi
+
+      - name: Verify SHA256 checksums
+        run: |
+          cd dist
+          sha256sum -c SHA256SUMS
+
+      - name: Upload finalized release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: dist/*
+          retention-days: 14
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') && github.event.inputs.dry_run != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

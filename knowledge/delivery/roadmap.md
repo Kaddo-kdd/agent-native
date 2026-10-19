@@ -74,10 +74,10 @@ Fuentes:
 | INIT-04-03 | Evolución incremental de especificaciones | high | INIT-04-02 | Nuevo WI modifica regla; se preserva comportamiento acumulativo (v1→v2) | parcial (POC) |
 | INIT-04-05 | Publicación atómica, versionamiento e integridad | high | INIT-02-04, INIT-04-03 | Manifiestos versionados, hash SHA-256, rollback atómico | parcial (POC) |
 | INIT-04-04 | Trazabilidad artefacto ↔ Work Item / Spec | low | INIT-04-05 | Manifiesto incluye origen WI/Spec | nuevo |
-| **RM-05** | **Standalone CLI & Runtime API** | — | — | Ejecución distribuible mediante CLI | — |
+| **RM-05** | **Standalone CLI & Runtime API** | — | — | Ejecución distribuible mediante CLI | **M5 alcanzado 2026-10-19**; ver INI-005 |
 | INIT-05-01 | Bin `cli` con `build/verify/test/run/publish` | high | INIT-03-03, INIT-04-05 | CLI ejerce todas las APIs públicas | completed (AN-028) |
 | INIT-05-02 | API pública reutilizable del runtime | medium | INIT-03-01 | SDK Rust embebible fuera del bin | completed (AN-029, AN-030) |
-| INIT-05-03 | Pipeline de release para 3 triples objetivo | medium | INIT-05-01 | Artefactos distribuibles; firma/empaquetado via ADR dedicada | nuevo |
+| INIT-05-03 | Pipeline de release para 3 triples objetivo | medium | INIT-05-01 | Artefactos distribuibles; firma/empaquetado via ADR dedicada | completed (AN-031, AN-032) |
 | **RM-06** | **Runtime Security & Memory** | — | — | Runtime controlado por políticas | — |
 | INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | nuevo |
 | INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | nuevo |
@@ -699,7 +699,9 @@ Convierte el pipeline interno en herramienta distribuible.
 
 #### INIT-05-03: Pipeline de release para 3 triples objetivo
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** **completed 2026-10-19** · **Priority:** medium · **K3**
+
+**Materialized as:** AN-031, AN-032
 
 **Related domain:** Distribution & DX
 
@@ -709,11 +711,11 @@ Convierte el pipeline interno en herramienta distribuible.
 
 **Dependencies:** INIT-05-01 (binario CLI) e INIT-05-03-01 (ADR de firma).
 
-**Notes:** La ADR de empaquetado y firma es independiente de AN-028 per Decisión D5.
+**Notes:** La ADR de empaquetado y firma (ADR-006) y el pipeline GitHub Actions (`.github/workflows/release.yml`) automatizan la distribución para Linux x86_64, Windows x86_64 y macOS aarch64 con firma Minisign Ed25519 determinista offline.
 
 **Suggested Work Items:**
 - WI-CANDIDATE-05-03-01: ADR de empaquetado, firma y verificación (`chore`, AN-031 — completado, ADR-006).
-- WI-CANDIDATE-05-03-02: pipeline multi-target CI (`chore`, AN-032).
+- WI-CANDIDATE-05-03-02: pipeline multi-target CI (`chore`, AN-032 — completado).
 
 ---
 
