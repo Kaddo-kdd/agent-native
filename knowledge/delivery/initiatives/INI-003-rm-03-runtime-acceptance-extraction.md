@@ -2,7 +2,8 @@
 type: initiative
 id: INI-003
 title: RM-03 — Runtime & Acceptance Extraction
-status: in-progress
+status: completed
+completed_at: '2026-10-19'
 knowledge_level: K3
 domains:
   - Runtime & Memory
@@ -28,7 +29,8 @@ candidates:
     materialized_as: AN-009, AN-014 (WIT interface resolution)
   - id: INIT-03-03
     title: Executor de aceptación YAML
-    status: candidate
+    status: completed
+    materialized_as: AN-019 (executor + stubs + regresión POC) + AN-020 (cierre técnico M3: compat YAML POC, Component Model type-only, StateReader fail-contract, matriz re-evaluada, contrato normativo)
   - id: INIT-03-04
     title: Propagación de errores host + imports
     status: completed
@@ -97,7 +99,68 @@ Ver `candidates:`. Orden sugerido: 03-01 → 03-04 → 03-05 → 03-03 → 03-06
 
 ## Learning
 
-_Pendiente._
+Cerrado 2026-10-19 bajo los **7 criterios M3 reformulados** acordados en la Resolución humana que figura más abajo. Los 5 criterios originales (sección "Success Criteria", líneas 75-83) se conservan literalmente como referencia histórica; INI-003 **no** declara su cumplimiento literal.
+
+### Capacidades alcanzadas
+
+- **Runtime independiente** (ADR-002): el crate `agent-native-runtime` no depende de `agent-native-compiler` ni de LLM. Verificado por paso CI explícito y por `cargo tree -p agent-native-runtime --prefix none --edges normal | grep -i compiler` → exit 1.
+- **Ejecución Core WASM + Component Model**: `Engine::load_component_with_policy` acepta ambos payloads. Para CM, imports no funcionales (sólo tipos o resources auto-resolubles) delegan a `Component::invoke`. CM con imports funcionales queda deliberadamente fuera (RM-07).
+- **Deny-by-default pre-instantiate** a tres niveles (core, WIT interface, WIT operation), con pruebas independientes. El fail-explicit ocurre antes de ejecutar guest code, aunque **no** al cargar (ver limitaciones).
+- **Executor de aceptación YAML** con contrato normativo publicado (`poc-yaml-contract.md`): 7 submódulos, 3 kinds de stub declarativos (`StateReader`, `StateWriter`, `Noop`), `expected_host_calls` ordenados y comparados por `import` + args, records comparados por nombre + tipo + valor con faltantes y adicionales detectados.
+- **Fail-explicit en lifting de resultados** (sin fallback silencioso a `0`/`false`): `grep -c "unwrap_or(0)" crates/runtime/src/testing/executor.rs` → 0.
+- **Línea base técnica de latencia** publicada (`knowledge/tech/baselines/runtime-baseline.md`): cold start, warm invocation y cache-hit por path.
+- **Caché content-addressed de componentes** (`Resolver`, AN-013).
+
+### Decisiones humanas incorporadas
+
+Resumidas aquí; detalladas en la sección "Resolución humana" al final de este fichero.
+
+- **D1 — matriz POC con 3 grados verificables, no reproducción literal.** La matriz definitiva publica **0 `equivalencia-exacta` + 6 `cobertura-parcial` + 4 `aplazado`** (reclasificación 2026-10-19). INI-003 **no afirma** que las 10 pruebas unitarias de `runner/src/main.rs` del POC hayan sido reproducidas verdes.
+- **D2 — validación manifest-driven diferida a INIT-06-01.** El check de policy ocurre pre-instantiate dentro de `invoke`, no durante `load_component`. INI-003 **no afirma** validación al cargar.
+- **D3 — medición de memoria por instancia diferida a INIT-06-02.** La línea base de latencia es completa; la memoria se declara explícitamente no medida.
+
+### Limitaciones conocidas (dentro del alcance declarado)
+
+- **StateReader miss en el executor YAML no interrumpe el guest.** Opción D1-A: el stub registra el miss, marca `HostCtx::poisoned`, retorna `0` al guest y suprime los efectos observables de stubs posteriores. El executor fuerza `CaseStatus::Error` al final del caso. **No se afirma trap de Wasmtime ni interrupción inmediata del guest.** El guest puede continuar computando con el `0` provisional hasta que termine la invocación.
+- **Equivalencia POC**: ninguna de las 10 pruebas unitarias de `runner/src/main.rs` del POC se reproduce con `equivalencia-exacta` en el nuevo workspace. 6 están cubiertas parcialmente, 4 explícitamente aplazadas. La POC permanece como referencia (`_reference/poc-agent-native/`) y no se modifica.
+- **YAML contract**: el executor acepta sólo la forma de raíz `{ suite, spec_version, cases }`. Las otras dos formas que el runner POC admite (`acceptance.public` y secuencia-raíz directa) quedan rechazadas por parse, con razón documentada.
+- **Component Model host stubs funcionales**: declarados fuera de alcance (RM-07). Un componente CM con imports funcionales produce `HostError` tipado con mensaje `functional import '<iface>#<op>' requires a stub (RM-07)`.
+
+### Deuda diferida (fuera de alcance de M3)
+
+| Deuda | Destino |
+|---|---|
+| Composición multi-componente | RM-07 |
+| Host providers reales (más allá de los 3 stubs declarativos) | INIT-06-01 |
+| Políticas manifest-driven con check en `load_component` | INIT-06-01 |
+| Medición de memoria por instancia | INIT-06-02 |
+| WASI preview2 | RM-07 |
+| Evolución v1→v2 integral (esclusas) | M4 (INIT-04-03/04-05) |
+| Ejecución multi-paso de dependencias con interrupción exacta | RM-04/06 + investigación post-M3 |
+| Propagación inmediata de errores desde callbacks del host (trap Wasmtime desde closure) | Investigación post-M3; hallazgo experimental documentado en `host_ctx.rs` (STATUS_STACK_BUFFER_OVERRUN con wasmtime 27 en Windows) |
+| `host_state` tipos ricos (strings, maps anidados, `credit_limits`, `tenant_status`) | INIT-07-02 |
+| Argumentos no primitivos (strings, floats, listas, enums) | INIT-07-02 |
+| Records anidados en `expected` | RM-07 si surge demanda |
+| Ejecución semántica de fixtures POC v0.2/v0.3/v0.4/v0.5 exactos | RM-04/06 y RM-07 |
+
+### Materialización por candidato de iniciativa
+
+| Candidato | Status | Materializado como |
+|---|---|---|
+| INIT-03-01 — Crate runtime | completed | AN-009, AN-014 |
+| INIT-03-02 — Resolver | completed | AN-013 |
+| INIT-03-03 — Executor YAML | **completed (2026-10-19)** | **AN-019 + AN-020** |
+| INIT-03-04 — Propagación de errores | completed | AN-010, AN-015 |
+| INIT-03-05 — Deny-by-default | completed | AN-011, AN-015 |
+| INIT-03-06 — Línea base técnica | completed | AN-012, AN-017 |
+
+### Evidencia de aceptación
+
+- Commits implementación: AN-019 `5b98d81`, AN-020 `56f1888`, patch pre-M3 `be9f7e2`.
+- CI remota 3-OS verde en el commit final del patch: run #39198976200.
+- Workspace tests: 60+ verdes (incluyendo 32 en `executor_yaml`).
+- `cargo clippy --workspace --all-targets -- -D warnings` → clean.
+- Documentos de soporte: `poc-equivalence-matrix.md`, `poc-yaml-contract.md`, `baselines/runtime-baseline.md`, además de los Learnings de los WI materiales (AN-009..AN-020).
 
 ---
 
@@ -177,7 +240,7 @@ a través de las iniciativas de roadmap ya existentes.
 
 | # | Criterio INI-003 original (textual, L75-L83) | Decisión humana (2026-10-19) | Criterio M3 reformulado | Iniciativa que atiende lo diferido |
 |---|---|---|---|---|
-| 1 | "Las 10 pruebas `runner` de la POC se reproducen verdes en el nuevo repo." | **D1 — Opción A**: aceptar la matriz de equivalencia con 3 `equivalencia-exacta` + 3 `cobertura-parcial` + 4 `aplazado`. **No** afirmar que las 10 pruebas originales fueron reproducidas. | **M3-CRIT-1**: la matriz `knowledge/tech/poc-equivalence-matrix.md` publica la cobertura regresiva con 3 grados verificables; cada fila lleva evidencia identificable (test, path o commit) y cada `aplazado` lleva destino de roadmap específico. **No se afirma reproducción literal de las 10 pruebas**. | Filas `cobertura-parcial`: expansión de regresión (RM-04/06). Filas `aplazado`: RM-07 (composición multi-componente), INIT-06-01 + INIT-07-02 (host provider + host state rico), M4 (esclusas v1→v2 integrales). |
+| 1 | "Las 10 pruebas `runner` de la POC se reproducen verdes en el nuevo repo." | **D1 — Opción A**: aceptar la matriz de equivalencia (en su estado definitivo tras el patch pre-M3 2026-10-19: **0 `equivalencia-exacta` + 6 `cobertura-parcial` + 4 `aplazado`**; previamente 3+3+4 antes de la reclasificación de filas 2, 4 y 8). **No** afirmar que las 10 pruebas originales fueron reproducidas. | **M3-CRIT-1**: la matriz `knowledge/tech/poc-equivalence-matrix.md` publica la cobertura regresiva con 3 grados verificables; cada fila lleva evidencia identificable (test, path o commit) y cada `aplazado` lleva destino de roadmap específico. **No se afirma reproducción literal de las 10 pruebas**. | Filas `cobertura-parcial`: expansión de regresión + ejecución semántica de fixtures POC v0.2/v0.3/v0.4/v0.5 exactos → RM-04/06 y RM-07. Filas `aplazado`: RM-07 (composición multi-componente), INIT-06-01 + INIT-07-02 (host provider + host state rico), M4 (esclusas v1→v2 integrales). |
 | 2 | "Imports no autorizados y capabilities faltantes producen `RuntimeError` tipado — nunca `0`/`false` por defecto." | **Sin decisión humana requerida** — ya `cerrable-con-evidencia`. | **M3-CRIT-2** (precisión patch 2026-10-19): tres propiedades verificables dentro del alcance del executor. **(a)** El runtime no cae a `0`/`false` por defecto en el lifting de resultados: `core_results_to_component` surge `ExecutionFailed` tipado ante tipos no-`I32` (AN-015). **(b)** Imports no autorizados producen `RuntimeError::UnauthorizedImport` pre-instantiate (AN-015/AN-019). **(c)** En el executor YAML, una miss de `StateReader` es de detección obligatoria: registra el miss, marca `HostCtx::poisoned`, suprime los efectos observables de los stubs posteriores (`StateWriter` no escribe, `Noop` no retorna su valor nominal) y fuerza `CaseStatus::Error` al final del caso. **No se afirma fail-fast dentro del guest**: el guest puede continuar computando con un `0` provisional hasta que termine la invocación. Verificable: `grep -c "unwrap_or(0)" crates/runtime/src/testing/executor.rs` → 0; tests `ac04_state_reader_miss_fails_explicit` y `ac04b_statewriter_suppressed_after_reader_miss`. | — |
 | 3 | "Deny-by-default verificado: capability no listada en el manifiesto falla al cargar." | **D2 — Opción C**: diferir la validación manifest-driven a INIT-06-01. Mantener la autorización obligatoria **antes de instanciar y ejecutar** el componente; **no** trasladar el check a `load_component` (modificaría el contrato de carga sin aportar una mejora clara de seguridad). | **M3-CRIT-3**: el runtime hace deny-by-default pre-instantiate: cualquier componente con imports no autorizados por `HostPolicy` falla con `RuntimeError::UnauthorizedImport` **antes de ejecutar guest code**. Verificado por 3 tests independientes a nivel core, WIT interface y WIT operation (`host_errors.rs`, `wit_policy.rs`, `executor_yaml.rs::negative_import_not_authorized_fails_pre_instantiate`). | Validación manifest-driven al cargar → **INIT-06-01** (policy loader + capability tokens). |
 | 4 | "Línea base técnica publicada en `knowledge/tech/baselines/` con cold start, warm invocation y memoria por instancia." | **D3 — Opción A**: diferir la medición de memoria por instancia a INIT-06-02. Conservar la línea base de latencia actual y documentar explícitamente que la memoria todavía no se ha medido. | **M3-CRIT-4**: `knowledge/tech/baselines/runtime-baseline.md` publica cold start, warm invocation y cache-hit por path (AN-012/17). Memoria por instancia **explícitamente diferida** y documentada como no medida en M3. | Memoria por instancia → **INIT-06-02** (fuel + instance limits + `ResourceLimiter`). |
