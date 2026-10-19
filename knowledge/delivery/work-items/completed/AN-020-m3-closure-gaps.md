@@ -1,7 +1,7 @@
 ---
 id: AN-020
 type: feature
-status: in-progress
+status: completed
 title: Cierre técnico M3 — brechas verificables de AN-019
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -76,6 +76,7 @@ template_version: 1
 created_at: 2026-10-18T00:00:00.000Z
 updated_at: 2026-10-18T00:00:00.000Z
 ready_at: '2026-10-18'
+completed_at: '2026-10-19'
 ---
 
 # AN-020 — Cierre técnico M3: brechas verificables de AN-019
@@ -336,8 +337,79 @@ Las 3 OQs del borrador v0 quedan **resueltas** por decisión humana del 2026-10-
 | Fuera de alcance | M4 (esclusas v1→v2), INIT-06-01 (host providers), RM-06/08 (perf), RM-07 (WASI + Component Model stubs reales), INIT-07-02 (host state rico) |
 | Origen | Revisión humana post-AN-019 (2026-10-18), 6 hallazgos verificables |
 
+## Learning
+
+**Lo que salió como se esperaba:**
+
+- La separación entre **autorización** y **resolución** (precisión H1) se materializó limpiamente: `first_functional_import` itera los imports del Component Model y basta con detectar el primer `ComponentFunc` o función en un `ComponentInstance` para decidir si delegar a `Component::invoke` o devolver `HostError`. El resultado es que `probe-use-types` (sólo type import) corre con `invoke` reutilizado; `smoke-v4` (imports funcionales) se rechaza con mensaje `functional import '<iface>#<op>' requires a stub (RM-07)`.
+- Las comparaciones de record por nombre + tipo + valor **con detección de campos adicionales** se implementaron con un `BTreeMap` auxiliar que se vacía campo por campo durante la iteración de `expected`; lo que quede en el map después es "adicional". Esta forma es tan explícita como la especificación y evita heurísticas.
+- `import` canónico + alias `function` con rechazo mutuamente excluyente cuajó con un `#[derive(Deserialize)]` sobre `ExpectedHostCallRaw` y un `impl<'de> Deserialize` manual sobre `ExpectedHostCall` que materializa la regla. El error en caso de ambos campos lleva literalmente las palabras `both`, `import` y `function` para que el test negativo pueda verificarlas sin comparación frágil.
+- La regla de normalización short-vs-qualified queda contenida en una función de ~10 líneas (`import_matches`) con rechazo explícito de formas ambiguas (`host.`, `.op`) en el deserializador. Documentada en `poc-yaml-contract.md`.
+- `deny_unknown_fields` en `Suite`, `Case` y `HostState` dio la cobertura H4/H8/H9 "gratis": sub-maps extra en `host_state`, raíces sin `suite:`/`spec_version:` y campos desconocidos se rechazan con el mismo mecanismo, sin lógica ad-hoc.
+- La matriz POC con 3 grados verificables (`equivalencia-exacta`, `cobertura-parcial`, `aplazado`) y la tabla append de INI-003 con 3 clasificaciones (`cerrable-con-evidencia`, `requiere-implementación`, `requiere-decisión-humana`) devuelven el control a quien debe decidirlo: el humano. AN-020 presenta evidencia, no decisiones.
+
+**Lo inesperado:**
+
+- **Windows + wasmtime 27 + `anyhow::Error` desde una closure de `Linker::func_wrap`** → `STATUS_STACK_BUFFER_OVERRUN` (0xC0000409), "panic in a function that cannot unwind". El trap path usa `setjmp`/`longjmp` (`raise_user_trap`) que colisiona con el unwinder de Rust en builds debug Windows x64. Fix pragmático: flag en `HostCtx::misses` desde la closure (siempre retorna `i32`) y conversión a `CaseStatus::Error` en el executor tras la invocación. Comportamiento observable idéntico; dependencia de plataforma eliminada. Documentado en `host_ctx.rs`.
+- **`probe-use-types.ir.json` tiene un type import** (`an:probe/types@0.1.0::pt`), que la ruta `precheck_component_imports` existente rechaza bajo `HostPolicy::deny_all`. Resuelto autorizando la interfaz `an:probe/types@0.1.0` desde el test; el AN-014 Learning sobre "type-only imports auto-resolve" aplica a Wasmtime, no al pre-check del runtime. Esta ambigüedad quedó anotada implícitamente en la matriz POC fila 10 (criterio INI-003 #3).
+- **Clippy pedantic `single_match_else`** reclamó `match data.kv.get(..) { Some(v) => v, None => ... }` como "para un único pattern usa `if let`". Patch mecánico; vale la pena recordar que `single_match_else` no acepta ni siquiera dos ramas en algunos builds.
+- **Compat semántica short-vs-qualified** era menos obvia de lo esperado: la POC usa `check_credit` (sólo op) pero nuestro runtime registra `host.check_credit`. La regla única "si contiene '.', literal; si no, compara contra op" fue menos natural de deducir que de explicar. Documentarla en `poc-yaml-contract.md` **antes** de implementarla ahorró una iteración.
+- El criterio INI-003 **#3** ("capability no listada en el manifiesto falla al cargar") no se cumple literalmente: el check ocurre pre-instantiate (en `invoke`), no en `load_component`. AN-019 Learning lo omitió. AN-020 lo marca explícito como decisión humana requerida (append INI-003); no es un bug sino una interpretación de "al cargar" que arrastra INIT-06-01 (policy loader manifest-driven).
+
+**Riesgos materializados:**
+
+- R-020-01 (rename `function`→`import` rompe suites internas): **mitigado**. Alias temporal activo; migración de las 5 suites + 11 cases en el mismo commit.
+- R-020-02 (`host_state` sub-maps extra en fixtures POC): **confirmado y documentado**. Fixtures como `public-003.yaml` (`credit_limits`), `resource-reservation.yaml` (`tenant_status`, `quota`) quedan **aplazadas** en la matriz POC con destino INIT-07-02.
+- R-020-03 (`Expected::Record` requiere resolver nombres contra schema IR): **no materializado**. La comparación cae directamente sobre `Val::Record` de wasmtime, cuyos nombres son los del WIT emitido. Normalización documentada: kebab-case único.
+- R-020-04 (eliminar `unwrap_or(0)` cambia semántica de `kv-read.yaml`): **mitigado por rediseño**. `read-missing-key-defaults-to-zero` eliminado; reemplazado por test negativo dedicado `ac04_state_reader_miss_fails_explicit`; caso B de `isolation.yaml` ahora declara su `kv` explícitamente.
+
+**Deuda y seguimientos:**
+
+- **Component Model host stubs reales** → RM-07. AN-020 añade la discriminación type-only vs funcional; el wiring de `wasmtime::component::Linker::func_wrap` por interfaz WIT sigue diferido.
+- **`host_state` tipos ricos** (strings, maps anidados, `credit_limits`, `tenant_status`, etc.) → INIT-07-02.
+- **Argumentos no primitivos** (strings, floats, listas, enums) → INIT-07-02.
+- **Policy loader + check en `load_component`** → INIT-06-01. La decisión sobre si esto bloquea M3 o se reinterpreta queda en la revisión humana de INI-003 criterio 3.
+- **Memoria por instancia** → INIT-06-02. AN-020 confirma el aplazamiento del criterio INI-003 #4.
+- **Esclusas v1→v2 integrales** → M4 (INIT-04-03/04-05).
+- **Composición multi-componente** → RM-07.
+- **Suites extendidas** (operadores v0.1 completos, bodies compuestos con varios host calls en una función) → RM-04/06. Trazadas en la matriz POC filas 1 y 3 (ambas `cobertura-parcial`).
+
+**Lo que esta iniciativa establece:**
+
+- **El formato YAML AN-020 tiene un contrato normativo publicado** (`poc-yaml-contract.md`). Cualquier extensión futura entra por un WI que lo amplíe; `deny_unknown_fields` enforcement en código.
+- **La matriz POC es ejecutable**: cada fila lleva evidencia identificable (test, path, commit). Un revisor puede desafiar la clasificación propuesta sin leer el agente, sólo el fichero.
+- **INI-003 queda listo para decisión humana** sin cambios unilaterales: 2 criterios cerrables, 3 que requieren decisión (crit 1, 3, 4). La resolución formal se toma en una revisión posterior; AN-020 no la fuerza.
+- **El patrón `misses` en HostCtx** generaliza: cualquier futura verificación opcional del host (contadores, limits, trace hooks) puede añadir un campo nuevo a `HostCtx` y el executor convertirlo a evidencia tipada sin tocar la closure, evitando el camino `anyhow`-cross-FFI que falla en Windows debug.
+- **AN-019 Learning se complementa con AN-020**: la afirmación "INIT-03-03 cumplido" de AN-019 era prematura en 3 de 5 criterios INI-003 cuando se contrasta con el texto literal. La disciplina de contrastar criterios literales uno a uno antes de declarar cierre queda establecida como práctica.
+
+### Evidencias de ejecución
+
+- Commit implementación: `56f1888` (feat(AN-020)) → push a `origin/main` (`5ee7a01..56f1888`). CI remota [#39189880092](https://github.com/Kaddo-kdd/agent-native/actions/runs/39189880092) **success** 3/3 OS en 1m47s.
+- Local Windows: `cargo test -p agent-native-runtime --test executor_yaml` → 30 tests verdes (17 AN-019 migrados + 13 nuevos para AC-01..AC-10).
+- Local Windows: `cargo test --workspace` → 60+ tests verdes (sin regresión).
+- Local Windows: `cargo clippy --workspace --all-targets -- -D warnings` → clean.
+- Local Windows: `cargo fmt --all -- --check` → clean.
+- Local Windows: `cargo tree -p agent-native-runtime --prefix none --edges normal | grep -i compiler` → exit 1 (ADR-002 preservado).
+- Verificación AC-04: `grep -c "unwrap_or(0)" crates/runtime/src/testing/executor.rs` → 0.
+- Verificación AC-10: `test -f knowledge/tech/poc-yaml-contract.md` → OK, con las 4 cabeceras requeridas.
+- Verificación AC-11: 17 ocurrencias de las 3 etiquetas en `poc-equivalence-matrix.md` (≥10 filas con clasificación).
+- Verificación AC-12: 12 ocurrencias de las 3 etiquetas en `INI-003-...md` (≥5 criterios con clasificación).
+
 ────────────────────────
 Agent: work-item-agent
-Produced: knowledge/delivery/work-items/draft/AN-020-m3-closure-gaps.md
-Next: revisión humana del draft → autorización explícita → kaddo ready → implementación. **No** mover a `ready/` ni `in-progress/` sin autorización.
+Produced:
+  knowledge/delivery/work-items/completed/AN-020-m3-closure-gaps.md
+  crates/runtime/src/testing/{suite,executor,host_ctx}.rs (edits)
+  crates/runtime/tests/executor_yaml.rs (30 tests)
+  crates/runtime/tests/suites/*.yaml (7 ficheros: 5 migrados + 2 nuevos)
+  knowledge/tech/poc-yaml-contract.md (nuevo)
+  knowledge/tech/poc-equivalence-matrix.md (re-evaluado)
+  knowledge/delivery/initiatives/INI-003-rm-03-runtime-acceptance-extraction.md
+    (append sin modificar criterios originales)
+
+Pendiente de autorización humana explícita (fuera de este cierre):
+  1. Decisión humana sobre los 3 criterios INI-003 marcados
+     `requiere-decisión-humana` (crit 1, 3, 4).
+  2. Declaración formal del hito M3 (si procede tras la decisión).
+  3. Ejecución de `kaddo learn` (si procede como paso adicional).
 ────────────────────────
