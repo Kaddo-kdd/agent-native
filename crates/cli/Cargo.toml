@@ -29,4 +29,6 @@ clap = { version = "4", features = ["derive"] }
 
 [dev-dependencies]
 sha2 = "0.10"
+flate2 = "1.0"
+tar = "0.4"
 

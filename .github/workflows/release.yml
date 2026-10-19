@@ -80,6 +80,10 @@ jobs:
           fi
           echo "tag=${VER}" >> "$GITHUB_OUTPUT"
 
+      - name: Install GNU tar (macOS)
+        if: runner.os == 'macOS'
+        run: brew install gnu-tar
+
       - name: Validate Binary Architecture & Package (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -109,17 +113,26 @@ jobs:
           cp "${BIN_PATH}" "${STAGE_DIR}/"
           cp LICENSE README.md "${STAGE_DIR}/"
 
-          # Normalizar permisos y empaquetar con orden determinista
+          # Normalizar permisos y timestamps para reproducibilidad
           chmod 755 "${STAGE_DIR}/${{ matrix.binary_name }}"
           chmod 644 "${STAGE_DIR}/LICENSE" "${STAGE_DIR}/README.md"
+          touch -d "2026-01-01 00:00:00 UTC" "${STAGE_DIR}"/* 2>/dev/null || touch -t 202601010000.00 "${STAGE_DIR}"/*
+
+          # Seleccionar binario tar compatible con GNU tar (gtar en macOS via brew, tar en Linux)
+          if command -v gtar >/dev/null 2>&1; then
+            TAR_BIN="gtar"
+          else
+            TAR_BIN="tar"
+          fi
 
           ARCHIVE_NAME="${STAGE_DIR}.${{ matrix.archive_ext }}"
-          tar --sort=name -czvf "${ARCHIVE_NAME}" -C "${STAGE_DIR}" .
+          # Empaquetar con orden determinista, timestamp fijo y propietarios neutrales
+          ${TAR_BIN} --sort=name --mtime="2026-01-01 00:00:00Z" --owner=0 --group=0 --numeric-owner -czvf "${ARCHIVE_NAME}" -C "${STAGE_DIR}" .
           echo "Created archive: ${ARCHIVE_NAME}"
 
-          # Verificar contenido interno exacto del paquete
+          # Verificar contenido interno exacto del paquete y permisos
           echo "Verifying archive contents:"
-          tar -tzvf "${ARCHIVE_NAME}"
+          ${TAR_BIN} -tvf "${ARCHIVE_NAME}"
 
       - name: Package archive (Windows)
         if: runner.os == 'Windows'
@@ -136,6 +149,12 @@ jobs:
 
           Copy-Item $BinPath -Destination $StageDir
           Copy-Item LICENSE, README.md -Destination $StageDir
+
+          # Normalizar fechas de modificación para reproducibilidad de metadatos
+          Get-ChildItem -Path $StageDir | ForEach-Object {
+              $_.CreationTime = "2026-01-01 00:00:00"
+              $_.LastWriteTime = "2026-01-01 00:00:00"
+          }
 
           $ArchiveName = "$StageDir.zip"
           Compress-Archive -Path "$StageDir\*" -DestinationPath $ArchiveName

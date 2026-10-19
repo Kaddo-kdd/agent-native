@@ -83,11 +83,15 @@ Para una versión `<VERSION>` (e.g. `v0.1.0`), los archivos de release deben seg
 - macOS: `agent-native-<VERSION>-aarch64-apple-darwin.tar.gz`
 - Windows: `agent-native-<VERSION>-x86_64-pc-windows-msvc.zip`
 
-### 2. Contenido Canónico del Paquete
+### 2. Contenido Canónico del Paquete y Reproducibilidad
 Cada archivo comprimido contendrá estrictamente en su raíz:
 - `agent-native` (o `agent-native.exe` en Windows): binario compilado en modo `release`, con optimización LTO, símbolos depurados (`strip = true`) y sin dependencias dinámicas fuera de las del sistema base.
 - `LICENSE`: texto de la licencia del proyecto (MIT).
 - `README.md`: guía rápida de uso y referencia a los comandos principales (`build`, `verify`, `test`, `run`, `publish`).
+
+Para garantizar la reproducibilidad de los empaquetados:
+- En plataformas Unix (Linux y macOS), se emplea GNU tar (`tar` en Linux, `gtar` en macOS via Homebrew) configurando orden alfabético (`--sort=name`), marca temporal fija (`--mtime`), y propietarios neutrales (`--owner=0 --group=0 --numeric-owner`).
+- En Windows, se normalizan las marcas temporales (`LastWriteTime`, `CreationTime`) a una fecha fija antes de invocar `Compress-Archive`.
 
 ### 3. Protocolo de Integridad y Firma (Minisign)
 1. Durante el job de finalización del release en CI (AN-032), se computan los hashes SHA-256 de todos los archivos comprimidos y se genera el archivo:
