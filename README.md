@@ -1,27 +1,40 @@
+<p align="center">
+  <img src="assets/agent-native-banner.png" alt="Agent Native — Agentes de IA para un mundo real" width="100%">
+</p>
+
 # Agent-Native
 
 > Sistema open source para convertir especificaciones funcionales y cambios incrementales en **componentes WebAssembly ejecutables, verificables y versionados** — con IA en tiempo de construcción y ejecución determinista sin LLM.
 
 [![CI](https://github.com/Kaddo-kdd/agent-native/actions/workflows/ci.yml/badge.svg)](https://github.com/Kaddo-kdd/agent-native/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Kaddo-kdd/agent-native?color=blue)](https://github.com/Kaddo-kdd/agent-native/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Estado del proyecto
 
-🟡 **En desarrollo activo — fase temprana.** Hitos alcanzados:
+🟢 **M3 alcanzado (2026-10-19) — En desarrollo activo.** Hitos publicados:
 
-- [`v0.0.2-m1`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.2-m1) — **M1 Baseline arquitectónico** (RM-01 completo).
+- [`v0.0.4-m3`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.4-m3) — **M3 Runtime autónomo con cobertura regresiva + línea base** (RM-03 completo). Cierre de INI-003 bajo los 7 criterios reformulados por decisión humana (D1/D2/D3).
 - [`v0.0.3-hardening`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.3-hardening) — **Hardening pass** post Technical Review (AN-014 end-to-end v0.5 Component Model + AN-015 políticas WIT granulares + AN-016 `CompileContext` sin dependencia del cwd).
+- [`v0.0.2-m1`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.2-m1) — **M1 Baseline arquitectónico** (RM-01 completo).
 
 Lo que ya funciona:
 
-- Workspace Rust (4 crates) + CI matrix en Linux/Windows/macOS (**43 tests** verdes).
-- Modelo Semantic IR v0.5 + verifier portado desde la POC (6 tests).
-- Compilador IR → WASM Component Model determinista con hash SHA-256 (10 tests: 2 determinism + 8 POC regression).
-- Runtime autónomo: carga + invocación tipada (incluye lookup WIT `interface#operation`), `HostPolicy` deny-by-default con granularidad por interfaz/operación, propagación tipada de errores, `Resolver` content-addressed. 19 tests runtime (smoke + resolver + policy + host_errors + nested_records + wit_policy + e2e_v05). Ver [`knowledge/tech/baselines/runtime-baseline.md`](knowledge/tech/baselines/runtime-baseline.md) para la tabla segregada por path × etapa; cifras agregadas tipo "N× speedup" sobre Core identity son históricas de AN-013 y han sido superadas por la nomenclatura segregada de AN-017.
-- `CompileContext` reproducible: mismo IR + mismo contexto → bytes idénticos independiente del cwd (3 tests `compile_context`).
-- Línea base técnica publicada en [`knowledge/tech/baselines/runtime-baseline.md`](knowledge/tech/baselines/runtime-baseline.md): tabla segregada por path (Core WASM / Component Model) × etapa (Engine / Load / Cold-run / Warm-run / Cache-hit-run) sobre fixtures `identity` y `point_sum`, consolidada por AN-017. Snapshot local, no SLA. INIT-08-01 formaliza la matrix cross-OS.
+- Workspace Rust (4 crates) + CI matrix en Linux/Windows/macOS (**75 tests** verdes).
+- Modelo Semantic IR v0.5 + verifier (6 tests en `crates/ir/tests/verifier.rs`).
+- Compilador IR → WASM Component Model determinista con hash SHA-256 (13 tests: 3 `compile_context` + 2 `determinism` + 8 pruebas de regresión POC en `crates/compiler/tests/poc_regression.rs`).
+- Runtime autónomo: carga + invocación tipada (Core WASM y Component Model dentro del alcance documentado, lookup WIT `interface#operation`), `HostPolicy` deny-by-default pre-instantiate a 3 niveles (core, WIT interface, WIT operation), propagación tipada de errores (`RuntimeError`), `Resolver` content-addressed con método `reset()` para limpieza de caché (56 tests runtime).
+- Executor YAML declarativo de aceptación: 32 tests (`crates/runtime/tests/executor_yaml.rs`), contrato normativo ([`knowledge/tech/poc-yaml-contract.md`](knowledge/tech/poc-yaml-contract.md)), 3 kinds de stub (`StateReader`, `StateWriter`, `Noop`), supresión de efectos de stubs posteriores tras miss en `StateReader` y reporte final estructurado con `CaseStatus::Error`.
+- Matriz de equivalencia POC formalizada: 0 equivalencias exactas, 6 coberturas parciales y 4 aplazadas ([`knowledge/tech/poc-equivalence-matrix.md`](knowledge/tech/poc-equivalence-matrix.md)).
+- Línea base técnica publicada en [`knowledge/tech/baselines/runtime-baseline.md`](knowledge/tech/baselines/runtime-baseline.md): tabla segregada por path (Core WASM / Component Model) × etapa (Engine / Load / Cold-run / Warm-run / Cache-hit-run) sobre fixtures `identity` y `point_sum`.
 
-Lo que **todavía no**: executor YAML de aceptación (INIT-03-03, último de RM-03 para alcanzar M3), pipeline de publicación atómica (RM-04 / INIT-04-05), CLI con subcomandos funcionales (RM-05), WASI, I/O interactiva, benchmarks cross-OS formales. Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
+Próximos bloques del roadmap:
+
+- **RM-04 (Specification, Agents & Build Pipeline):** Intérprete narrativa Markdown → `SystemSpec` (INIT-04-01), Adaptador LLM (INIT-04-02), evolución incremental y validación esclusas v1→v2 (INIT-04-03), pipeline de publicación atómica con rollback y store local de artefactos (INIT-04-05), trazabilidad Work Items (INIT-04-04).
+- **RM-05 (Standalone CLI & Runtime API):** Subcomandos funcionales en `cli` (`spec`, `build`, `verify`, `test`, `run`, `publish`) (INIT-05-01), SDK Rust público reutilizable del runtime (INIT-05-02).
+- **RM-06 (Runtime Security & Memory):** Policy loader manifest-driven con check al cargar (INIT-06-01, diferida por D2), límites de CPU/fuel y medición de memoria por instancia (INIT-06-02, diferida por D3), ciclo de vida multi-tenant (INIT-06-03).
+- **RM-07 (Console I/O & WASI):** Baseline WASI preview2 (INIT-07-01), IR v0.6 (INIT-07-02), stubs funcionales Component Model y composición multi-componente (INIT-07-03).
+- **RM-08 (Performance & Concurrency):** Harness y benchmarks formales cross-OS (INIT-08-01..02), warm pool (INIT-08-03), concurrencia host-side (INIT-08-04). Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
 
 > La POC histórica vive en [`Trycatch-tv/poc-agent-native`](https://github.com/Trycatch-tv/poc-agent-native) (commit `26b6a18`) y, en una clonación local, bajo `_reference/`. Es **sólo lectura** — ver [`knowledge/tech/reference-policy.md`](knowledge/tech/reference-policy.md).
 
@@ -49,16 +62,17 @@ git clone https://github.com/Kaddo-kdd/agent-native
 cd agent-native
 
 cargo build --workspace
-cargo test --workspace     # 43 tests (6 verifier + 10 compiler + 19 runtime + 3 compile_context + 5 extras)
+cargo test --workspace     # 75 tests (6 ir + 13 compiler + 56 runtime)
 cargo bench -p agent-native-runtime --bench baseline -- --quick   # opcional
 ```
 
-El binario `agent-native` existe pero todavía no tiene subcomandos funcionales (ver INIT-05-01 en el roadmap).
+El binario `agent-native` existe como scaffolding de empaquetado; los subcomandos funcionales están planificados para RM-05 (ver INIT-05-01 en el roadmap).
 
 ## Estructura del repositorio
 
 ```text
 agent-native/
+├── assets/           # Imágenes y recursos estáticos del proyecto
 ├── crates/
 │   ├── ir/           # Semantic IR v0.5: modelo + verifier + schemas
 │   ├── compiler/     # IR → WASM Component Model + hash SHA-256
