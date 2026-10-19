@@ -246,6 +246,9 @@ aws logs tail /aws/lambda/agent-native-wasm-poc --follow
 # Eliminar la función
 aws lambda delete-function --function-name agent-native-wasm-poc
 
+# Eliminar el grupo de CloudWatch Logs (AWS no lo elimina automáticamente al borrar la función)
+aws logs delete-log-group --log-group-name /aws/lambda/agent-native-wasm-poc
+
 # Desvincular política y eliminar rol IAM
 aws iam detach-role-policy \
   --role-name agent-native-lambda-role \
@@ -256,7 +259,9 @@ aws iam delete-role --role-name agent-native-lambda-role
 
 ---
 
-## 9. Limitaciones Actuales
+## 9. Limitaciones y Precisiones Técnicas
 
-- **Sin imports funcionales:** El componente WASM utilizado no declara imports de host externos (soporte M3). Los stubs y capacidades WASI están planificados para RM-07.
-- **Instrumentación de memoria guest:** La memoria reportada en CloudWatch refleja el proceso completo de la función Lambda (Rust runtime + Wasmtime engine + guest). La medición granular de memoria por instancia WASM está diferida a INIT-06-02.
+- **Interpretación de Cold Start (Init Duration):** Los 92.21 ms observados en `Init Duration` corresponden al tiempo agregado de aprovisionamiento del microVM/entorno Lambda, arranque del proceso nativo `bootstrap`, inicialización del motor Wasmtime y carga del Component Model; no deben atribuirse exclusivamente a la inicialización de Wasmtime.
+- **Estabilidad de memoria vs. fugas bajo carga:** La observación de 25–26 MB durante las ejecuciones de prueba demuestra estabilidad durante esa secuencia puntual, pero no constituye evidencia concluyente de ausencia de fugas bajo carga sostenida o concurrencia prolongada (sujeto a los benchmarks formales de RM-06 y RM-08).
+- **Sin imports funcionales:** El componente WASM utilizado no declara imports de host externos (alcance certificado de M3). Los stubs y capacidades WASI están planificados para RM-07.
+- **Instrumentación de memoria guest:** La memoria reportada en CloudWatch refleja el proceso completo de la función Lambda (Rust runtime + Wasmtime engine + guest). La medición granular de memoria por instancia WASM está formalmente diferida a INIT-06-02.

@@ -177,22 +177,21 @@ cargo test --workspace
 
 **Lo que salió como se esperaba:**
 - La separación estricta de responsabilidades (ADR-001 / ADR-002) funcionó a la perfección: el adaptador Lambda depende exclusivamente de `agent-native-runtime` y compila en un ejecutable nativo Linux independiente sin requerir dependencias del compilador ni LLM en tiempo de ejecución.
-- La estrategia de memoria de ADR-005 (reutilización de `Engine` y bytecode del componente en el estado de Lambda + creación de un `wasmtime::Store` fresco y efímero en cada llamada a `Component::invoke`) demostró un comportamiento serverless ideal:
-  - Sin fugas de memoria entre invocaciones calientes (memoria constante de 25 MB en AWS Lambda).
-  - Aislamiento total sin retención de estado entre ejecuciones sucesivas.
+- La estrategia de memoria de ADR-005 (reutilización de `Engine` y bytecode del componente en el estado de Lambda + creación de un `wasmtime::Store` fresco y efímero en cada llamada a `Component::invoke`) demostró un comportamiento serverless predecible:
+  - Estabilidad observada de memoria en 25–26 MB durante las ejecuciones de prueba, sin retención observable de estado entre ejecuciones sucesivas (la ausencia concluyente de fugas bajo carga sostenida y alta concurrencia permanece sujeta a los benchmarks formales de RM-06 y RM-08).
 - El empaquetado mediante `cargo-lambda` y Zig generó un binario `bootstrap` nativo de 7.8 MB y un archivo comprimido `bootstrap.zip` de tan solo 3.2 MB, disipando completamente el riesgo R1 sobre el tamaño de Wasmtime.
 - Las dos operaciones WIT certificadas (`double-value` y `make-point-sum`) retornaron los resultados exactos esperados tanto en pruebas locales como en las invocaciones reales sobre AWS Lambda.
 
 **Lo inesperado:**
-- La latencia observada en AWS Lambda (`provided.al2023`, x86_64, 256 MB) superó las expectativas iniciales:
-  - Cold start: **Init Duration de 92.21 ms** (inicialización del motor Wasmtime y parseo del Component Model), seguido de una primera ejecución de 1.29 ms.
+- La latencia observada en AWS Lambda (`provided.al2023`, x86_64, 256 MB) mostró métricas alentadoras:
+  - Cold start: **Init Duration de 92.21 ms**. Es importante precisar que esta cifra mide el aprovisionamiento agregado del entorno Lambda y el microVM, el arranque del proceso nativo `bootstrap`, la inicialización de Wasmtime y el parseo del Component Model, por lo que no debe atribuirse exclusivamente a Wasmtime. La primera invocación ejecutó en 1.29 ms.
   - Invocaciones calientes (warm starts): **1.12 ms a 2.34 ms** de tiempo de cómputo (con facturación mínima de 2 ms a 3 ms).
 - El manejo de errores bajo el tipo estructurado `HandlerError` se propagó nítidamente a la respuesta de Lambda sin fallbacks silenciosos ante operaciones no permitidas o tipos inválidos.
 
 **Riesgos evaluados:**
 - **R1 (Tamaño del ejecutable):** Mitigado. Binario de 7.8 MB descomprimido / 3.2 MB comprimido (límite Lambda: 50 MB en zip directo).
 - **R2 (Compatibilidad Linux):** Mitigado. Binario compilado para `x86_64-unknown-linux-gnu` ejecutado con éxito en `provided.al2023`.
-- **R3 (Latencia de Cold Start):** Mitigado. Init Duration < 100 ms (92 ms) en runtime serverless.
+- **R3 (Latencia de Cold Start):** Mitigado. Init Duration < 100 ms (92.21 ms agregados en runtime serverless).
 - **R4 (Empaquetado WASM):** Mitigado. `build.rs` compila `program-005.ir.json` con `CompileContext` determinista e `include_bytes!` incorpora el componente en el binario sin depender de rutas locales.
 - **R5 (Alcance del runtime):** Mitigado. Respetado el alcance de M3 sin host imports funcionales.
 - **R6 (Cambios arquitectónicos):** Mitigado. Workspace raíz intacto; `examples/aws-lambda` tiene su propio manifest y no contamina el producto.
@@ -211,7 +210,7 @@ cargo test --workspace
    - **Invocación 1 (Cold Start):**
      - Evento: `{"operation": "double-value", "args": {"x": 21}}`
      - Respuesta: `{"result": 42}`
-     - Init Duration: 92.21 ms | Duration: 1.29 ms | Max Memory: 25 MB
+     - Init Duration: 92.21 ms (entorno agregado) | Duration: 1.29 ms | Max Memory: 25 MB
    - **Invocación 2 (Warm Start - Record return):**
      - Evento: `{"operation": "make-point-sum", "args": {"x": 3, "y": 4}}`
      - Respuesta: `{"result": {"doubled": 14, "sum": 7}}`
@@ -222,9 +221,10 @@ cargo test --workspace
      - Duration: 1.12 ms | Max Memory: 25 MB
    - **Invocaciones 4, 5, 6 (Warm Reuse en bucle):**
      - Respuestas deterministas: `{"result": 2}`, `{"result": 4}`, `{"result": 6}`
-     - Duraciones: 2.34 ms, 1.91 ms, 1.17 ms | Max Memory: 25-26 MB
+     - Duraciones: 2.34 ms, 1.91 ms, 1.17 ms | Max Memory: 25-26 MB (estabilidad en la secuencia)
    - **Limpieza de Recursos (Cleanup):**
      - Función `agent-native-wasm-poc` eliminada.
      - Rol IAM `agent-native-lambda-role` desvinculado y eliminado.
+     - Grupo de logs CloudWatch `/aws/lambda/agent-native-wasm-poc` eliminado explícitamente.
      - Sin recursos facturables remanentes.
 
