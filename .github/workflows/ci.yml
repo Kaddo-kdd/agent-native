@@ -83,3 +83,12 @@ jobs:
 
       - name: Offline integration tests (11 tests)
         run: cargo test --manifest-path examples/aws-lambda/Cargo.toml
+
+      - name: Verify formatting (native benchmark)
+        run: cargo fmt --manifest-path examples/aws-lambda-benchmark/native/Cargo.toml -- --check
+
+      - name: Clippy (native benchmark)
+        run: cargo clippy --manifest-path examples/aws-lambda-benchmark/native/Cargo.toml --all-targets -- -D warnings
+
+      - name: Offline integration tests - Native Benchmark (11 tests)
+        run: cargo test --manifest-path examples/aws-lambda-benchmark/native/Cargo.toml
