@@ -92,3 +92,10 @@ Ver `candidates:`.
 
 4. **Gobernanza de Identidad (Decisión D3):**
    La arquitectura técnica y los flujos de CI quedan 100% operativos bajo el identificador interno temporal `agent-native`. Se respeta estrictamente la congelación de releases públicos en crates.io y anuncios de branding hasta recibir la resolución humana definitiva.
+
+5. **Estado de Distribución y Gobernanza (Estabilización AN-032):**
+   Se distingue formalmente entre:
+   - *Pipeline implementado y validado funcionalmente:* 100% completado (matriz de 3 triples, empaquetado, SHA256SUMS, verificación con clave efímera de prueba y suite de regresión).
+   - *Firma oficial disponible:* Pendiente de que el mantenedor humano genere y configure el par de claves Minisign legítimo en el repositorio y GitHub Secrets (actualmente `release-signing-key.pub` es un placeholder).
+   - *Release público autorizado:* Congelado hasta que la Decisión D3 sea formalmente levantada tras la definición de la nueva identidad.
+   - *Distribución firmada verificada end-to-end:* Se ejecutará cuando los dos puntos anteriores estén satisfechos.

@@ -3,17 +3,26 @@ name: Release Multi-Platform
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: 'Dry run (do not publish GitHub Release)'
+      mode:
+        description: 'Release mode: "validation" (dry-run with test keys) or "official" (requires authentic project keys)'
         required: true
+        type: choice
+        options:
+          - validation
+          - official
+        default: validation
+      confirm_publish:
+        description: 'Set to true ONLY if Decisión D3 is formally lifted and you intend to publish an official release'
+        required: false
         type: boolean
-        default: true
+        default: false
   push:
     tags:
       - 'v*'
 
+# Restringir permisos por defecto al mínimo privilegio (ADR-004)
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -23,6 +32,8 @@ jobs:
   build:
     name: Build & Package (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -69,35 +80,60 @@ jobs:
           fi
           echo "tag=${VER}" >> "$GITHUB_OUTPUT"
 
-      - name: Package archive (Unix)
+      - name: Validate Binary Architecture & Package (Unix)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           TAG="${{ steps.version.outputs.tag }}"
           TARGET="${{ matrix.target }}"
           STAGE_DIR="agent-native-${TAG}-${TARGET}"
           mkdir -p "${STAGE_DIR}"
 
           BIN_PATH="target/${TARGET}/release/${{ matrix.binary_name }}"
-          strip "${BIN_PATH}" || true
+          test -f "${BIN_PATH}" || { echo "ERROR: Binary not found at ${BIN_PATH}"; exit 1; }
 
+          # Validar arquitectura real para macOS (Apple Silicon arm64)
+          if [[ "${TARGET}" == "aarch64-apple-darwin" ]]; then
+            file "${BIN_PATH}" | grep -E -i "(arm64|aarch64)" || {
+              echo "ERROR: Target declares aarch64-apple-darwin but binary is not arm64" >&2
+              file "${BIN_PATH}" >&2
+              exit 1
+            }
+          fi
+
+          # Strip de símbolos sin ignorar fallos silenciosamente
+          strip "${BIN_PATH}"
+
+          # Comprobar inclusión estricta de artefactos conforme a ADR-006
           cp "${BIN_PATH}" "${STAGE_DIR}/"
           cp LICENSE README.md "${STAGE_DIR}/"
 
-          tar -czvf "${STAGE_DIR}.${{ matrix.archive_ext }}" -C "${STAGE_DIR}" .
-          echo "Created archive: ${STAGE_DIR}.${{ matrix.archive_ext }}"
+          # Normalizar permisos y empaquetar con orden determinista
+          chmod 755 "${STAGE_DIR}/${{ matrix.binary_name }}"
+          chmod 644 "${STAGE_DIR}/LICENSE" "${STAGE_DIR}/README.md"
+
+          ARCHIVE_NAME="${STAGE_DIR}.${{ matrix.archive_ext }}"
+          tar --sort=name -czvf "${ARCHIVE_NAME}" -C "${STAGE_DIR}" .
+          echo "Created archive: ${ARCHIVE_NAME}"
+
+          # Verificar contenido interno exacto del paquete
+          echo "Verifying archive contents:"
+          tar -tzvf "${ARCHIVE_NAME}"
 
       - name: Package archive (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           $Tag = "${{ steps.version.outputs.tag }}"
           $Target = "${{ matrix.target }}"
           $StageDir = "agent-native-$Tag-$Target"
-          New-Item -ItemType Directory -Path $StageDir
+          New-Item -ItemType Directory -Path $StageDir | Out-Null
 
           $BinPath = "target\$Target\release\${{ matrix.binary_name }}"
+          if (-not (Test-Path $BinPath)) { throw "Binary not found at $BinPath" }
+
           Copy-Item $BinPath -Destination $StageDir
           Copy-Item LICENSE, README.md -Destination $StageDir
 
@@ -113,10 +149,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  finalize:
-    name: Checksums, Signature & Release
+  validate-and-sign:
+    name: Checksums, Minisign & Integrity Validation
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -128,55 +166,124 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Generate SHA256SUMS manifest
+      - name: Generate and sort SHA256SUMS manifest
         run: |
           cd dist
           ls -la
-          sha256sum agent-native-* > SHA256SUMS
-          echo "=== Generated SHA256SUMS ==="
+          # Generar catálogo SHA-256 determinista ordenado por nombre de archivo
+          sha256sum agent-native-* | LC_ALL=C sort -k 2 > SHA256SUMS
+          echo "=== SHA256SUMS Catalog ==="
           cat SHA256SUMS
+
+      - name: Verify SHA256 checksums of packaged archives
+        run: |
+          cd dist
+          sha256sum -c SHA256SUMS
 
       - name: Install Minisign
         run: |
           sudo apt-get update && sudo apt-get install -y minisign
 
-      - name: Sign SHA256SUMS manifest
+      - name: Execute Minisign Verification (Validation Mode vs Official Mode)
         env:
+          INPUT_MODE: ${{ github.event.inputs.mode || 'validation' }}
           MINISIGN_SECRET_KEY: ${{ secrets.RELEASE_MINISIGN_SECRET_KEY }}
           MINISIGN_PASSWORD: ${{ secrets.RELEASE_MINISIGN_PASSWORD }}
         run: |
+          set -euo pipefail
           cd dist
-          if [ -n "$MINISIGN_SECRET_KEY" ]; then
-            echo "Signing SHA256SUMS with official Minisign secret key..."
-            echo "$MINISIGN_SECRET_KEY" > minisign.key
-            minisign -S -s minisign.key -m SHA256SUMS -t "agent-native release ${{ github.ref_name }}"
-            rm -f minisign.key
-            echo "Verifying generated signature against repository public key..."
+
+          if [ "${INPUT_MODE}" = "official" ]; then
+            echo "=== EXECUTING OFFICIAL SIGNING MODE ==="
+
+            # 1. Verificar si la clave pública sigue siendo un placeholder (bloqueante)
+            if grep -q "PLACEHOLDER" ../knowledge/tech/release-signing-key.pub; then
+              echo "ERROR: Official signing is BLOCKED because knowledge/tech/release-signing-key.pub is still a placeholder." >&2
+              echo "A human maintainer must provision an authentic Minisign keypair before official mode can proceed." >&2
+              exit 1
+            fi
+
+            # 2. Verificar que los secretos requeridos existan
+            if [ -z "${MINISIGN_SECRET_KEY:-}" ]; then
+              echo "ERROR: Official signing requires RELEASE_MINISIGN_SECRET_KEY secret." >&2
+              exit 1
+            fi
+
+            # 3. Guardar clave privada en directorio temporal seguro con permisos 700/600 y trap de limpieza
+            SECURE_KEY_DIR=$(mktemp -d)
+            chmod 700 "${SECURE_KEY_DIR}"
+            trap 'shred -u "${SECURE_KEY_DIR}/minisign.key" 2>/dev/null || rm -f "${SECURE_KEY_DIR}/minisign.key"; rm -rf "${SECURE_KEY_DIR}"' EXIT
+
+            set +x
+            echo "${MINISIGN_SECRET_KEY}" > "${SECURE_KEY_DIR}/minisign.key"
+            chmod 600 "${SECURE_KEY_DIR}/minisign.key"
+
+            echo "Signing SHA256SUMS with official release key..."
+            if [ -n "${MINISIGN_PASSWORD:-}" ]; then
+              echo "${MINISIGN_PASSWORD}" | minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "agent-native release ${{ github.ref_name }}"
+            else
+              minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "agent-native release ${{ github.ref_name }}" -W
+            fi
+
+            echo "Verifying official signature against repository public key..."
             minisign -Vm SHA256SUMS -p ../knowledge/tech/release-signing-key.pub
+            echo "✓ Official Minisign signature verified successfully!"
+
           else
-            echo "NOTICE: Running in test/dry-run mode without release key. Generating dry-run signature placeholder."
-            echo "untrusted comment: dry-run signature placeholder" > SHA256SUMS.minisig
-            echo "dGVzdC1zaWduYXR1cmUtcGxhY2Vob2xkZXI=" >> SHA256SUMS.minisig
+            echo "=== EXECUTING VALIDATION (DRY-RUN) MODE ==="
+            echo "Generating ephemeral test Minisign keypair for end-to-end cryptographic verification..."
+
+            EPHEMERAL_DIR=$(mktemp -d)
+            chmod 700 "${EPHEMERAL_DIR}"
+            trap 'shred -u "${EPHEMERAL_DIR}/test.key" 2>/dev/null || rm -f "${EPHEMERAL_DIR}/test.key"; rm -rf "${EPHEMERAL_DIR}"' EXIT
+
+            # Generar par de claves efímero de prueba
+            minisign -G -p "${EPHEMERAL_DIR}/test-minisign.pub" -s "${EPHEMERAL_DIR}/test.key" -W
+
+            # Firmar catálogo como artefacto de prueba explícito
+            minisign -S -s "${EPHEMERAL_DIR}/test.key" -m SHA256SUMS -x SHA256SUMS.test-minisig -t "agent-native TEST DRY-RUN signature (NOT FOR OFFICIAL DISTRIBUTION)"
+
+            # Verificar firma con la clave pública de prueba
+            minisign -Vm SHA256SUMS -p "${EPHEMERAL_DIR}/test-minisign.pub" -x SHA256SUMS.test-minisig
+
+            # Copiar la clave pública de prueba para auditoría del bundle de validación
+            cp "${EPHEMERAL_DIR}/test-minisign.pub" ./test-minisign.pub
+
+            echo "================================================================================"
+            echo "✓ DRY-RUN VALIDATION SUCCESSFUL: Packages, SHA256SUMS, and Minisign verified."
+            echo "NOTICE: Signature generated with ephemeral test key (SHA256SUMS.test-minisig)."
+            echo "NOT FOR OFFICIAL PRODUCTION DISTRIBUTION (Decisión D3 activa)."
+            echo "================================================================================"
           fi
 
-      - name: Verify SHA256 checksums
-        run: |
-          cd dist
-          sha256sum -c SHA256SUMS
-
-      - name: Upload finalized release bundle artifact
+      - name: Upload validated release bundle artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-bundle
           path: dist/*
           retention-days: 14
 
+  # Job de publicación: estrictamente segregado y desactivado en cumplimiento de Decisión D3
+  publish:
+    name: Publish GitHub Release (Guarded by D3)
+    needs: validate-and-sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # PROTECCIÓN D3: La publicación formal permanece congelada hasta decisión humana explícita.
+    # En el futuro, se requerirá environment con aprobadores (Environment: production) y confirmación explícita.
+    if: false
+    steps:
+      - name: Download bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: release-bundle
+          path: dist
+
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') && github.event.inputs.dry_run != 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/*
+          files: dist/*
           generate_release_notes: true
-          draft: false
+          draft: true
           prerelease: false

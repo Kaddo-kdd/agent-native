@@ -126,9 +126,14 @@ $actual = (Get-FileHash -Algorithm SHA256 agent-native-*-windows.zip).Hash.ToLow
 if ($expected -ne $actual) { throw "Integrity check failed" }
 ```
 
-### 5. Respeto a la Restricción de Identidad (Decisión D3)
+### 5. Modalidad Dual de Ejecución y Gestión de Claves
+- **Modo de Validación (Dry-Run / CI Testing):** Operación por defecto y para corridas de prueba. Genera los 3 paquetes, calcula `SHA256SUMS` ordenado y genera un par de claves Minisign efímero para validar la firma y verificación end-to-end (`SHA256SUMS.test-minisig`), destruyendo la clave privada inmediatamente. NUNCA genera releases en GitHub ni publica paquetes.
+- **Modo de Distribución Oficial:** Requiere una clave privada auténtica en GitHub Secrets y una clave pública legítima en el repositorio. Falla explícitamente sin fallbacks simulados si la clave es un placeholder o si la verificación falla.
+- **Estado de `release-signing-key.pub`:** La clave actual es un marcador de posición de especificación. La provisión del par de claves oficial es un prerrequisito humano bloqueante antes de habilitar el modo oficial.
+
+### 6. Respeto a la Restricción de Identidad y Publicación (Decisión D3)
 - Toda la configuración de release y empaquetado utiliza el nombre técnico `agent-native`.
-- El pipeline automatizado (AN-032) queda preparado para operar sobre tags y builds de validación interna.
+- El pipeline automatizado separa la compilación/validación de la publicación: el job de publicación a GitHub Releases permanece explícitamente desactivado (`if: false`) y los jobs de validación operan con permisos mínimos de lectura (`contents: read`).
 - Se mantiene congelada la publicación en `crates.io`, la distribución masiva de instaladores automáticos (`brew`, `winget`, `scoop`) y el anuncio público hasta que se tome la decisión humana de naming definitivo.
 
 ---
