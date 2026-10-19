@@ -19,4 +19,14 @@ pub enum SpecError {
 
     #[error("Serialization error: {0}")]
     Serialization(String),
+
+    #[error(
+        "Reconciliation conflict in {0}: Requirement '{1}' is version {2}, but update proposes lower or identical version {3}"
+    )]
+    ReconciliationConflict(String, String, u32, u32),
+
+    #[error(
+        "Broken reference in {0}: Work item attempts to replace non-existent requirement '{1}'"
+    )]
+    BrokenReference(String, String),
 }

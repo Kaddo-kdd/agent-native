@@ -32,7 +32,8 @@ candidates:
     materialized_as: AN-024
   - id: INIT-04-03
     title: Evolución incremental de especificaciones
-    status: candidate
+    status: completed
+    materialized_as: AN-025
   - id: INIT-04-05
     title: 'Publicación atómica, versionamiento e integridad'
     status: candidate
