@@ -1,0 +1,18 @@
+package an:mixed@0.1.0;
+
+interface types {
+    record mixed {
+        x: s32,
+        flag: bool,
+    }
+}
+
+interface ops {
+    use types.{mixed};
+
+    make-mixed: func(x: s32, flag: bool) -> mixed;
+}
+
+world w {
+    export ops;
+}

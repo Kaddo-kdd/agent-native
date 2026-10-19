@@ -258,6 +258,88 @@ cases:
     );
 }
 
+/// AN-020 patch 1 item 4 (also AC-03 extended): a record field whose
+/// runtime type is not `S32` must produce `CaseStatus::Fail` with
+/// evidence that reveals the found type.
+#[test]
+fn ac03_record_non_s32_field_type_fails_with_evidence() {
+    // Build an IR v0.4 Component Model with a record whose `flag` field
+    // is `bool`; `expected` in YAML lists `flag: 1` (parses as i32 under
+    // `Expected::Record`), but the component returns `Val::Bool(true)`
+    // for that field. The executor must catch the type mismatch, not
+    // coerce silently.
+    let ir = json!({
+        "ir_version": "0.5",
+        "spec_version": 1,
+        "wit_contract": {
+            "package": "an:mixed@0.1.0",
+            "world": "w",
+            "export_interface": "ops",
+            "import_interfaces": [],
+            "wit_file": "tests/fixtures/wit/mixed-record.wit"
+        },
+        "types": [{
+            "name": "mixed",
+            "fields": [
+                {"name": "x", "type": "i32"},
+                {"name": "flag", "type": "bool"}
+            ]
+        }],
+        "functions": [{
+            "name": "make_mixed",
+            "export": true,
+            "wit_interface": "ops",
+            "params": [
+                {"name": "x", "type": "i32"},
+                {"name": "flag", "type": "bool"}
+            ],
+            "returns": "mixed",
+            "requirements": ["REC-TYPE-001"],
+            "body": {
+                "op": "record.construct",
+                "type": "mixed",
+                "fields": {
+                    "x": {"op": "param", "name": "x"},
+                    "flag": {"op": "param", "name": "flag"}
+                }
+            }
+        }]
+    });
+    let wasm = compile_ir_to_wasm_with_context(&ir, &compiler_crate_ctx()).expect("compile");
+    let engine = Engine::new().expect("engine");
+    let mut policy = HostPolicy::deny_all();
+    policy.allow_wit_interface("an:mixed/types@0.1.0");
+    let component = engine
+        .load_component_with_policy(&wasm, &policy)
+        .expect("load");
+
+    let yaml = r#"
+suite: ac03-non-s32-field
+spec_version: 1
+cases:
+  - id: flag-is-bool-not-i32
+    function: "an:mixed/ops@0.1.0#make-mixed"
+    args: [42, true]
+    expected:
+      x: 42
+      flag: 1
+"#;
+    let suite = parse_suite(yaml).expect("parse");
+    let report = run_suite(&component, &suite).expect("run");
+    assert_eq!(report.failed, 1, "{report:?}");
+    let case = &report.cases[0];
+    assert_eq!(case.status, CaseStatus::Fail);
+    let joined = case.evidence.join("\n");
+    assert!(
+        joined.contains("record field 'flag'"),
+        "evidence must identify the mismatching field: {joined}"
+    );
+    assert!(
+        joined.contains("bool"),
+        "evidence must name the found type (bool): {joined}"
+    );
+}
+
 #[test]
 fn ac03_record_extra_field_fails_with_evidence() {
     let component = load_component_probe_use_types(&probe_use_types_policy());
@@ -285,6 +367,114 @@ cases:
 }
 
 // ---------- AC-04: StateReader miss fails explicit ------------------------
+
+// IR that chains `kv_get(a) + kv_set(b, 42)` so a miss on the reader
+// poisons the context before the writer runs. Verifies that
+// `StateWriter` does NOT mutate `kv` after a prior miss (AN-020 patch 1,
+// condition 4).
+fn kv_read_then_write_ir() -> serde_json::Value {
+    json!({
+        "ir_version": "0.3",
+        "spec_version": 1,
+        "capabilities": ["kv_store"],
+        "imports": [
+            {
+                "module": "host",
+                "name": "kv_get",
+                "capability": "kv_store",
+                "params": [{"name": "key", "type": "i32"}],
+                "returns": "i32"
+            },
+            {
+                "module": "host",
+                "name": "kv_set",
+                "capability": "kv_store",
+                "params": [
+                    {"name": "key", "type": "i32"},
+                    {"name": "value", "type": "i32"}
+                ],
+                "returns": "i32"
+            }
+        ],
+        "functions": [{
+            "name": "read_then_write",
+            "export": true,
+            "params": [
+                {"name": "a", "type": "i32"},
+                {"name": "b", "type": "i32"}
+            ],
+            "returns": "i32",
+            "requirements": ["TRAP-SUPPRESS-001"],
+            "body": {
+                "op": "add",
+                "left": {
+                    "op": "call_import",
+                    "import": "kv_get",
+                    "args": [{"op": "param", "name": "a"}]
+                },
+                "right": {
+                    "op": "call_import",
+                    "import": "kv_set",
+                    "args": [
+                        {"op": "param", "name": "b"},
+                        {"op": "const", "type": "i32", "value": 42}
+                    ]
+                }
+            }
+        }]
+    })
+}
+
+#[test]
+fn ac04b_statewriter_suppressed_after_reader_miss() {
+    // Policy authorises BOTH host.kv_get and host.kv_set so authorisation
+    // is never the question; the question is whether the writer's effect
+    // is suppressed after the reader miss poisons the context.
+    let mut policy = HostPolicy::deny_all();
+    policy.allow_core("host", "kv_get");
+    policy.allow_core("host", "kv_set");
+    let component = load_core(&kv_read_then_write_ir(), &policy);
+
+    let yaml = r"
+suite: ac04b-suppression
+spec_version: 1
+host_stubs:
+  - interface: host
+    operation: kv_get
+    kind: state_reader
+    key_arg: 0
+  - interface: host
+    operation: kv_set
+    kind: state_writer
+    key_arg: 0
+    value_arg: 1
+cases:
+  - id: miss-then-write
+    function: read_then_write
+    args: [99, 7]
+    expected: 0
+";
+    let suite = parse_suite(yaml).expect("parse");
+    let report = run_suite(&component, &suite).expect("run");
+    assert_eq!(report.errored, 1, "case must end in Error: {report:?}");
+    let case = &report.cases[0];
+    assert_eq!(case.status, CaseStatus::Error);
+
+    // Evidence must mention the first miss and the suppressed writer call.
+    let joined = case.evidence.join("\n");
+    assert!(
+        joined.contains("state_reader 'host.kv_get' miss: key=99"),
+        "evidence must flag the reader miss: {joined}"
+    );
+    assert!(
+        joined.contains("suppressed host call: host.kv_set"),
+        "evidence must mention the suppressed writer call: {joined}"
+    );
+    assert!(
+        joined.contains("[7, 42]"),
+        "evidence must preserve the attempted writer args (key=7, value=42): {joined}"
+    );
+}
 
 #[test]
 fn ac04_state_reader_miss_fails_explicit() {

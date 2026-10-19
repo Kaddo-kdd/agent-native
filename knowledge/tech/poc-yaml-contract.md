@@ -1,7 +1,7 @@
 ---
 title: Contrato YAML AN-020 vs YAML runner POC
 owner: AN-020
-status: baseline-2026-10-18
+status: baseline-2026-10-19 (patch — corrige dirección `import`↔`function`, documenta 3 raíces POC)
 scope: knowledge/tech
 ---
 
@@ -19,20 +19,27 @@ AN-020 y su presencia produce `ExecutorError::InvalidYaml`.
 
 ## Campos idénticos
 
-Nombre y semántica preservados exactamente del POC.
+Nombre y semántica preservados del POC (donde se usan en fixtures POC).
 
-| Campo | Tipo | Semántica |
+| Campo | Tipo | Semántica | Nota |
+|---|---|---|---|
+| `cases` (raíz, mapa) | lista | Lista de casos. | POC también admite otras dos formas de raíz (ver sección "Estructuras-raíz no soportadas"). |
+| `cases[*].id` | string | Identificador del caso. | — |
+| `cases[*].requirement` | string, opcional | Trazabilidad al requerimiento. | — |
+| `cases[*].function` | string | Nombre del export (POC: Core o Component Model; AN-020: `iface#op` para CM, nombre plano para Core). | — |
+| `cases[*].args` | lista de `i32` y/o `bool` | Argumentos del export. POC usa booleans en `public.yaml` (`args: [-1, true]`). | AN-020 restaura `bool` tras la regresión AN-019 que sólo aceptaba `i32`. |
+| `cases[*].host_state.kv` | mapa `i32: i32` | Estado inicial KV. | AN-020: **sólo** `kv:`; otros sub-maps POC rechazados (ver "Omitidos"). |
+| `cases[*].expected` (primitivo) | `i32` | Valor esperado del return. | — |
+| `cases[*].expected` (record) | mapa `string: i32` | Record esperado del return (campos por nombre). | AN-020 compara por nombre + tipo + valor; detecta faltantes y adicionales. |
+| `cases[*].expected_host_calls[*].import` | string | Nombre del import del host llamado (`interface.operation` o `operation` corta). | **Campo canónico del POC**, confirmado en `runner/src/main.rs:53` y en fixtures. AN-019 regresó accidentalmente a `function`; AN-020 restaura. |
+| `cases[*].expected_host_calls[*].args` | lista `i32` | Args esperados en la llamada. | — |
+
+### Campos **exigidos sólo por AN-020** (no obligatorios en POC)
+
+| Campo | Tipo | Comentario |
 |---|---|---|
-| `suite` (raíz) | string | Nombre de la suite para `SuiteReport.suite`. |
-| `spec_version` (raíz) | u32 | Versión del esquema de la suite. |
-| `cases` (raíz) | lista | Lista de casos. |
-| `cases[*].id` | string | Identificador del caso. |
-| `cases[*].requirement` | string, opcional | Trazabilidad al requerimiento. |
-| `cases[*].function` | string | Nombre del export WIT (`iface#op` o Core WASM). |
-| `cases[*].args` | lista de `i32` o `bool` | Argumentos del export. **AN-020**: `bool` añadido (ver sección renombrados). |
-| `cases[*].host_state.kv` | mapa `i32: i32` | Estado inicial KV. **AN-020**: `kv` es el único sub-map (ver sección omitidos). |
-| `cases[*].expected` (primitivo) | `i32` | Valor esperado del return. |
-| `cases[*].expected` (record) | mapa `string: i32` | Record esperado del return (campos por nombre). |
+| `suite` (raíz) | string | **No existe en `parse_cases` del POC** (L341-L352). AN-020 lo hace obligatorio para alimentar `SuiteReport.suite`. |
+| `spec_version` (raíz) | u32 | Idem. AN-020 lo hace obligatorio para versionar el schema. |
 | `cases[*].expected_host_calls` | lista, opcional | Llamadas al host esperadas en orden exacto. |
 | `cases[*].expected_host_calls[*].args` | lista `i32` | Args esperados en la llamada. |
 
@@ -53,21 +60,32 @@ cases:
 
 Nombre o representación cambiada respecto al POC, con regla documentada.
 
-### `expected_host_calls[*].import` (ex `function`)
+### `expected_host_calls[*].import` (campo canónico; `function` fue regresión AN-019)
 
-**POC:** `expected_host_calls[*].function: check_credit`.
+**POC original (`runner/src/main.rs:53`):** `expected_host_calls[*].import: check_credit`.
+Ver fixture `public-003.yaml` y los campos del struct `TestCaseInput`
+en el runner POC: `function: String` identifica el **export** del
+componente, `import: String` dentro de `ExpectedHostCall` identifica el
+**host import**. Los dos campos coexisten con roles distintos.
 
-**AN-020:** el campo canónico es `import`. `function` se acepta como
-**alias temporal** durante la ventana M3 → M4. Declarar ambos a la vez
-en una misma entrada produce `InvalidYaml` con mensaje que menciona
-`both` + `import` + `function`.
+**AN-019 (regresión 2026-10-18):** nombró el campo de la llamada al
+host como `function` en vez de `import`, duplicando el nombre que ya
+se usaba al nivel de case para el export. Esta regresión rompía la
+compatibilidad semántica con el formato POC.
+
+**AN-020 (restaura canónico + alias):** vuelve al nombre POC `import`
+para `expected_host_calls[*]`. `function` se mantiene como **alias
+temporal** sólo para no romper las suites internas migradas desde
+AN-019 durante la ventana M3 → M4. Declarar ambos a la vez en una
+misma entrada produce `InvalidYaml` con mensaje que menciona `both` +
+`import` + `function`.
 
 ```yaml
-# AN-020 canónico:
+# POC original y canónico AN-020:
 - import: host.kv_get
   args: [42]
 
-# Alias POC (equivalente, mientras el alias siga activo):
+# Alias temporal (fixtures AN-019 pre-corrección):
 - function: host.kv_get
   args: [42]
 
@@ -104,15 +122,20 @@ esta regla única:
 - import: '.op'           # interface vacía
 ```
 
-### `args` booleans
+### `args` booleans (restauración tras regresión AN-019)
 
-**POC:** `args: [-1, true]` (ejemplo de `public.yaml`).
+**POC:** `args: [-1, true]` (ejemplo de `public.yaml`). El runner POC
+siempre aceptó booleans de forma nativa.
 
-**AN-020:** `args` acepta `i32` **y** `bool`. Un `bool` se lifting
-automáticamente a `Val::Bool` al invocar el export. Los parámetros
-declarados como `bool` en la IR aceptan `true`/`false`; los declarados
-como `i32` aceptan enteros. Tipos adicionales (strings, floats, enums)
-quedan fuera de AN-020 → INIT-07-02.
+**AN-019 (regresión):** sólo aceptaba `Vec<i32>`, rompiendo las
+fixtures POC con booleans.
+
+**AN-020:** restaura la aceptación nativa de `bool`. `args` acepta
+`i32` **y** `bool`. Un `bool` se lifting automáticamente a `Val::Bool`
+al invocar el export. Los parámetros declarados como `bool` en la IR
+aceptan `true`/`false`; los declarados como `i32` aceptan enteros.
+Tipos adicionales (strings, floats, enums) quedan fuera de AN-020 →
+INIT-07-02.
 
 ```yaml
 cases:
@@ -166,42 +189,64 @@ produce fallo de parse. Destino: **RM-07** si surge demanda.
 
 Formas de raíz que la POC permite y AN-020 **no**.
 
-### Raíz sin `suite` + `spec_version`
+### Tres formas de raíz admitidas por `parse_cases` del POC
 
-**POC:** `narrative-005.yaml` empieza directo con `cases:` (sin `suite`
-ni `spec_version`).
+**POC (`runner/src/main.rs::parse_cases` L341-L352):** el runner acepta
+**tres** estructuras-raíz distintas:
 
-**AN-020:** ambos campos son **obligatorios**. Omitir cualquiera
-produce `InvalidYaml`. Decisión: fail-explicit sobre el schema; las
-fixtures POC narrativas se adaptan con una línea `suite:` + una línea
-`spec_version:` o se clasifican como `aplazado` en la matriz
-`poc-equivalence-matrix.md`.
+1. Mapa con clave `cases:` — la más común (p. ej. `smoke.yaml`,
+   `public.yaml`).
+2. Mapa con clave `acceptance:` que contiene `public:` como lista
+   (ver debajo).
+3. **Secuencia-raíz directa**: el YAML entero es una lista de cases,
+   sin ninguna clave superior (p. ej. `narrative-005.yaml` empieza con
+   `- id: ...`).
+
+Además, en todas tres, los campos `suite:` y `spec_version:` **nunca
+son obligatorios** en el POC: `parse_cases` sólo deserializa la lista
+de cases.
+
+**AN-020:** acepta **sólo** la primera forma — mapa con clave `cases:`
+— y **exige** `suite:` + `spec_version:` como obligatorios. Las otras
+dos formas de raíz producen `InvalidYaml`:
 
 ```yaml
-# Rechazado (sin suite):
+# AN-020 canónico (única forma aceptada):
+suite: nombre
+spec_version: 1
 cases:
   - id: foo
     ...
 
-# Rechazado (sin spec_version):
-suite: my-suite
+# Rechazado — secuencia-raíz al estilo narrative-005.yaml:
+- id: foo
+  function: identity
+  args: [42]
+  expected: 42
+
+# Rechazado — acceptance.public:
+acceptance:
+  public:
+    - id: foo
+      ...
+
+# Rechazado — mapa con cases pero sin suite o sin spec_version:
 cases:
   - id: foo
     ...
 ```
 
-### `acceptance.public` como sección-raíz
+**Justificación:** AN-020 trata al schema del runtime como fuente de
+verdad única. `suite:` sirve a `SuiteReport.suite`; `spec_version:`
+reserva espacio para evoluciones futuras del schema sin ambigüedad.
+Las fixtures POC con raíz distinta (una secuencia-raíz o
+`acceptance.public`) se adaptan añadiendo las dos líneas al principio
+o se clasifican como `aplazado` en la matriz `poc-equivalence-matrix.md`.
 
-**Clarificación documental:** `acceptance.public` **no** es un formato
-de suite del runner POC. El término `acceptance` aparece sólo en el
-*orchestrator* del POC (`crates/orchestrator/src/interpreter.rs` y
-`src/lib.rs`) como campo `acceptance_criteria` de la extracción desde
-markdown. No es una clave YAML del formato de suites del runner, ni
-del AN-020.
-
-AN-020 **no adopta** `acceptance.public` como clave YAML. Si una
-futura fuente de verdad lo requiere, se tratará como un formato
-distinto (no una suite de executor) con WI dedicado.
+**Sobre `acceptance.public`:** es un formato real del runner POC
+(línea 345 de `main.rs`), **no** un invento del orchestrator.
+Reconocer este formato en AN-020 implicaría doble parsing: usar la
+clave `cases:` directamente es equivalente y evita la ambigüedad.
 
 ### Campos desconocidos en raíz, `cases[*]` o `host_state`
 
@@ -220,5 +265,6 @@ documento primero.
 | WI | AN-020 — Cierre técnico M3 |
 | Hallazgo origen | H4 (incompatibilidad YAML real con POC) |
 | Decisiones humanas incorporadas | OQ-01 (import canónico + alias), OQ-02 (sub-maps extra rechazados) |
+| Correcciones AN-020 patch 2026-10-19 | Dirección POC↔AN-019↔AN-020 para `import`/`function` invertida; `acceptance.public` y secuencia-raíz documentadas como formas-raíz reales del POC (ver `_reference/.../runner/src/main.rs:341-352`); `args` booleanos reclasificados como restauración tras regresión AN-019. |
 | ADRs | ADR-004 (fail-explicit) |
 | Destinos de roadmap para omitidos | INIT-07-02 (host state rico), RM-07 (records anidados), M4 (esclusas) |

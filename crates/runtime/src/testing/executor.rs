@@ -122,6 +122,7 @@ fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> 
     let host_ctx = HostCtx {
         kv: case.host_state.kv.clone(),
         calls: Vec::new(),
+        poisoned: false,
         misses: Vec::new(),
     };
     let args: Vec<Val> = case.args.iter().copied().map(arg_to_val).collect();
@@ -144,11 +145,17 @@ fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> 
         }
     };
 
-    if !final_ctx.misses.is_empty() {
+    if final_ctx.poisoned {
         for miss in &final_ctx.misses {
             evidence.push(format!(
                 "state_reader '{}' miss: key={}",
                 miss.import, miss.key
+            ));
+        }
+        for call in final_ctx.calls.iter().filter(|c| c.suppressed) {
+            evidence.push(format!(
+                "suppressed host call: {}({:?})",
+                call.function, call.args
             ));
         }
         return CaseResult {
@@ -272,10 +279,15 @@ fn register_core_stub(
                 operation,
                 move |mut caller: wasmtime::Caller<'_, HostCtx>, arg0: i32| -> i32 {
                     let data = caller.data_mut();
+                    let suppressed = data.poisoned;
                     data.calls.push(RecordedCall {
                         function: name_for_log.clone(),
                         args: vec![arg0],
+                        suppressed,
                     });
+                    if suppressed {
+                        return 0;
+                    }
                     if let Some(v) = data.kv.get(&arg0).copied() {
                         v
                     } else {
@@ -283,6 +295,7 @@ fn register_core_stub(
                             import: name_for_log.clone(),
                             key: arg0,
                         });
+                        data.poisoned = true;
                         0
                     }
                 },
@@ -295,13 +308,18 @@ fn register_core_stub(
                 operation,
                 move |mut caller: wasmtime::Caller<'_, HostCtx>, a0: i32, a1: i32| -> i32 {
                     let data = caller.data_mut();
+                    let suppressed = data.poisoned;
                     let args_vec = vec![a0, a1];
                     let key = args_vec[key_arg];
                     let value = args_vec[value_arg];
                     data.calls.push(RecordedCall {
                         function: name_for_log.clone(),
                         args: args_vec,
+                        suppressed,
                     });
+                    if suppressed {
+                        return 0;
+                    }
                     data.kv.insert(key, value);
                     value
                 },
@@ -313,11 +331,14 @@ fn register_core_stub(
                 interface,
                 operation,
                 move |mut caller: wasmtime::Caller<'_, HostCtx>| -> i32 {
-                    caller.data_mut().calls.push(RecordedCall {
+                    let data = caller.data_mut();
+                    let suppressed = data.poisoned;
+                    data.calls.push(RecordedCall {
                         function: name_for_log.clone(),
                         args: Vec::new(),
+                        suppressed,
                     });
-                    returns
+                    if suppressed { 0 } else { returns }
                 },
             )?;
         }

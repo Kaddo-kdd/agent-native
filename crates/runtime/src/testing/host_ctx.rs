@@ -14,18 +14,31 @@ pub struct HostCtx {
     /// Key-value state read/written by `StateReader` / `StateWriter`
     /// stubs. Keys and values are `i32` only in MVP (OQ-06).
     pub kv: BTreeMap<i32, i32>,
-    /// Append-only log of host calls, in invocation order.
+    /// Append-only log of host calls, in invocation order. Each entry
+    /// carries `suppressed = true` when the stub recorded the attempted
+    /// call but did not execute its effect because the context was
+    /// already poisoned (AN-020 patch 1 condition 3).
     pub calls: Vec<RecordedCall>,
-    /// AN-020 H3: when a `StateReader` is called with a key missing
-    /// from `kv`, the stub records the miss here instead of silently
-    /// returning 0. The executor converts a non-empty `misses` into a
-    /// `CaseStatus::Error` with evidence that names each key, matching
-    /// the fail-explicit contract of ADR-004.
+    /// AN-020 patch 1 (D1 option A): the first `StateReader` miss sets
+    /// `poisoned = true`. Subsequent stubs consult this flag before
+    /// executing: `StateWriter` must not mutate `kv`; `Noop` must not
+    /// contribute its nominal return effect. The executor enforces
+    /// `CaseStatus::Error` on any case that ends with
+    /// `poisoned == true`, even if the guest produces an apparently
+    /// correct result. Observed effect: later host-side effects are
+    /// suppressed; the guest itself may continue computing with a
+    /// provisional `0` until the invocation returns.
     ///
-    /// Why this and not an `Err` from the closure: on Windows + wasmtime
-    /// 27 the setjmp/longjmp trap path triggers a `STATUS_STACK_BUFFER_OVERRUN`
-    /// fast-fail in debug builds. Flagging the miss in `HostCtx` keeps
-    /// the behaviour observable, deterministic and portable.
+    /// We **do not** claim this is a Wasmtime trap. Returning
+    /// `Result::Err` from a `Linker::func_wrap` closure was observed to
+    /// crash the test process on Windows with wasmtime 27
+    /// (`STATUS_STACK_BUFFER_OVERRUN` from the `setjmp`/`longjmp` trap
+    /// path interacting with the `extern "C"` trampoline). That is a
+    /// recorded experimental finding, not a universally proven root
+    /// cause; safe propagation of host-function errors remains a
+    /// post-M3 investigation.
+    pub poisoned: bool,
+    /// List of recorded misses (first entry triggers `poisoned`).
     pub misses: Vec<ReaderMiss>,
 }
 
@@ -37,9 +50,12 @@ pub struct ReaderMiss {
 }
 
 /// A single host call recorded for later comparison against
-/// `expected_host_calls`.
+/// `expected_host_calls`. `suppressed` is `true` when the stub
+/// executed its intake side (log the call) but skipped its effect
+/// side because `HostCtx::poisoned` was already `true`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecordedCall {
     pub function: String,
     pub args: Vec<i32>,
+    pub suppressed: bool,
 }
