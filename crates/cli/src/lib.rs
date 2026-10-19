@@ -7,5 +7,11 @@
 //! until extraction criteria of ADR-001 §Decision are met.
 
 pub mod agent;
+pub mod cli;
+pub mod commands;
+pub mod output;
 pub mod publish;
 pub mod spec;
+
+pub use cli::{Cli, Commands, dispatch, run, run_with_args};
+pub use output::{CliExitCode, OutputFormat};

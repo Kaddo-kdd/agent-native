@@ -148,3 +148,63 @@ impl SystemSpec {
         self.requirements.iter().find(|r| r.id == id)
     }
 }
+
+fn to_kebab_case(s: &str) -> String {
+    let mut out = String::new();
+    for (i, ch) in s.chars().enumerate() {
+        if ch.is_ascii_uppercase() {
+            if i > 0 && !out.ends_with('-') {
+                out.push('-');
+            }
+            out.push(ch.to_ascii_lowercase());
+        } else if ch == '_' {
+            out.push('-');
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
+/// Synthesizes a valid WIT interface definition for a component from a `SystemSpec`.
+#[must_use]
+pub fn generate_wit_for_component(spec: &SystemSpec, comp_id: &str) -> String {
+    let mut s = String::new();
+    s.push_str("package an:synthesized@0.1.0;\n\n");
+    let comp = spec.find_component(comp_id);
+    let world_name = to_kebab_case(comp.map_or(comp_id, |c| c.id.as_str()));
+    let iface_name = comp
+        .and_then(|c| c.export_interfaces.first().map(String::as_str))
+        .map_or_else(|| "ops".to_string(), to_kebab_case);
+
+    s.push_str(&format!("interface {iface_name} {{\n"));
+    for entity in &spec.entities {
+        let rec_name = to_kebab_case(&entity.name);
+        s.push_str(&format!("    record {rec_name} {{\n"));
+        for field in &entity.fields {
+            let fname = to_kebab_case(&field.name);
+            let ftype = to_kebab_case(&field.field_type).replace("i32", "s32");
+            s.push_str(&format!("        {fname}: {ftype},\n"));
+        }
+        s.push_str("    }\n");
+    }
+    for op in spec.operations.iter().filter(|o| o.component == comp_id) {
+        let op_name = to_kebab_case(&op.name);
+        s.push_str(&format!("    {op_name}: func("));
+        for (i, p) in op.params.iter().enumerate() {
+            if i > 0 {
+                s.push_str(", ");
+            }
+            let pname = to_kebab_case(&p.name);
+            let ptype = to_kebab_case(&p.param_type).replace("i32", "s32");
+            s.push_str(&format!("{pname}: {ptype}"));
+        }
+        let ret_type = to_kebab_case(&op.returns).replace("i32", "s32");
+        s.push_str(&format!(") -> {ret_type};\n"));
+    }
+    s.push_str("}\n\n");
+    s.push_str(&format!(
+        "world {world_name} {{\n    export {iface_name};\n}}\n"
+    ));
+    s
+}

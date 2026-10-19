@@ -548,10 +548,13 @@ Hace el runtime autónomo, con los controles mínimos de seguridad y una línea 
 ### RM-04 — Specification, Agents & Build Pipeline
 
 Cierra el flujo "requisito → componente publicado". La publicación atómica vive aquí, no en el compiler.
+**Cierre de Bloque (Decisión D1 - Opción A, 2026-10-19):** Completado a nivel de arquitectura, especificaciones, compilación y publicación. Las garantías de generación operan determinísticamente bajo `fixtures` y `synthesizer`. El modo `real` (`HttpLlmProvider`) permanece como stub de interfaz sin transporte HTTP activo en M4; su transporte y validación E2E se gestionan en un Work Item dedicado previo a cualquier distribución que anuncie IA.
 
 #### INIT-04-01: Intérprete narrativa Markdown → `SystemSpec`
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** **completed 2026-10-19** · **Priority:** medium · **K3**
+
+**Materialized as:** AN-023
 
 **Related domain:** Specification & Knowledge Ingestion
 
@@ -561,17 +564,15 @@ Cierra el flujo "requisito → componente publicado". La publicación atómica v
 
 **Dependencies:** INIT-01-03.
 
-**Notes:** vive en la capa de orquestación. Puede permanecer en el bin `cli` o en un crate `orchestrator` cuando se extraiga según ADR-001.
-
-**Suggested Work Items:**
-- WI-CANDIDATE-04-01-01: parser de narrativa (`feature`)
-- WI-CANDIDATE-04-01-02: `SystemSpec` serializable (`feature`)
+**Notes:** vive en la capa de orquestación (`crates/cli/src/spec/`). Parser de narrativa con frontmatter YAML, tipos, invariantes y escenarios de prueba que produce un `SystemSpec` canónico serializable.
 
 ---
 
 #### INIT-04-02: Adaptador LLM pluggable y modos de generación
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** **completed 2026-10-19** · **Priority:** medium · **K3**
+
+**Materialized as:** AN-024
 
 **Related domain:** Specification & Knowledge Ingestion, LLM-driven Implementation
 
@@ -580,25 +581,23 @@ Cierra el flujo "requisito → componente publicado". La publicación atómica v
 **Source signals:** Risk R-12 (confundir offline con capacidad generativa); ADR-003.
 
 **Problem / opportunity:** separar explícitamente tres modos:
-- **real:** proveedor LLM (p. ej. Anthropic/OpenAI), no determinista, bajo secretos CI.
-- **fixtures:** respuestas pregrabadas para regresión reproducible. **No equivalente** a generación real.
-- **synthesizer:** sintetizador determinista basado en reglas. **No equivalente** a generación real.
+- **real:** proveedor LLM (`HttpLlmProvider`), con validación de API key, endpoint y prompts estructurados con esquema v0.5. **En M4 no incluye transporte HTTP funcional** (falla explícitamente con `AgentError::Http` para entornos offline). No es una capacidad generativa verificada hasta contar con transporte real y pruebas E2E.
+- **fixtures:** respuestas pregrabadas para regresión reproducible. **No equivalente** a generación real. (100% verificado en CI offline).
+- **synthesizer:** sintetizador determinista basado en reglas para generación estructural sin red. **No equivalente** a generación real. (100% verificado en CI offline).
 
 Los dos últimos **no deben presentarse** como la capacidad generativa del agente.
 
 **Dependencies:** INIT-04-01, INIT-02-01.
 
-**Suggested Work Items:**
-- WI-CANDIDATE-04-02-01: trait `LlmProvider` (`feature`)
-- WI-CANDIDATE-04-02-02: provider real (`feature`)
-- WI-CANDIDATE-04-02-03: sintetizador determinista + fixtures (`feature`)
-- WI-CANDIDATE-04-02-04: documentar garantías de cada modo (`chore`)
+**Follow-up Work Item:** WI-CANDIDATE-05-04 (transporte HTTP simulado + validación E2E opt-in del proveedor real antes de distribución pública con IA).
 
 ---
 
 #### INIT-04-03: Evolución incremental de especificaciones
 
-**Status:** candidate · **Priority:** high · **K4**
+**Status:** **completed 2026-10-19** · **Priority:** high · **K4**
+
+**Materialized as:** AN-025
 
 **Related domain:** Specification & Knowledge Ingestion, Validation & Evolution
 
@@ -608,22 +607,17 @@ Los dos últimos **no deben presentarse** como la capacidad generativa del agent
 
 **Problem / opportunity:** reconciliar un nuevo Work Item funcional con la versión anterior preservando el comportamiento acumulativo; detectar regresión antes de publicar.
 
-**Expected value:** demostración de evolución reproducible v1→v2 (5+5 pruebas POC esclusas).
+**Expected value:** demostración de evolución reproducible v1→v2 (5+5 pruebas POC esclusas) mediante reconciliador monotónico de `SystemSpec` y cálculo exhaustivo de `SpecDiff`.
 
 **Dependencies:** INIT-04-02.
-
-**Notes:** **no** incluye publicación atómica (vive en INIT-04-05).
-
-**Suggested Work Items:**
-- WI-CANDIDATE-04-03-01: reconciliador de `SystemSpec` v_n → v_{n+1} (`feature`)
-- WI-CANDIDATE-04-03-02: detección de regresión integral pre-publicación (`feature`)
-- WI-CANDIDATE-04-03-03: migración del escenario esclusas v1/v2 (`chore`)
 
 ---
 
 #### INIT-04-05: Publicación atómica, versionamiento e integridad
 
-**Status:** candidate · **Priority:** high · **K4**
+**Status:** **completed 2026-10-19** · **Priority:** high · **K4**
+
+**Materialized as:** AN-026
 
 **Related domain:** Validation & Evolution, Distribution & DX
 
@@ -631,50 +625,40 @@ Los dos últimos **no deben presentarse** como la capacidad generativa del agent
 
 **Source signals:** ADR-001 (publicación fuera del compiler); POC — publicación atómica validada.
 
-**Problem / opportunity:** store de artefactos (filesystem local en MVP, D-02 aprobado), manifiestos versionados, hash SHA-256, puntero activo, preservación de la versión anterior y rollback atómico.
+**Problem / opportunity:** store de artefactos (filesystem local en MVP, D-02 aprobado), manifiestos versionados, hash SHA-256, puntero activo (`active.json`), preservación de la versión anterior y rollback atómico ante fallos en staging.
 
 **Expected value:** separación limpia compiler ↔ publicación; auditabilidad por manifiesto.
 
 **Dependencies:** INIT-02-04 (hash determinista), INIT-04-03 (evolución integrada).
 
-**Notes:** implementación inicial dentro de la capa de orquestación. No se crea un crate adicional sin justificación — se evalúa en RM-04 según ADR-001.
-
-**Suggested Work Items:**
-- WI-CANDIDATE-04-05-01: store de artefactos filesystem (`feature`)
-- WI-CANDIDATE-04-05-02: manifiesto versionado + puntero activo (`feature`)
-- WI-CANDIDATE-04-05-03: rollback atómico ante fallo (`feature`)
-- WI-CANDIDATE-04-05-04: lint CI "compiler no referencia store" (`chore`)
-
-**Not now:** OCI/registry remoto; firma (va en RM-05/06).
-
 ---
 
 #### INIT-04-04: Trazabilidad artefacto ↔ Work Item / Spec
 
-**Status:** candidate · **Priority:** low · **K2**
+**Status:** **completed 2026-10-19** · **Priority:** low · **K2**
+
+**Materialized as:** AN-027
 
 **Related domain:** Validation & Evolution
 
 **Source signals:** Business Goal — decisiones basadas en evidencia; principio de trazabilidad.
 
-**Problem / opportunity:** campos `source_wi`, `source_spec_hash` en el manifiesto permiten reconstruir origen sin ejecutar Kaddo.
+**Problem / opportunity:** campos `source_wi`, `source_spec_hash`, `source_git_commit` en el manifiesto permiten reconstruir origen determinista sin ejecutar Kaddo ni dependencias externas.
 
 **Dependencies:** INIT-04-05.
-
-**Notes:** No introduce dependencia obligatoria hacia Kaddo.
-
-**Suggested Work Items:**
-- WI-CANDIDATE-04-04-01: metadatos de origen en manifiesto (`feature`)
 
 ---
 
 ### RM-05 — Standalone CLI & Runtime API
 
 Convierte el pipeline interno en herramienta distribuible.
+**Restricción de Identidad (Decisión D3, 2026-10-19):** Se mantiene temporalmente el nombre interno `agent-native` en crates, binarios y rutas internas. Queda congelada toda publicación en crates.io, release público con branding definitivo y cambios de nombres de paquetes hasta recibir decisión humana de identidad.
 
 #### INIT-05-01: Bin `cli` con `build/verify/test/run/publish`
 
 **Status:** candidate · **Priority:** high · **K3**
+
+**Materialized as:** AN-028 (en preparación)
 
 **Related domain:** Distribution & DX
 
@@ -684,12 +668,10 @@ Convierte el pipeline interno en herramienta distribuible.
 
 **Dependencies:** INIT-03-03, INIT-04-05.
 
-**Notes:** salidas estructuradas opcionales (`--format=json`); suites automatizadas no deben parsear texto humano.
+**Notes:** interfaz basada en `clap`; lógica de dominio delegada a crates/módulos internos; soporte de salidas `--format=human` y `--format=json`; códigos de salida estandarizados y pruebas E2E desde procesos independientes.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-05-01-01: skeleton `clap` (`feature`)
-- WI-CANDIDATE-05-01-02: subcomandos `build/verify/test/run/publish` (`feature`, uno por subcomando)
-- WI-CANDIDATE-05-01-03: output JSON opcional (`feature`)
+- WI-CANDIDATE-05-01-01: parser `clap`, contratos de subcomandos y salidas estructuradas (`feature`, AN-028).
 
 ---
 
@@ -701,13 +683,15 @@ Convierte el pipeline interno en herramienta distribuible.
 
 **Related capabilities:** Independent Runtime Execution (dimensión embeber)
 
-**Source signals:** Objetivo arquitectónico — runtime embebible.
+**Source signals:** Objetivo arquitectónico — runtime embebible sin toolchain.
 
-**Dependencies:** INIT-03-01.
+**Dependencies:** INIT-03-01. (Independiente de AN-028 per Decisión D5).
+
+**Notes:** estabilizar las interfaces existentes (`Engine`, `Component`, `Val`, `RuntimeError`, `HostPolicy`) en `agent-native-runtime` sin crear tipos abstractos artificiales. AN-021 y AN-022 proveen evidencia de integración, sin cerrar automáticamente esta iniciativa.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-05-02-01: curar API pública del runtime (`chore`)
-- WI-CANDIDATE-05-02-02: ejemplo `embed_runtime` (`feature`)
+- WI-CANDIDATE-05-02-01: estabilización y curación de la API pública existente (`chore`, AN-029).
+- WI-CANDIDATE-05-02-02: ejemplo canónico de consumo externo `examples/embed_runtime.rs` (`feature`, AN-030).
 
 ---
 
@@ -719,16 +703,32 @@ Convierte el pipeline interno en herramienta distribuible.
 
 **Source signals:** A3 (objetivo); D-04 diferido hasta este bloque.
 
-**Problem / opportunity:** release candidate v0.1.0 descargable en los 3 triples objetivo. Empaquetado, firma, publicación y verificación se formalizan **vía ADR dedicada** en este bloque (no antes).
+**Problem / opportunity:** empaquetado, firma, publicación y verificación formalizados vía ADR dedicada; compilación multi-target sin dependencias artificiales.
 
-**Dependencies:** INIT-05-01.
+**Dependencies:** INIT-05-01 (binario CLI) e INIT-05-03-01 (ADR de firma).
 
-**Notes:** la elección entre minisign y cosign se difiere hasta este bloque; INIT-06-04 depende del formato definido aquí.
+**Notes:** La ADR de empaquetado y firma es independiente de AN-028 per Decisión D5.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-05-03-01: redactar ADR de empaquetado/firma (`chore`)
-- WI-CANDIDATE-05-03-02: configurar pipeline de release (`chore`)
-- WI-CANDIDATE-05-03-03: documentar verificación de firma por el usuario (`chore`)
+- WI-CANDIDATE-05-03-01: ADR de empaquetado, firma y verificación (`chore`, AN-031).
+- WI-CANDIDATE-05-03-02: pipeline multi-target CI (`chore`, AN-032).
+
+---
+
+#### INIT-05-04: Adaptador HTTP y validación E2E del proveedor LLM real
+
+**Status:** candidate · **Priority:** medium · **K3**
+
+**Related domain:** Specification & Knowledge Ingestion, LLM-driven Implementation
+
+**Source signals:** Decisión humana D1 (cierre honesto M4, seguimiento de R-12).
+
+**Problem / opportunity:** completar `HttpLlmProvider` con transporte HTTP simulado (cassettes/mocks) para CI offline y suite de validación E2E opt-in con secretos reales.
+
+**Dependencies:** INIT-04-02.
+
+**Suggested Work Items:**
+- WI-CANDIDATE-05-04-01: cliente HTTP real, transporte mockeable y validación E2E opt-in (`feature`).
 
 ---
 

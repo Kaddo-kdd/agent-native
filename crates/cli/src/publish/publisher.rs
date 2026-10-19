@@ -176,6 +176,15 @@ pub fn build_and_publish_components_with_options<P: LlmProvider>(
 
         // Compile IR to WASM Component Model
         let wasm_bytes = compile_ir_to_wasm_with_context(&proposed_ir, &compile_context)
+            .or_else(|diags| {
+                let staging_wit = temp_staging.join("wit");
+                let _ = std::fs::create_dir_all(&staging_wit);
+                let fallback_file = staging_wit.join(format!("{comp_id}.wit"));
+                let content = crate::spec::generate_wit_for_component(spec, comp_id);
+                let _ = std::fs::write(&fallback_file, content);
+                let fallback_ctx = CompileContext::new(&temp_staging);
+                compile_ir_to_wasm_with_context(&proposed_ir, &fallback_ctx).map_err(|_| diags)
+            })
             .map_err(|diags| PublishError::Compilation(comp_id.clone(), format!("{diags:?}")))?;
 
         let staged_wasm_path = temp_staging.join(format!("{comp_id}.wasm"));

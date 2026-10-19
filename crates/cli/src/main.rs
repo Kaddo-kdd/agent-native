@@ -1,13 +1,14 @@
-//! Agent-Native CLI entry point.
+//! Agent-Native CLI binary entry point.
 //!
 //! Per ADR-001, this binary wires together the public APIs of
 //! `agent-native-ir`, `agent-native-compiler` and `agent-native-runtime`;
 //! it never concentrates domain logic. Orchestration (narrative → spec,
-//! LLM adapter, publishing) lives here as internal modules until the
-//! extraction criteria of ADR-001 §Decision are met.
+//! LLM adapter, publishing) lives as internal modules.
 //!
-//! Subcommands are materialized by INIT-05-01.
+//! Subcommands are materialized by INIT-05-01 / AN-028.
 
-fn main() {
-    println!("agent-native CLI — scaffolding (see roadmap INIT-05-01)");
+use std::process::ExitCode;
+
+fn main() -> ExitCode {
+    agent_native::run().into()
 }

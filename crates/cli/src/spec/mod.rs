@@ -9,6 +9,6 @@ pub use error::SpecError;
 pub use interpreter::{MarkdownRequirementsInterpreter, RequirementsInterpreter};
 pub use model::{
     ComponentSpec, EntityField, EntitySpec, OperationParam, OperationSpec, RequirementSource,
-    RequirementSpec, SpecMetadata, SystemSpec,
+    RequirementSpec, SpecMetadata, SystemSpec, generate_wit_for_component,
 };
 pub use reconciler::reconcile_spec;

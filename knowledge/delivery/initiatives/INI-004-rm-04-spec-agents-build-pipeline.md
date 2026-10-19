@@ -92,4 +92,10 @@ Ver `candidates:`.
 
 ## Learning
 
-_Pendiente._
+- **Arquitectura vs. Transporte Real (Decisión D1 - Opción A, 2026-10-19):** RM-04 cierra formalmente su objetivo arquitectónico al desacoplar el flujo completo "requisito Markdown → `SystemSpec` → generación de IR → validación y compilación Wasm → publicación atómica versionada con trazabilidad".
+- **Garantías Verificadas vs. Brechas Técnicas (Riesgo R-12):**
+  - **`fixtures`:** 100% determinista, mapeo estricto fixture ↔ componente para reproducibilidad total en CI offline sin secretos.
+  - **`synthesizer`:** 100% determinista, generación estructural válida basada en reglas sin dependencias de red, utilizada para verificar compilación y publicación.
+  - **`real` (`HttpLlmProvider`):** Implementa el contrato de interfaz, validación de API key (`AGENT_NATIVE_LLM_KEY`), endpoints configurables y construcción estructurada de prompts de sistema (esquema Semantic IR v0.5) y usuario (requerimientos + invariantes + diagnósticos de compilador). **Limitación:** En M4 no cuenta con transporte HTTP activo; retorna explícitamente `AgentError::Http` para entornos offline. **No es una capacidad operativa verificada** de generación mediante LLM externo.
+- **Seguimiento del Proveedor Real:** Se define un Work Item candidato futuro (`WI-CANDIDATE-05-04: Adaptador HTTP y validación E2E de LLM real`) para incorporar transporte HTTP simulado (cassettes/mocks) y validación E2E opt-in con secretos reales, el cual debe completarse y verificarse antes de cualquier anuncio público de generación asistida por IA.
+

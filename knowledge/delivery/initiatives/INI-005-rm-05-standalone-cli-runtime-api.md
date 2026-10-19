@@ -22,6 +22,7 @@ candidates:
   - id: INIT-05-01
     title: Bin `cli` con build/verify/test/run/publish
     status: candidate
+    materialized_as: AN-028
   - id: INIT-05-02
     title: API pública reutilizable del runtime
     status: candidate
