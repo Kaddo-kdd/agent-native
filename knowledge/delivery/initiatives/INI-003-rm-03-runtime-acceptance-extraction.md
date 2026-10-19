@@ -153,3 +153,89 @@ AN-020 **no**:
 La decisión final sobre los 3 criterios con `requiere-decisión-humana`
 queda explícitamente para una revisión humana separada, posterior a la
 revisión de los entregables de AN-020.
+
+---
+
+## Resolución humana 2026-10-19 — Criterios de salida de M3 reformulados
+
+**Contexto.** Tras revisar la matriz POC re-evaluada y el append AN-020,
+el usuario tomó las tres decisiones humanas pendientes. Estas
+decisiones **modifican formalmente los criterios de salida aplicables
+a M3**; **no** declaran cumplidos los criterios originales 1, 3 y 4
+tal como estaban redactados en las líneas 75-83 de este fichero.
+
+Los 5 criterios originales se conservan **sin edición** en su sección
+`Success Criteria` arriba, con fines de trazabilidad histórica. La
+declaración formal de M3 — cuando se autorice — se evaluará contra los
+**Criterios M3 consolidados** enumerados más abajo, no contra los
+originales en su forma literal.
+
+Las decisiones **no abren** nuevos Work Items. Lo diferido se atiende
+a través de las iniciativas de roadmap ya existentes.
+
+### Decisiones humanas y trazabilidad
+
+| # | Criterio INI-003 original (textual, L75-L83) | Decisión humana (2026-10-19) | Criterio M3 reformulado | Iniciativa que atiende lo diferido |
+|---|---|---|---|---|
+| 1 | "Las 10 pruebas `runner` de la POC se reproducen verdes en el nuevo repo." | **D1 — Opción A**: aceptar la matriz de equivalencia con 3 `equivalencia-exacta` + 3 `cobertura-parcial` + 4 `aplazado`. **No** afirmar que las 10 pruebas originales fueron reproducidas. | **M3-CRIT-1**: la matriz `knowledge/tech/poc-equivalence-matrix.md` publica la cobertura regresiva con 3 grados verificables; cada fila lleva evidencia identificable (test, path o commit) y cada `aplazado` lleva destino de roadmap específico. **No se afirma reproducción literal de las 10 pruebas**. | Filas `cobertura-parcial`: expansión de regresión (RM-04/06). Filas `aplazado`: RM-07 (composición multi-componente), INIT-06-01 + INIT-07-02 (host provider + host state rico), M4 (esclusas v1→v2 integrales). |
+| 2 | "Imports no autorizados y capabilities faltantes producen `RuntimeError` tipado — nunca `0`/`false` por defecto." | **Sin decisión humana requerida** — ya `cerrable-con-evidencia`. | **M3-CRIT-2**: AN-015 (`core_results_to_component` sin fallback silencioso), AN-019 `UnauthorizedImport`, AN-020 H3 (`StateReader` miss → `CaseStatus::Error` con evidencia específica). `grep -c "unwrap_or(0)" crates/runtime/src/testing/executor.rs` → 0. | — |
+| 3 | "Deny-by-default verificado: capability no listada en el manifiesto falla al cargar." | **D2 — Opción C**: diferir la validación manifest-driven a INIT-06-01. Mantener la autorización obligatoria **antes de instanciar y ejecutar** el componente; **no** trasladar el check a `load_component` (modificaría el contrato de carga sin aportar una mejora clara de seguridad). | **M3-CRIT-3**: el runtime hace deny-by-default pre-instantiate: cualquier componente con imports no autorizados por `HostPolicy` falla con `RuntimeError::UnauthorizedImport` **antes de ejecutar guest code**. Verificado por 3 tests independientes a nivel core, WIT interface y WIT operation (`host_errors.rs`, `wit_policy.rs`, `executor_yaml.rs::negative_import_not_authorized_fails_pre_instantiate`). | Validación manifest-driven al cargar → **INIT-06-01** (policy loader + capability tokens). |
+| 4 | "Línea base técnica publicada en `knowledge/tech/baselines/` con cold start, warm invocation y memoria por instancia." | **D3 — Opción A**: diferir la medición de memoria por instancia a INIT-06-02. Conservar la línea base de latencia actual y documentar explícitamente que la memoria todavía no se ha medido. | **M3-CRIT-4**: `knowledge/tech/baselines/runtime-baseline.md` publica cold start, warm invocation y cache-hit por path (AN-012/17). Memoria por instancia **explícitamente diferida** y documentada como no medida en M3. | Memoria por instancia → **INIT-06-02** (fuel + instance limits + `ResourceLimiter`). |
+| 5 | "Lint CI verifica que `runtime` no depende de `compiler` ni del LLM." | **Sin decisión humana requerida** — ya `cerrable-con-evidencia`. | **M3-CRIT-5**: `.github/workflows/ci.yml` ejecuta el paso explícito "Enforce ADR-002 (runtime does not depend on compiler)" en 3 OS (verificado en CI de `12e3a74`). | — |
+
+Criterios adicionales derivados del alcance real demostrado por
+AN-019 + AN-020, incorporados a M3:
+
+| # | Criterio M3 adicional | Evidencia |
+|---|---|---|
+| 6 | **M3-CRIT-6** — El executor YAML ejecuta Core WASM y Component Model (ambos payload-paths del runtime). | `crates/runtime/tests/executor_yaml.rs::regression_smoke_suite_passes` (Core) + `::ac01_component_model_without_functional_imports_runs_via_invoke` (CM). |
+| 7 | **M3-CRIT-7** — Contrato YAML normativo publicado para el executor. | `knowledge/tech/poc-yaml-contract.md` con las 4 secciones; `deny_unknown_fields` enforcement en código. |
+
+### Criterios M3 consolidados (aplicables a la declaración)
+
+La declaración formal de M3 — cuando se autorice — exige **y sólo
+exige**:
+
+1. **M3-CRIT-1** — matriz POC publicada con 3 grados verificables, cada
+   fila con evidencia y cada aplazamiento con destino.
+2. **M3-CRIT-2** — fail-explicit en runtime (sin fallback silencioso),
+   verificable con `grep` + tests.
+3. **M3-CRIT-3** — deny-by-default pre-instantiate (3 niveles: core,
+   WIT interface, WIT operation), verificable con 3 tests
+   independientes.
+4. **M3-CRIT-4** — línea base latencia publicada con cold/warm/cache-hit;
+   memoria por instancia documentada como diferida.
+5. **M3-CRIT-5** — paso explícito en CI que verifica ADR-002.
+6. **M3-CRIT-6** — executor YAML ejecuta Core WASM y Component Model.
+7. **M3-CRIT-7** — contrato YAML normativo publicado.
+
+### Enunciado consolidado de M3
+
+**M3 certifica un runtime independiente capaz de ejecutar componentes
+Core WASM y Component Model (dentro del alcance soportado), con
+políticas explícitas de deny-by-default, errores tipados sin fallbacks
+silenciosos, línea base de latencia publicada y pruebas de aceptación
+YAML con contrato normativo documentado.**
+
+Memoria por instancia y validación manifest-driven al cargar son
+capacidades **declaradas fuera del alcance de M3** y asignadas a
+INIT-06-02 e INIT-06-01 respectivamente.
+
+### Lo que esta resolución **no** hace
+
+- No declara INI-003 completada ni cambia su campo `status` (sigue
+  `in-progress` hasta la autorización explícita del cierre).
+- No declara M3 alcanzado.
+- No modifica los 5 criterios originales en su sección `Success
+  Criteria` (siguen literalmente iguales con fines de trazabilidad
+  histórica).
+- No abre AN-021 ni ningún otro Work Item nuevo.
+
+### Pendiente antes del cierre formal de INI-003 y declaración de M3
+
+1. Revisión humana del estado final de AN-020 y la evidencia
+   consolidada en este fichero.
+2. Autorización explícita para cambiar `status: in-progress` →
+   `status: completed` en el frontmatter de INI-003.
+3. Autorización explícita para declarar el hito M3 (y, si procede,
+   actualizar `knowledge/delivery/roadmap.md` / `current-state.md`).
