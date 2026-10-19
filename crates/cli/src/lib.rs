@@ -7,4 +7,5 @@
 //! until extraction criteria of ADR-001 §Decision are met.
 
 pub mod agent;
+pub mod publish;
 pub mod spec;

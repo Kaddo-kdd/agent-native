@@ -36,7 +36,8 @@ candidates:
     materialized_as: AN-025
   - id: INIT-04-05
     title: 'Publicación atómica, versionamiento e integridad'
-    status: candidate
+    status: completed
+    materialized_as: AN-026
   - id: INIT-04-04
     title: Trazabilidad artefacto ↔ Work Item / Spec
     status: candidate
