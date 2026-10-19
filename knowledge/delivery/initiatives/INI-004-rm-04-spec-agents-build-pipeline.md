@@ -1,7 +1,7 @@
 ---
 type: initiative
 id: INI-004
-title: RM-04 — Specification, Agents & Build Pipeline
+title: 'RM-04 — Specification, Agents & Build Pipeline'
 status: planned
 knowledge_level: K4
 domains:
@@ -24,7 +24,8 @@ external_links:
 candidates:
   - id: INIT-04-01
     title: Intérprete narrativa Markdown → SystemSpec
-    status: candidate
+    status: completed
+    materialized_as: AN-023
   - id: INIT-04-02
     title: Adaptador LLM pluggable y modos de generación
     status: candidate
@@ -32,7 +33,7 @@ candidates:
     title: Evolución incremental de especificaciones
     status: candidate
   - id: INIT-04-05
-    title: Publicación atómica, versionamiento e integridad
+    title: 'Publicación atómica, versionamiento e integridad'
     status: candidate
   - id: INIT-04-04
     title: Trazabilidad artefacto ↔ Work Item / Spec
