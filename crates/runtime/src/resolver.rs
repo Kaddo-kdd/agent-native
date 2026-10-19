@@ -26,6 +26,14 @@ pub struct Resolver {
     cache: HashMap<[u8; 32], CachedPayload>,
 }
 
+impl std::fmt::Debug for Resolver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Resolver")
+            .field("cached_count", &self.cached_count())
+            .finish()
+    }
+}
+
 #[derive(Clone)]
 enum CachedPayload {
     Component(WtComponent),

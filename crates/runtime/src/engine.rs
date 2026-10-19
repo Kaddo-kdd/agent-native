@@ -16,8 +16,15 @@ use crate::policy::HostPolicy;
 
 /// A reusable Wasmtime engine configured for Component Model execution and
 /// Core WASM module loading.
+#[derive(Clone)]
 pub struct Engine {
     inner: wasmtime::Engine,
+}
+
+impl std::fmt::Debug for Engine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Engine").finish_non_exhaustive()
+    }
 }
 
 impl Engine {
@@ -92,6 +99,16 @@ pub struct Component {
     pub(crate) policy: HostPolicy,
 }
 
+impl std::fmt::Debug for Component {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Component")
+            .field("is_core_module", &self.is_core_module())
+            .field("is_component_model", &self.is_component_model())
+            .field("policy", &self.policy)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Component {
     /// Returns `true` when the loaded artifact is a Core WASM module,
     /// `false` for a Component Model artifact. Lets callers pick the
@@ -99,6 +116,18 @@ impl Component {
     #[must_use]
     pub fn is_core_module(&self) -> bool {
         matches!(self.payload, Payload::Module(_))
+    }
+
+    /// Returns `true` when the loaded artifact is a WebAssembly Component Model artifact.
+    #[must_use]
+    pub fn is_component_model(&self) -> bool {
+        matches!(self.payload, Payload::Component(_))
+    }
+
+    /// Returns a reference to the [`HostPolicy`] governing this component.
+    #[must_use]
+    pub fn policy(&self) -> &HostPolicy {
+        &self.policy
     }
 }
 
