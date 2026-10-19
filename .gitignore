@@ -5,7 +5,7 @@
 /_reference/
 
 # Rust / Cargo (preparado para INIT-01-01)
-/target/
+target/
 # Cargo.lock se commitea: el workspace tiene un binary (agent-native) y
 # necesita resolución reproducible en CI y para release pipeline (RM-05).
 

@@ -1,0 +1,7 @@
+{
+  "operation": "make-point-sum",
+  "args": {
+    "x": 3,
+    "y": 4
+  }
+}
