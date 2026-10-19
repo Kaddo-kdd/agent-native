@@ -75,8 +75,8 @@ Fuentes:
 | INIT-04-05 | Publicación atómica, versionamiento e integridad | high | INIT-02-04, INIT-04-03 | Manifiestos versionados, hash SHA-256, rollback atómico | parcial (POC) |
 | INIT-04-04 | Trazabilidad artefacto ↔ Work Item / Spec | low | INIT-04-05 | Manifiesto incluye origen WI/Spec | nuevo |
 | **RM-05** | **Standalone CLI & Runtime API** | — | — | Ejecución distribuible mediante CLI | — |
-| INIT-05-01 | Bin `cli` con `build/verify/test/run/publish` | high | INIT-03-03, INIT-04-05 | CLI ejerce todas las APIs públicas | nuevo |
-| INIT-05-02 | API pública reutilizable del runtime | medium | INIT-03-01 | SDK Rust embebible fuera del bin | nuevo |
+| INIT-05-01 | Bin `cli` con `build/verify/test/run/publish` | high | INIT-03-03, INIT-04-05 | CLI ejerce todas las APIs públicas | completed (AN-028) |
+| INIT-05-02 | API pública reutilizable del runtime | medium | INIT-03-01 | SDK Rust embebible fuera del bin | completed (AN-029, AN-030) |
 | INIT-05-03 | Pipeline de release para 3 triples objetivo | medium | INIT-05-01 | Artefactos distribuibles; firma/empaquetado via ADR dedicada | nuevo |
 | **RM-06** | **Runtime Security & Memory** | — | — | Runtime controlado por políticas | — |
 | INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | nuevo |
@@ -656,9 +656,9 @@ Convierte el pipeline interno en herramienta distribuible.
 
 #### INIT-05-01: Bin `cli` con `build/verify/test/run/publish`
 
-**Status:** candidate · **Priority:** high · **K3**
+**Status:** **completed 2026-10-19** · **Priority:** high · **K3**
 
-**Materialized as:** AN-028 (en preparación)
+**Materialized as:** AN-028
 
 **Related domain:** Distribution & DX
 
@@ -671,13 +671,15 @@ Convierte el pipeline interno en herramienta distribuible.
 **Notes:** interfaz basada en `clap`; lógica de dominio delegada a crates/módulos internos; soporte de salidas `--format=human` y `--format=json`; códigos de salida estandarizados y pruebas E2E desde procesos independientes.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-05-01-01: parser `clap`, contratos de subcomandos y salidas estructuradas (`feature`, AN-028).
+- WI-CANDIDATE-05-01-01: parser `clap`, contratos de subcomandos y salidas estructuradas (`feature`, AN-028 — completado).
 
 ---
 
 #### INIT-05-02: API pública reutilizable del runtime
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** **completed 2026-10-19** · **Priority:** medium · **K3**
+
+**Materialized as:** AN-029, AN-030
 
 **Related domain:** Runtime & Memory, Distribution & DX
 
@@ -687,11 +689,11 @@ Convierte el pipeline interno en herramienta distribuible.
 
 **Dependencies:** INIT-03-01. (Independiente de AN-028 per Decisión D5).
 
-**Notes:** estabilizar las interfaces existentes (`Engine`, `Component`, `Val`, `RuntimeError`, `HostPolicy`) en `agent-native-runtime` sin crear tipos abstractos artificiales. AN-021 y AN-022 proveen evidencia de integración, sin cerrar automáticamente esta iniciativa.
+**Notes:** estabilizar las interfaces existentes (`Engine`, `Component`, `Val`, `RuntimeError`, `HostPolicy`) en `agent-native-runtime` sin crear tipos abstractos artificiales. AN-021 y AN-022 proveen evidencia de integración, y AN-029 junto con el ejemplo canónico `embed_runtime.rs` (AN-030) completan y verifican formalmente la iniciativa.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-05-02-01: estabilización y curación de la API pública existente (`chore`, AN-029).
-- WI-CANDIDATE-05-02-02: ejemplo canónico de consumo externo `examples/embed_runtime.rs` (`feature`, AN-030).
+- WI-CANDIDATE-05-02-01: estabilización y curación de la API pública existente (`chore`, AN-029 — completado).
+- WI-CANDIDATE-05-02-02: ejemplo canónico de consumo externo `examples/embed_runtime.rs` (`feature`, AN-030 — completado).
 
 ---
 

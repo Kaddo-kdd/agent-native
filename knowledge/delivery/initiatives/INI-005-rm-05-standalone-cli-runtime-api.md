@@ -21,11 +21,12 @@ external_links:
 candidates:
   - id: INIT-05-01
     title: Bin `cli` con build/verify/test/run/publish
-    status: candidate
+    status: completed
     materialized_as: AN-028
   - id: INIT-05-02
     title: API pública reutilizable del runtime
-    status: candidate
+    status: completed
+    materialized_as: AN-029, AN-030
   - id: INIT-05-03
     title: Pipeline de release para 3 triples objetivo
     status: candidate
