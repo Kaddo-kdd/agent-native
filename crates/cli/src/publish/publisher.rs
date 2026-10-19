@@ -105,6 +105,14 @@ struct StagedItem {
     ir_sha256: String,
 }
 
+/// Configuration options for the publishing pipeline.
+#[derive(Debug, Clone, Default)]
+pub struct PublishOptions<'a> {
+    pub wit_root: Option<&'a Path>,
+    pub git_commit: Option<String>,
+    pub fail_point: Option<BuildFailPoint>,
+}
+
 /// Compiles and atomically publishes all components of a [`SystemSpec`] to `out_dir`.
 #[allow(clippy::too_many_lines)]
 pub fn build_and_publish_components<P: LlmProvider>(
@@ -114,6 +122,26 @@ pub fn build_and_publish_components<P: LlmProvider>(
     wit_root: Option<&Path>,
     fail_point: Option<BuildFailPoint>,
 ) -> Result<BuildSummary, PublishError> {
+    build_and_publish_components_with_options(
+        provider,
+        spec,
+        out_dir,
+        &PublishOptions {
+            wit_root,
+            git_commit: None,
+            fail_point,
+        },
+    )
+}
+
+/// Compiles and atomically publishes all components with explicit [`PublishOptions`].
+#[allow(clippy::too_many_lines)]
+pub fn build_and_publish_components_with_options<P: LlmProvider>(
+    provider: &P,
+    spec: &SystemSpec,
+    out_dir: &Path,
+    options: &PublishOptions<'_>,
+) -> Result<BuildSummary, PublishError> {
     let temp_staging = out_dir.join(".staging");
     if temp_staging.exists() {
         let _ = std::fs::remove_dir_all(&temp_staging);
@@ -122,7 +150,10 @@ pub fn build_and_publish_components<P: LlmProvider>(
     std::fs::create_dir_all(out_dir)?;
 
     let mut staged_items = Vec::new();
-    let compile_context = wit_root.map(CompileContext::new).unwrap_or_default();
+    let compile_context = options
+        .wit_root
+        .map(CompileContext::new)
+        .unwrap_or_default();
 
     for comp in &spec.components {
         let comp_id = &comp.id;
@@ -178,7 +209,7 @@ pub fn build_and_publish_components<P: LlmProvider>(
     // Copy staged artifacts to versions/<version_id>/
     let mut versioned_artifacts = Vec::with_capacity(staged_items.len());
     for (idx, staged) in staged_items.iter().enumerate() {
-        if fail_point == Some(BuildFailPoint::DuringVersionCopy) && idx == 0 {
+        if options.fail_point == Some(BuildFailPoint::DuringVersionCopy) && idx == 0 {
             let _ = std::fs::remove_dir_all(&temp_staging);
             return Err(PublishError::InjectedFailPoint(
                 "DuringVersionCopy".to_string(),
@@ -207,7 +238,7 @@ pub fn build_and_publish_components<P: LlmProvider>(
         });
     }
 
-    if fail_point == Some(BuildFailPoint::DuringManifestWrite) {
+    if options.fail_point == Some(BuildFailPoint::DuringManifestWrite) {
         let _ = std::fs::remove_dir_all(&temp_staging);
         return Err(PublishError::InjectedFailPoint(
             "DuringManifestWrite".to_string(),
@@ -215,6 +246,34 @@ pub fn build_and_publish_components<P: LlmProvider>(
     }
 
     let agent_metrics = provider.last_execution_metrics();
+
+    // Compute canonical spec hash for traceability (ADR-004)
+    let spec_json_bytes = serde_json::to_vec(spec)?;
+    let source_spec_hash = sha256_hex(&spec_json_bytes);
+
+    // Extract unique source Work Items / files
+    let mut source_wi = spec.metadata.source_files.clone();
+    for req in &spec.requirements {
+        if !req.source.ref_target.is_empty() {
+            let target_file = req.source.ref_target.split('#').next().unwrap_or("");
+            if !target_file.is_empty() && !source_wi.contains(&target_file.to_string()) {
+                source_wi.push(target_file.to_string());
+            }
+        }
+    }
+    source_wi.sort();
+    source_wi.dedup();
+
+    let source_git_commit = options
+        .git_commit
+        .clone()
+        .or_else(|| std::env::var("AGENT_NATIVE_GIT_COMMIT").ok());
+
+    let traceability = crate::publish::store::SpecTraceability {
+        source_wi,
+        source_spec_hash,
+        source_git_commit,
+    };
 
     // Write manifest.json
     let manifest = VersionManifest {
@@ -224,6 +283,7 @@ pub fn build_and_publish_components<P: LlmProvider>(
         spec_source: spec.metadata.source_type.clone(),
         agent_name: provider.name().to_string(),
         agent_metrics: agent_metrics.clone(),
+        traceability: traceability.clone(),
         components_count: versioned_artifacts.len(),
         artifacts: versioned_artifacts.clone(),
     };
@@ -237,13 +297,14 @@ pub fn build_and_publish_components<P: LlmProvider>(
         manifest_path: format!("versions/{version_id}/manifest.json"),
         agent_name: provider.name().to_string(),
         agent_metrics: agent_metrics.clone(),
+        traceability,
         artifacts: versioned_artifacts.clone(),
     };
     let active_temp = out_dir.join(".active.json.tmp");
     let active_final = out_dir.join("active.json");
     std::fs::write(&active_temp, serde_json::to_vec_pretty(&active_pointer)?)?;
 
-    if fail_point == Some(BuildFailPoint::DuringActivePromote) {
+    if options.fail_point == Some(BuildFailPoint::DuringActivePromote) {
         let _ = std::fs::remove_dir_all(&temp_staging);
         return Err(PublishError::InjectedFailPoint(
             "DuringActivePromote".to_string(),

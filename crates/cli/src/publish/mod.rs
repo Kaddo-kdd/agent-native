@@ -14,6 +14,9 @@ pub mod store;
 pub use atomic::atomic_replace_file;
 pub use error::PublishError;
 pub use publisher::{
-    build_and_publish_components, recover_and_verify_dist_state, resolve_active_component_artifact,
+    PublishOptions, build_and_publish_components, build_and_publish_components_with_options,
+    recover_and_verify_dist_state, resolve_active_component_artifact,
 };
-pub use store::{ActivePointer, BuildArtifact, BuildFailPoint, BuildSummary, VersionManifest};
+pub use store::{
+    ActivePointer, BuildArtifact, BuildFailPoint, BuildSummary, SpecTraceability, VersionManifest,
+};

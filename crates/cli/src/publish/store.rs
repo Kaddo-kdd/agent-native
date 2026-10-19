@@ -19,6 +19,18 @@ pub struct BuildArtifact {
     pub agent_metrics: Option<AgentExecutionMetrics>,
 }
 
+/// Origin traceability metadata for an artifact distribution.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct SpecTraceability {
+    /// Work Items or source documents that contributed to this specification.
+    pub source_wi: Vec<String>,
+    /// Cryptographic SHA-256 digest of the canonical `SystemSpec` JSON.
+    pub source_spec_hash: String,
+    /// Git commit SHA of the source workspace if available.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub source_git_commit: Option<String>,
+}
+
 /// Inmutable version manifest written to `versions/<version_id>/manifest.json`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct VersionManifest {
@@ -29,6 +41,8 @@ pub struct VersionManifest {
     pub agent_name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub agent_metrics: Option<AgentExecutionMetrics>,
+    #[serde(default)]
+    pub traceability: SpecTraceability,
     pub components_count: usize,
     pub artifacts: Vec<BuildArtifact>,
 }
@@ -42,6 +56,8 @@ pub struct ActivePointer {
     pub agent_name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub agent_metrics: Option<AgentExecutionMetrics>,
+    #[serde(default)]
+    pub traceability: SpecTraceability,
     pub artifacts: Vec<BuildArtifact>,
 }
 

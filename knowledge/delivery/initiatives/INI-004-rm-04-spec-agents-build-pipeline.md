@@ -2,7 +2,7 @@
 type: initiative
 id: INI-004
 title: 'RM-04 — Specification, Agents & Build Pipeline'
-status: planned
+status: completed
 knowledge_level: K4
 domains:
   - Specification & Knowledge Ingestion
@@ -40,7 +40,8 @@ candidates:
     materialized_as: AN-026
   - id: INIT-04-04
     title: Trazabilidad artefacto ↔ Work Item / Spec
-    status: candidate
+    status: completed
+    materialized_as: AN-027
 ---
 
 # RM-04 — Specification, Agents & Build Pipeline
