@@ -61,9 +61,9 @@ Fuentes:
 | INIT-02-03 | Contratos WIT públicos vs internos | medium | INIT-02-02 | Separación `public/`/`internal/`/`fixtures/` en `wit/` | propuesto |
 | INIT-02-04 | Determinismo + verificación de integridad | high | INIT-02-02 | Mismo input → mismo hash 3 OS; SHA-256 verificable | propuesto |
 | INIT-02-05 | Modelo de memoria y Canonical ABI | high | INIT-02-02 | Documento + experimentos + ADR-005 cerrado | propuesto |
-| **RM-03** | **Runtime & Acceptance Extraction** | — | — | Runtime autónomo con regresión POC | — |
+| **RM-03** | **Runtime & Acceptance Extraction** | — | — | Runtime autónomo con cobertura regresiva documentada + línea base de latencia | **M3 alcanzado 2026-10-19** bajo 7 criterios reformulados; ver INI-003 |
 | INIT-03-01 | Crate `runtime`: carga + ejecución Wasmtime | high | INIT-02-02, INIT-02-05 | Componentes publicados ejecutan sin cargo | parcial (POC) |
-| INIT-03-03 | Executor de aceptación YAML | high | INIT-03-01 | 10 pruebas `runner` POC verdes en nuevo repo | parcial (POC) |
+| INIT-03-03 | Executor de aceptación YAML | high | INIT-03-01 | **completed 2026-10-19** (AN-019 + AN-020). Entrega: executor Core+CM dentro del alcance soportado, matriz POC 0+6+4, contrato YAML normativo. **Reinterpretado por decisión humana D1**: no se afirma reproducción literal de las 10 pruebas `runner` del POC. | AN-019 + AN-020 |
 | INIT-03-04 | Propagación de errores host + imports | high | INIT-03-01 | Imports no autorizados fallan explícitos | parcial (POC) |
 | INIT-03-05 | Controles mínimos de ejecución (deny-by-default) | high | INIT-03-04 | Capabilities del host en allow-list desde el primer runtime ejecutable | nuevo |
 | INIT-03-06 | Línea base técnica del runtime | medium | INIT-03-03 | Cold/warm/memoria medidos antes de cualquier caché | nuevo |
@@ -436,7 +436,9 @@ Hace el runtime autónomo, con los controles mínimos de seguridad y una línea 
 
 #### INIT-03-03: Executor de aceptación YAML
 
-**Status:** candidate · **Priority:** high · **K3**
+**Status:** **completed 2026-10-19** · **Priority:** high · **K3**
+
+**Materialized as:** AN-019 (executor + stubs + regresión POC) + AN-020 (cierre técnico M3).
 
 **Related domain:** Validation & Evolution
 
@@ -448,12 +450,15 @@ Hace el runtime autónomo, con los controles mínimos de seguridad y una línea 
 
 **Dependencies:** INIT-03-01.
 
-**Notes:** criterio de salida de RM-03 = **10 pruebas `runner` POC verdes** en el nuevo repo. Las 5+5 de esclusas quedan atadas a INIT-04-03/INIT-04-05.
+**Notes:** criterio de salida de RM-03 **reformulado por decisión humana D1 (2026-10-19)**: la frase literal "10 pruebas `runner` POC verdes" se sustituye por cobertura regresiva documentada en matriz 1:1 con grados verificables. Resultado publicado: **0 `equivalencia-exacta` + 6 `cobertura-parcial` + 4 `aplazado`** (ver `knowledge/tech/poc-equivalence-matrix.md`). Las 5+5 de esclusas siguen atadas a INIT-04-03/INIT-04-05.
 
-**Suggested Work Items:**
-- WI-CANDIDATE-03-03-01: parser YAML + modelo de suite (`feature`)
-- WI-CANDIDATE-03-03-02: reporter de evidencia (`feature`)
-- WI-CANDIDATE-03-03-03: migración de fixtures de prueba POC (`chore`)
+**Alcance soportado:** Core WASM + Component Model (CM) sin imports funcionales. CM con imports funcionales → RM-07.
+
+**Fuera de alcance (post-M3):** stubs funcionales de Component Model, composición multi-componente, host providers reales, políticas manifest-driven al cargar, memoria por instancia, WASI, esclusas v1→v2 integrales, cadenas multi-paso de dependencias, propagación inmediata de errores desde callbacks del host.
+
+**Materialized Work Items:**
+- AN-019 — Executor + 7 submódulos + 3 kinds de stub + regresión POC inicial
+- AN-020 — Cierre técnico M3: compat YAML POC, Component Model type-only, StateReader fail-contract (D1 opción A: supresión de efectos posteriores, sin trap inmediato del guest), matriz re-evaluada, contrato normativo publicado
 
 ---
 
@@ -951,7 +956,7 @@ INIT-02-01 → INIT-02-02 (paralelo con INIT-02-03) → INIT-02-04 e INIT-02-05.
 
 **Ola C — RM-03 (Runtime + regresión + línea base):**
 INIT-03-01 → INIT-03-04 → INIT-03-05 → INIT-03-03 → INIT-03-06 → INIT-03-02.
-**Hito M3:** runtime autónomo con regresión POC + línea base técnica.
+**Hito M3** (**alcanzado 2026-10-19**): runtime autónomo con cobertura regresiva documentada (matriz POC 0+6+4) + línea base de latencia + executor YAML Core+CM dentro del alcance soportado. Memoria por instancia y manifest-driven al cargar diferidos; ver INI-003 Learning para los 7 criterios reformulados.
 
 **Ola D — RM-04 (Spec + agentes + publicación):**
 INIT-04-01 → INIT-04-02 → INIT-04-03 → INIT-04-05 → INIT-04-04.
@@ -1063,7 +1068,7 @@ flowchart LR
 |---|---|---|
 | M1 — Baseline arquitectónico aprobado | Ola A | Workspace, ADRs bloqueantes y matriz congelados |
 | M2 — Compilador autónomo | Ola B | IR válido → WASM determinista verificable; ADR-005 cerrado |
-| M3 — Runtime autónomo con regresión + línea base | Ola C | 10 pruebas `runner` POC verdes; cold/warm medidos; deny-by-default activo |
+| **M3 — Runtime autónomo con cobertura regresiva + línea base** (**alcanzado 2026-10-19**) | Ola C | **Criterios M3 reformulados (ver INI-003 Learning):** (1) matriz POC publicada con 3 grados verificables (0 exactas / 6 parciales / 4 aplazadas); (2) fail-explicit sin fallback silencioso + supresión de efectos posteriores de los stubs tras un StateReader miss (sin afirmar fail-fast dentro del guest); (3) deny-by-default pre-instantiate a 3 niveles (manifest-driven al cargar diferido a INIT-06-01); (4) línea base de latencia publicada (cold/warm/cache-hit; memoria por instancia diferida a INIT-06-02); (5) paso CI explícito ADR-002; (6) executor YAML Core WASM + Component Model dentro del alcance soportado (stubs funcionales CM fuera de alcance → RM-07); (7) contrato YAML normativo publicado. |
 | M4 — Pipeline integrado | Ola D | Narrativa → Spec → IR → WASM → publicación; esclusas v1→v2 verdes |
 | M5 — Distribuible (RC v0.1.0) | Ola E | Instalación sin Rust; release candidate en 3 triples |
 | M6 — Runtime seguro | Ola F | Policy, fuel/limits, aislamiento, verificación de integridad |
@@ -1078,7 +1083,7 @@ Los hitos son **propuesta**; versiones comerciales se declaran solo tras aprobac
 |---|---|
 | RM-01 | Workspace compila 3 OS; ADR-001..005 materializados; matriz aprobada; `_reference/` ignorado |
 | RM-02 | 8 pruebas `irtool` POC verdes; hash reproducible cross-OS; ADR-005 cerrado |
-| RM-03 | 10 pruebas `runner` POC verdes; deny-by-default verificado; línea base publicada en `knowledge/tech/baselines/` |
+| RM-03 | **Alcanzado 2026-10-19** bajo los 7 criterios reformulados (ver INI-003 Learning). Matriz POC 0 exactas + 6 parciales + 4 aplazadas; deny-by-default pre-instantiate verificado; línea base de latencia publicada en `knowledge/tech/baselines/`. **No** se afirma reproducción literal de las 10 pruebas `runner` del POC ni medición de memoria por instancia (diferidas). |
 | RM-04 | 5+5 pruebas esclusas v1/v2 verdes; publicación atómica con rollback demostrado; manifiestos versionados |
 | RM-05 | Release firmado instalable en 3 OS sin Rust; smoke E2E; ADR de empaquetado cerrada |
 | RM-06 | Policy loader deny-by-default; fuel/limits con trap; tests de contaminación cruzada; `--verify` operativo; fixtures de ejecución extrema |

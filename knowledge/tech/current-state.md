@@ -10,7 +10,17 @@ template_version: 1
 
 # Current State
 
-Generado a partir del Context Pack de Kaddo, de `knowledge/tech/codebase.md` y de `knowledge/product/product.md`. El repositorio nuevo `Kaddo-kdd/agent-native` contiene únicamente `LICENSE` al 2026-10-17: lo que sigue es la **arquitectura base propuesta**, con cada componente etiquetado como observado (en la POC) o asumido (nuevo producto).
+Generado a partir del Context Pack de Kaddo, de `knowledge/tech/codebase.md` y de `knowledge/product/product.md`. El repositorio `Kaddo-kdd/agent-native` arrancó con sólo `LICENSE` al 2026-10-17 y ha alcanzado **M3 (Runtime autónomo con cobertura regresiva + línea base)** el 2026-10-19 bajo los 7 criterios reformulados por decisión humana (ver INI-003 Learning y `knowledge/delivery/roadmap.md`). Lo que sigue describe el estado real del workspace: cada componente lleva su etiqueta de confianza y las capacidades operativas realmente verificables.
+
+## Hitos alcanzados
+
+| Hito | Fecha | Evidencia |
+|---|---|---|
+| M1 — Baseline arquitectónico | 2026-10-17 | INI-001 cerrada; ADR-001..005 publicados |
+| M2 — Compilador autónomo | 2026-10-18 | INI-002 cerrada; `agent-native-compiler` emite componentes WIT verificables |
+| **M3 — Runtime autónomo con cobertura regresiva + línea base** | **2026-10-19** | **INI-003 cerrada bajo 7 criterios reformulados (D1/D2/D3). Executor YAML Core+CM dentro del alcance soportado. Matriz POC 0 exactas + 6 parciales + 4 aplazadas. Línea base latencia publicada; memoria y manifest-driven diferidos. Ver `knowledge/delivery/roadmap.md` y `knowledge/delivery/initiatives/INI-003-rm-03-runtime-acceptance-extraction.md`.** |
+
+Hitos siguientes (M4..M8) siguen fuera de alcance; sus criterios residen en el roadmap sin modificación.
 
 ## System Overview
 
@@ -52,8 +62,10 @@ Confianza: **planeada** salvo donde se indique. "Observada" significa que la res
 
 - **Responsabilidad:** carga de componentes, composición WIT, resolución de dependencias, host capabilities autorizadas, ejecutor de suites YAML.
 - **Dependencias:** `wasmtime`, `crates/ir` (metadatos), **no** depende de `compiler`.
-- **Observado en POC:** `crates/runner/src/main.rs` (10 pruebas).
-- **Confianza:** Medium — el runtime autónomo (sin `cargo run`) es superficie nueva.
+- **Capacidades operativas (M3 alcanzado 2026-10-19):** carga Core WASM + Component Model con `HostPolicy` deny-by-default pre-instantiate a 3 niveles (core, WIT interface, WIT operation); invocación tipada; caché content-addressed (`Resolver`); executor YAML con contrato normativo (`knowledge/tech/poc-yaml-contract.md`), 3 kinds de stub declarativos (`StateReader` / `StateWriter` / `Noop`), records por nombre+tipo+valor con faltantes y adicionales detectados, `StateReader` miss registrado + supresión de efectos posteriores de los stubs + `CaseStatus::Error` al final del caso. Component Model dentro del alcance soportado: sin imports funcionales delega a `Component::invoke`; con imports funcionales produce `HostError` tipado deferido a RM-07.
+- **Fuera de alcance de M3 (ver roadmap + INI-003 Learning):** stubs funcionales de Component Model, composición multi-componente, host providers reales, policy manifest-driven en `load_component`, memoria por instancia, WASI, esclusas v1→v2 integrales, cadenas multi-paso de dependencias con interrupción exacta, propagación inmediata de errores desde callbacks del host (hallazgo experimental documentado en `host_ctx.rs`: STATUS_STACK_BUFFER_OVERRUN con `wasmtime` 27 en Windows al devolver `Result::Err` desde closures de `Linker::func_wrap`).
+- **Observado en POC:** `crates/runner/src/main.rs` (10 pruebas). Equivalencia documentada en `knowledge/tech/poc-equivalence-matrix.md` con 3 grados verificables: **0 `equivalencia-exacta` + 6 `cobertura-parcial` + 4 `aplazado`**. Reproducción literal de las 10 pruebas **no** se afirma (decisión humana D1 2026-10-19).
+- **Confianza:** Medium — superficie estable para M3; stubs funcionales CM y manifest-driven loader siguen diferidos.
 
 ### `crates/cli` (bin) — Interfaz pública
 
