@@ -53,6 +53,7 @@ fn map_execution_error(
                             max_bytes: denial.max_bytes,
                         };
                     }
+                    return RuntimeError::ExecutionFailed(format!("{trap}: {err}"));
                 }
                 wasmtime::Trap::IntegerOverflow
                 | wasmtime::Trap::IntegerDivisionByZero

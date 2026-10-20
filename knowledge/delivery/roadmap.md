@@ -78,12 +78,12 @@ Fuentes:
 | INIT-05-01 | Bin `cli` con `build/verify/test/run/publish` | high | INIT-03-03, INIT-04-05 | CLI ejerce todas las APIs públicas | completed (AN-028) |
 | INIT-05-02 | API pública reutilizable del runtime | medium | INIT-03-01 | SDK Rust embebible fuera del bin | completed (AN-029, AN-030) |
 | INIT-05-03 | Pipeline de release para 3 triples objetivo | medium | INIT-05-01 | Artefactos distribuibles; firma/empaquetado via ADR dedicada | completed (AN-031, AN-032) |
-| **RM-06** | **Runtime Security & Memory** | — | — | Runtime controlado por políticas | — |
+| **RM-06** | **Runtime Security & Memory** | — | — | Runtime controlado por políticas | completed |
 | INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | completed (AN-033, AN-034) |
 | INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | completed (AN-035, AN-036, AN-037, AN-038) |
 | INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | completed (AN-039, AN-040) |
 | INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | completed (AN-041, AN-042) |
-| INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | nuevo |
+| INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | completed (AN-043) |
 | **RM-07** | **Console I/O & WASI** | — | — | Programas con I/O autorizada | — |
 | INIT-07-01 | Baseline WASI preview2 + stdio autorizado | medium | INIT-06-01 | Programa `echo` interactivo autorizado | nuevo |
 | INIT-07-02 | Extensión IR para `string` y errores | medium | INIT-02-01, INIT-04-05 | IR v0.6 bajo flag `--experimental`, sin romper v0.5 | nuevo |
@@ -816,7 +816,7 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 #### INIT-06-05: Fixtures de ejecución extrema
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** completed · **Priority:** medium · **K3**
 
 **Source signals:** Risk R-13 (IR v0.5 sin bucles generales); nuevo ajuste "pruebas de límites".
 
@@ -824,10 +824,8 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 **Dependencies:** INIT-06-02.
 
-**Suggested Work Items:**
-- WI-CANDIDATE-06-05-01: fixture de recursión controlada (`chore`)
-- WI-CANDIDATE-06-05-02: fixture de allocación masiva (`chore`)
-- WI-CANDIDATE-06-05-03: fixture de errores inducidos (`chore`)
+**Work Items:**
+- AN-043: fixtures de ejecución extrema (recursión controlada, allocación masiva, trampas inducidas) (`test`) (completed)
 
 ---
 

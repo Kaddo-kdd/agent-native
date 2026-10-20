@@ -322,3 +322,142 @@ fn test_combined_fuel_and_memory_contention() {
     assert!(consumed > 0);
     assert!(consumed <= 50_000);
 }
+
+/// Emits a WASM module with a recursive function:
+/// `fn recurse(n: i32) -> i32 { if n <= 0 { 1 } else { recurse(n - 1) + 1 } }`
+fn wasm_module_with_controlled_recursion() -> Vec<u8> {
+    let mut module = Module::new();
+
+    let mut types = TypeSection::new();
+    types.ty().function([ValType::I32], [ValType::I32]);
+    module.section(&types);
+
+    let mut funcs = FunctionSection::new();
+    funcs.function(0);
+    module.section(&funcs);
+
+    let mut exports = ExportSection::new();
+    exports.export("recurse", ExportKind::Func, 0);
+    module.section(&exports);
+
+    let mut codes = CodeSection::new();
+    let mut func = Function::new([]);
+    func.instruction(&Instruction::LocalGet(0));
+    func.instruction(&Instruction::I32Const(0));
+    func.instruction(&Instruction::I32LeS);
+    func.instruction(&Instruction::If(BlockType::Result(ValType::I32)));
+    func.instruction(&Instruction::I32Const(1));
+    func.instruction(&Instruction::Else);
+    func.instruction(&Instruction::LocalGet(0));
+    func.instruction(&Instruction::I32Const(1));
+    func.instruction(&Instruction::I32Sub);
+    func.instruction(&Instruction::Call(0));
+    func.instruction(&Instruction::I32Const(1));
+    func.instruction(&Instruction::I32Add);
+    func.instruction(&Instruction::End);
+    func.instruction(&Instruction::End);
+    codes.function(&func);
+    module.section(&codes);
+
+    module.finish()
+}
+
+/// Emits a WASM module with induced traps (div by zero, unreachable).
+fn wasm_module_with_induced_traps() -> Vec<u8> {
+    let mut module = Module::new();
+
+    let mut types = TypeSection::new();
+    types.ty().function([], [ValType::I32]); // 0: div_zero
+    types.ty().function([], []); // 1: unreachable
+    module.section(&types);
+
+    let mut funcs = FunctionSection::new();
+    funcs.function(0);
+    funcs.function(1);
+    module.section(&funcs);
+
+    let mut exports = ExportSection::new();
+    exports.export("div_zero", ExportKind::Func, 0);
+    exports.export("trap_unreachable", ExportKind::Func, 1);
+    module.section(&exports);
+
+    let mut codes = CodeSection::new();
+
+    // div_zero
+    let mut div_func = Function::new([]);
+    div_func.instruction(&Instruction::I32Const(1));
+    div_func.instruction(&Instruction::I32Const(0));
+    div_func.instruction(&Instruction::I32DivS);
+    div_func.instruction(&Instruction::End);
+    codes.function(&div_func);
+
+    // trap_unreachable
+    let mut trap_func = Function::new([]);
+    trap_func.instruction(&Instruction::Unreachable);
+    trap_func.instruction(&Instruction::End);
+    codes.function(&trap_func);
+
+    module.section(&codes);
+
+    module.finish()
+}
+
+#[test]
+fn test_controlled_recursion_fuel_exhaustion_and_happy_path() {
+    let engine = Engine::new().expect("engine");
+    let wasm = wasm_module_with_controlled_recursion();
+    let component = engine.load_component(&wasm).expect("load");
+
+    // 1. Happy path with shallow recursion and sufficient fuel
+    let generous = ExecutionLimits::unmetered().with_fuel(50_000);
+    let report = component
+        .invoke_with_limits("recurse", &[Val::S32(20)], &generous)
+        .expect("shallow recursion must succeed");
+    assert_eq!(report.values, vec![Val::S32(21)]);
+    let consumed = report.fuel_consumed.expect("fuel consumed reported");
+    assert!(consumed > 0);
+
+    // 2. Deep recursion with tight fuel must fail deterministically with FuelExhausted
+    let tight = ExecutionLimits::unmetered().with_fuel(500);
+    let err = component
+        .invoke_with_limits("recurse", &[Val::S32(5_000)], &tight)
+        .expect_err("deep recursion with insufficient fuel must trap");
+    match err {
+        RuntimeError::FuelExhausted { limit } => {
+            assert_eq!(limit, 500);
+        }
+        other => panic!("expected FuelExhausted, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_induced_traps_fail_explicit_and_do_not_panic() {
+    let engine = Engine::new().expect("engine");
+    let wasm = wasm_module_with_induced_traps();
+    let component = engine.load_component(&wasm).expect("load");
+
+    // Div by zero trap
+    let err_div = component
+        .invoke("div_zero", &[])
+        .expect_err("div by zero must trap");
+    match err_div {
+        RuntimeError::ExecutionFailed(msg) => {
+            assert!(
+                msg.contains("integer divide by zero") || msg.contains("divide by zero"),
+                "unexpected msg: {msg}"
+            );
+        }
+        other => panic!("expected ExecutionFailed, got {other:?}"),
+    }
+
+    // Unreachable trap
+    let err_unreachable = component
+        .invoke("trap_unreachable", &[])
+        .expect_err("unreachable must trap");
+    match err_unreachable {
+        RuntimeError::ExecutionFailed(msg) => {
+            assert!(msg.contains("unreachable"), "unexpected msg: {msg}");
+        }
+        other => panic!("expected ExecutionFailed, got {other:?}"),
+    }
+}
