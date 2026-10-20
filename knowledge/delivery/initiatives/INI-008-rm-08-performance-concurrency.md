@@ -2,7 +2,7 @@
 type: initiative
 id: INI-008
 title: RM-08 — Performance & Concurrency
-status: planned
+status: in-progress
 knowledge_level: K4
 domains:
   - Performance
@@ -21,7 +21,8 @@ external_links:
 candidates:
   - id: INIT-08-01
     title: Harness de benchmarks reproducible
-    status: candidate
+    status: completed
+    materialized_as: AN-051 (completed), AN-052 (completed)
   - id: INIT-08-02
     title: Línea base pública cross-OS
     status: candidate

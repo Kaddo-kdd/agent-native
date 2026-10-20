@@ -44,3 +44,7 @@ wit-parser = "0.219.2"
 [[bench]]
 name = "baseline"
 harness = false
+
+[[bench]]
+name = "extended"
+harness = false

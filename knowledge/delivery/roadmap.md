@@ -88,8 +88,8 @@ Fuentes:
 | INIT-07-01 | Baseline WASI preview2 + stdio autorizado | medium | INIT-06-01 | Programa con I/O autorizada y aislamiento | completed (AN-044, AN-045) |
 | INIT-07-02 | Extensión IR para `string` y errores | medium | INIT-02-01, INIT-04-05 | IR v0.6 bajo flag `--experimental`, sin romper v0.5 | completed (AN-048) |
 | INIT-07-03 | Stubs deterministas de I/O para pruebas | low | INIT-07-01, INIT-03-03 | Suite YAML con `stdin` simulado | completed (AN-049) |
-| **RM-08** | **Performance & Concurrency** | — | — | Runtime caracterizado por benchmarks | — |
-| INIT-08-01 | Harness de benchmarks reproducible | medium | INIT-03-06, INIT-05-01 | Varianza acotada entre corridas; cross-OS | nuevo |
+| **RM-08** | **Performance & Concurrency** | — | — | Runtime caracterizado por benchmarks | in-progress |
+| INIT-08-01 | Harness de benchmarks reproducible | medium | INIT-03-06, INIT-05-01 | Varianza acotada entre corridas; cross-OS | completed (AN-051, AN-052) |
 | INIT-08-02 | Línea base pública cross-OS | medium | INIT-08-01 | p50/p95/p99 publicados por operación | nuevo |
 | INIT-08-03 | Caché de componentes y warm pool | medium | INIT-06-03, INIT-08-02 | Mejora cuantificada vs línea base | nuevo |
 | INIT-08-04 | Concurrencia host-side (workers) | low | INIT-08-03 | Throughput escala con N workers hasta saturar | nuevo |
@@ -884,15 +884,15 @@ Harness formal, benchmarks reproducibles cross-OS, caché/warm pool, concurrenci
 
 #### INIT-08-01: Harness de benchmarks reproducible
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** completed · **Priority:** medium · **K3**
 
 **Source signals:** Business Goal — decisiones basadas en evidencia. INIT-03-06 produjo la línea base local; AN-017 la consolidó con la convención `<stage>_<path>_<fixture>` y 9 benches en [`knowledge/tech/baselines/runtime-baseline.md`](../tech/baselines/runtime-baseline.md); este bloque la generaliza a matrix cross-OS.
 
 **Dependencies:** INIT-03-06, INIT-05-01.
 
-**Suggested Work Items:**
-- WI-CANDIDATE-08-01-01: `criterion` harness (`chore`)
-- WI-CANDIDATE-08-01-02: hardware baseline documentado (`chore`)
+**Work Items:**
+- AN-051: harness `criterion` extendido (WASI I/O, IR v0.6, fuel) y ficha de entorno (`feature`) (completed)
+- AN-052: job manual de benchmarks cross-OS con artefactos (`chore`) (completed)
 
 ---
 

@@ -1,0 +1,54 @@
+name: Benchmarks Cross-OS
+
+# Manual only (AN-052): never blocks PRs. Results are uploaded as artifacts and
+# feed INIT-08-02. See knowledge/tech/baselines/benchmark-methodology.md.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    name: Bench (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust toolchain (per rust-toolchain.toml)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85.0
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: bench-${{ matrix.os }}
+
+      - name: Environment sheet
+        shell: bash
+        run: cargo run -q -p agent-native-runtime --example bench_env > bench-env.json
+
+      - name: Baseline benches
+        run: cargo bench -p agent-native-runtime --bench baseline
+
+      - name: Extended benches
+        run: cargo bench -p agent-native-runtime --bench extended
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ matrix.os }}
+          path: |
+            bench-env.json
+            target/criterion
+          if-no-files-found: error
