@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "source": "wasip2_hello.rs",
+  "source_sha256": "bedf55efdeaa20dfee3a97e6a1b6be9703fdbdc2d9f7cfaf15e3408ea89f7287",
+  "artifact": "wasip2_hello.wasm",
+  "artifact_sha256": "b4886a16712301db0a3173b55531d5428b05ed58a963a427563ff9f7ec0c0558",
+  "artifact_bytes": 2102311,
+  "rustc": "rustc 1.85.0 (4d91de4e4 2025-02-17)",
+  "target": "wasm32-wasip2",
+  "compile_command": "rustc wasip2_hello.rs --edition=2024 --target wasm32-wasip2 -O -o wasip2_hello.wasm",
+  "imports": [
+    "wasi:cli/environment@0.2.0",
+    "wasi:cli/exit@0.2.0",
+    "wasi:cli/stderr@0.2.0",
+    "wasi:cli/stdin@0.2.0",
+    "wasi:cli/stdout@0.2.0",
+    "wasi:clocks/wall-clock@0.2.0",
+    "wasi:filesystem/preopens@0.2.0",
+    "wasi:filesystem/types@0.2.0",
+    "wasi:io/error@0.2.0",
+    "wasi:io/streams@0.2.0"
+  ],
+  "exports": ["wasi:cli/run@0.2.0"]
+}

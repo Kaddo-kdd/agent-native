@@ -100,21 +100,21 @@ fuera del alcance: filesystem, sockets, clocks y random.
 
 ### Estado del spike
 
-El checkout tiene Rust `1.85.0`, pero el estándar del target `wasm32-wasip2` no está
-instalado. El intento de compilar `println!("hello agent-native")` falla con
-`E0463: can't find crate for std`. No se infieren imports a partir de esa compilación
-fallida ni se instala el target como efecto lateral de este refinamiento.
+El target se instaló de forma explícita para el spike y se compiló el fixture mínimo
+con `rustc 1.85.0 (4d91de4e4 2025-02-17)`, `wasm32-wasip2`, edición 2024 y `-O`.
+El resultado se versiona en `crates/runtime/tests/fixtures/wasip2_hello.wasm`:
 
-La primera ejecución de implementación debe instalar el target en un entorno aislado
-o de CI, compilar el fixture con la versión exacta de Rust indicada y registrar:
+- fuente: SHA-256 `bedf55efdeaa20dfee3a97e6a1b6be9703fdbdc2d9f7cfaf15e3408ea89f7287`;
+- componente: 2,102,311 bytes, SHA-256
+  `b4886a16712301db0a3173b55531d5428b05ed58a963a427563ff9f7ec0c0558`;
+- exportación de entrada: `wasi:cli/run@0.2.0`;
+- imports: `wasi:cli/{environment,exit,stdin,stdout,stderr}@0.2.0`,
+  `wasi:io/{error,streams}@0.2.0`, `wasi:clocks/wall-clock@0.2.0` y
+  `wasi:filesystem/{preopens,types}@0.2.0`.
 
-1. versión completa de `rustc`, target y hash SHA-256 del componente;
-2. lista exacta, ordenada y versionada de imports WIT y de la exportación de entrada;
-3. resultado con stdout capturado y con cada denegación relevante de política.
-
-El binario resultante se versionará como fixture de prueba junto con una ficha de
-procedencia. La suite normal consumirá ese fixture y comprobará su hash, de modo que
-no dependa de que `wasm32-wasip2` esté instalado en cada runner.
+La prueba `wasi_real_binaries` comprueba hashes, tamaño, imports y exportación usando
+el parser de Component Model. La suite normal consume el fixture y no requiere que el
+target esté instalado en cada runner.
 
 ### Decisiones de diseño fijadas
 
@@ -127,9 +127,9 @@ no dependa de que `wasm32-wasip2` esté instalado en cada runner.
   vacíos por defecto. Una API para conceder argumentos o variables no entra aquí.
 - Filesystem, sockets y HTTP permanecen sin proveedor. Una concesión de política sin
   proveedor debe terminar en fallo tipado, nunca en una capacidad funcional.
-- Clocks y random solo se incorporarán si aparecen en el inventario del fixture. Cada
-  uno requerirá una propuesta separada con semántica determinista, límites y una
-  concesión de política independiente; no se heredarán del host implícitamente.
+- `wall-clock` y filesystem sí aparecen en el inventario. Ambos bloquean la siguiente
+  fase: requieren una decisión explícita sobre semántica determinista y permisos antes
+  de registrar proveedores. Random no aparece y queda fuera de este item.
 
 ### Plan de implementación verificable
 
@@ -155,6 +155,6 @@ no dependa de que `wasm32-wasip2` esté instalado en cada runner.
 
 ## Siguiente gate
 
-Antes de pasar AN-050 a `in-progress`, revisar el inventario del fixture real y aprobar
-explícitamente cualquier interfaz distinta de consola, `environment`, `exit` y
-`wasi:cli/run`.
+Antes de pasar AN-050 a `in-progress`, aprobar explícitamente si el runtime ofrecerá
+un filesystem virtual vacío y un `wall-clock` determinista para este perfil de comando,
+o si estos imports se rechazarán y el soporte se limitará a otro fixture/perfil.
