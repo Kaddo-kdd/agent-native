@@ -26,7 +26,7 @@ candidates:
   - id: INIT-08-02
     title: Línea base pública cross-OS
     status: candidate
-    materialized_as: AN-053 (draft), AN-054 (draft), AN-055 (draft)
+    materialized_as: AN-053 (completed), AN-054 (in-progress), AN-055 (draft)
   - id: INIT-08-03
     title: Caché de componentes y warm pool
     status: candidate
