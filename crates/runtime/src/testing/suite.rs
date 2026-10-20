@@ -68,18 +68,27 @@ pub struct Case {
     pub args: Vec<ArgValue>,
     #[serde(default)]
     pub host_state: HostState,
+    /// Optional deterministic in-memory `stdin` buffer injected into WASI 0.2 components (AN-049).
+    #[serde(default)]
+    pub stdin: Option<String>,
     pub expected: Expected,
+    /// Optional expected `stdout` captured from WASI 0.2 components (AN-049).
+    #[serde(default)]
+    pub expected_stdout: Option<String>,
+    /// Optional expected `stderr` captured from WASI 0.2 components (AN-049).
+    #[serde(default)]
+    pub expected_stderr: Option<String>,
     #[serde(default)]
     pub expected_host_calls: Option<Vec<ExpectedHostCall>>,
 }
 
-/// A single argument value in a case. AN-020 adds `bool`; richer types
-/// are deferred to INIT-07-02.
-#[derive(Debug, Deserialize, Clone, Copy)]
+/// A single argument value in a case (`i32`, `bool`, or `string` in IR v0.6 / AN-049).
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ArgValue {
     Bool(bool),
     I32(i32),
+    String(String),
 }
 
 /// Initial host state for a case. **AN-020**: only `kv:` is permitted;
@@ -91,11 +100,31 @@ pub struct HostState {
     pub kv: BTreeMap<i32, i32>,
 }
 
+/// Scalar value inside an expected `result<T, E>` (AN-049).
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum ExpectedScalar {
+    Bool(bool),
+    I32(i32),
+    String(String),
+}
+
+/// Expected `result<T, E>` outcome (`{ ok: ... }` or `{ err: ... }`) (AN-049).
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ExpectedResult {
+    Ok(ExpectedScalar),
+    Err(ExpectedScalar),
+}
+
 /// What the case expects the component to return.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum Expected {
+    Bool(bool),
     Primitive(i32),
+    String(String),
+    Result(ExpectedResult),
     Record(BTreeMap<String, i32>),
 }
 

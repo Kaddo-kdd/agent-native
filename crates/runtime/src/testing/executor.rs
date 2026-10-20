@@ -27,11 +27,28 @@ use std::collections::BTreeMap;
 use wasmtime::component::{Type, Val};
 
 use crate::engine::{Component, Payload};
+use crate::limits::ExecutionLimits;
+use crate::policy::{
+    WASI_CLI_STDERR_0_2_0, WASI_CLI_STDIN_0_2_0, WASI_CLI_STDOUT_0_2_0, WASI_IO_ERROR_0_2_0,
+    WASI_IO_POLL_0_2_0, WASI_IO_STREAMS_0_2_0,
+};
 use crate::testing::errors::ExecutorError;
 use crate::testing::host_ctx::{HostCtx, ReaderMiss, RecordedCall};
 use crate::testing::report::{CaseResult, CaseStatus, SuiteReport};
 use crate::testing::stub::{HostStubRegistry, StubKind};
-use crate::testing::suite::{ArgValue, Case, Expected, ExpectedHostCall, Suite};
+use crate::testing::suite::{
+    ArgValue, Case, Expected, ExpectedHostCall, ExpectedResult, ExpectedScalar, Suite,
+};
+use crate::wasi::WasiIoConfig;
+
+const SUPPORTED_WASI_INTERFACES: &[&str] = &[
+    WASI_CLI_STDIN_0_2_0,
+    WASI_CLI_STDOUT_0_2_0,
+    WASI_CLI_STDERR_0_2_0,
+    WASI_IO_ERROR_0_2_0,
+    WASI_IO_POLL_0_2_0,
+    WASI_IO_STREAMS_0_2_0,
+];
 
 /// Executes a full suite and returns a report. Never panics on case
 /// failures: failing cases become `CaseStatus::Fail`, structural errors
@@ -117,6 +134,34 @@ fn authorise_stubs(
     Ok(())
 }
 
+struct CaseOutcome {
+    results: Vec<Val>,
+    host_ctx: HostCtx,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+}
+
+fn check_console_stream(
+    stream_name: &str,
+    expected: Option<&String>,
+    captured: &[u8],
+    evidence: &mut Vec<String>,
+) -> bool {
+    let Some(expected_str) = expected else {
+        return true;
+    };
+    let got_str = String::from_utf8_lossy(captured);
+    if got_str.as_ref() == expected_str.as_str() {
+        true
+    } else {
+        evidence.push(format!(
+            "expected {stream_name} {expected_str:?}, got {:?}",
+            got_str.as_ref()
+        ));
+        false
+    }
+}
+
 fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> CaseResult {
     let mut evidence = Vec::new();
     let host_ctx = HostCtx {
@@ -125,16 +170,35 @@ fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> 
         poisoned: false,
         misses: Vec::new(),
     };
-    let args: Vec<Val> = case.args.iter().copied().map(arg_to_val).collect();
+    let args: Vec<Val> = case.args.iter().map(arg_to_val).collect();
 
     let outcome = if component.is_core_module() {
-        run_core_case(component, registry, &case.function, &args, host_ctx)
+        run_core_case(component, registry, &case.function, &args, host_ctx).map(|(results, ctx)| {
+            CaseOutcome {
+                results,
+                host_ctx: ctx,
+                stdout: Vec::new(),
+                stderr: Vec::new(),
+            }
+        })
     } else {
-        run_component_case(component, &case.function, &args, host_ctx)
+        run_component_case(
+            component,
+            &case.function,
+            &args,
+            host_ctx,
+            case.stdin.as_deref(),
+            case.expected_stdout.is_some() || case.expected_stderr.is_some(),
+        )
     };
 
-    let (results, final_ctx) = match outcome {
-        Ok(pair) => pair,
+    let CaseOutcome {
+        results,
+        host_ctx: final_ctx,
+        stdout: captured_stdout,
+        stderr: captured_stderr,
+    } = match outcome {
+        Ok(out) => out,
         Err(e) => {
             evidence.push(format!("execution error: {e}"));
             return CaseResult {
@@ -166,9 +230,12 @@ fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> 
     }
 
     let return_matches = match &case.expected {
+        Expected::Bool(expected_bool) => check_bool(&results, *expected_bool, &mut evidence),
         Expected::Primitive(expected_i32) => {
             check_primitive(&results, *expected_i32, &mut evidence)
         }
+        Expected::String(expected_str) => check_string(&results, expected_str, &mut evidence),
+        Expected::Result(expected_res) => check_result(&results, expected_res, &mut evidence),
         Expected::Record(expected_fields) => check_record(&results, expected_fields, &mut evidence),
     };
 
@@ -177,7 +244,20 @@ fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> 
         None => true,
     };
 
-    let status = if return_matches && calls_match {
+    let stdout_matches = check_console_stream(
+        "stdout",
+        case.expected_stdout.as_ref(),
+        &captured_stdout,
+        &mut evidence,
+    );
+    let stderr_matches = check_console_stream(
+        "stderr",
+        case.expected_stderr.as_ref(),
+        &captured_stderr,
+        &mut evidence,
+    );
+
+    let status = if return_matches && calls_match && stdout_matches && stderr_matches {
         CaseStatus::Pass
     } else {
         CaseStatus::Fail
@@ -189,10 +269,11 @@ fn run_case(component: &Component, registry: &HostStubRegistry, case: &Case) -> 
     }
 }
 
-fn arg_to_val(a: ArgValue) -> Val {
+fn arg_to_val(a: &ArgValue) -> Val {
     match a {
-        ArgValue::I32(i) => Val::S32(i),
-        ArgValue::Bool(b) => Val::Bool(b),
+        ArgValue::I32(i) => Val::S32(*i),
+        ArgValue::Bool(b) => Val::Bool(*b),
+        ArgValue::String(s) => Val::String(s.clone()),
     }
 }
 
@@ -218,36 +299,77 @@ fn run_core_case(
 
 /// Component Model path.
 ///
-/// AN-020 H1: a CM artifact with **no functional imports** (either
-/// `component_type().imports(engine)` is empty, or every item is a type
-/// / resource / module / instance that only exports types) delegates to
-/// `Component::invoke`. Functional imports still produce a typed error
-/// deferred to RM-07.
+/// AN-020 H1 + AN-049 (INIT-07-03):
+/// - If a CM artifact imports WASI 0.2 console interfaces (`SUPPORTED_WASI_INTERFACES`)
+///   or the case specifies deterministic console I/O (`stdin` / `expected_stdout` /
+///   `expected_stderr`), executes via `Component::invoke_with_wasi` with in-memory pipes.
+/// - If a CM artifact has no functional imports and no console I/O expectations, delegates
+///   to `Component::invoke`.
+/// - Non-WASI functional imports without a stub continue to return a typed error.
 fn run_component_case(
     component: &Component,
     func: &str,
     args: &[Val],
     host_ctx: HostCtx,
-) -> Result<(Vec<Val>, HostCtx), ExecutorError> {
-    if let Some(blocker) = first_functional_import(component) {
+    stdin_input: Option<&str>,
+    needs_console_capture: bool,
+) -> Result<CaseOutcome, ExecutorError> {
+    if let Some(blocker) = first_non_wasi_functional_import(component) {
         return Err(ExecutorError::HostError(format!(
             "functional import '{blocker}' requires a stub (RM-07)"
         )));
     }
+    if stdin_input.is_some() || needs_console_capture || has_supported_wasi_import(component) {
+        let mut wasi_cfg = WasiIoConfig::capturing();
+        if let Some(s) = stdin_input {
+            wasi_cfg = wasi_cfg.with_stdin(s.as_bytes().to_vec());
+        }
+        let report = component
+            .invoke_with_wasi(
+                &component.policy,
+                &ExecutionLimits::unmetered(),
+                func,
+                args,
+                wasi_cfg,
+            )
+            .map_err(ExecutorError::from)?;
+        return Ok(CaseOutcome {
+            results: report.report.values,
+            host_ctx,
+            stdout: report.io.stdout,
+            stderr: report.io.stderr,
+        });
+    }
     let results = component.invoke(func, args).map_err(ExecutorError::from)?;
-    Ok((results, host_ctx))
+    Ok(CaseOutcome {
+        results,
+        host_ctx,
+        stdout: Vec::new(),
+        stderr: Vec::new(),
+    })
 }
 
-/// Returns the first functional import (if any) found in a Component
-/// Model payload. Used by [`run_component_case`] to distinguish the
-/// type-only case (delegable to `invoke`) from the stub-dependent case
-/// (deferred to RM-07).
-fn first_functional_import(component: &Component) -> Option<String> {
+fn has_supported_wasi_import(component: &Component) -> bool {
+    let Payload::Component(ref wt_component) = component.payload else {
+        return false;
+    };
+    wt_component
+        .component_type()
+        .imports(&component.engine)
+        .any(|(name, _)| SUPPORTED_WASI_INTERFACES.contains(&name))
+}
+
+/// Returns the first non-WASI functional import (if any) found in a Component
+/// Model payload.
+fn first_non_wasi_functional_import(component: &Component) -> Option<String> {
     use wasmtime::component::types::ComponentItem;
     let Payload::Component(ref wt_component) = component.payload else {
         return None;
     };
     for (name, item) in wt_component.component_type().imports(&component.engine) {
+        if SUPPORTED_WASI_INTERFACES.contains(&name) {
+            continue;
+        }
         match item {
             ComponentItem::ComponentFunc(_) => return Some(name.to_string()),
             ComponentItem::ComponentInstance(inst_ty) => {
@@ -346,6 +468,21 @@ fn register_core_stub(
     Ok(())
 }
 
+fn check_bool(results: &[Val], expected: bool, evidence: &mut Vec<String>) -> bool {
+    match results.first() {
+        Some(Val::Bool(got)) if *got == expected => true,
+        Some(Val::S32(got)) if (*got != 0) == expected => true,
+        Some(other) => {
+            evidence.push(format!("expected Bool({expected}), got {other:?}"));
+            false
+        }
+        None => {
+            evidence.push(format!("expected Bool({expected}), got no results"));
+            false
+        }
+    }
+}
+
 fn check_primitive(results: &[Val], expected: i32, evidence: &mut Vec<String>) -> bool {
     match results.first() {
         Some(Val::S32(got)) if *got == expected => true,
@@ -361,6 +498,66 @@ fn check_primitive(results: &[Val], expected: i32, evidence: &mut Vec<String>) -
         }
         None => {
             evidence.push(format!("expected S32({expected}), got no results"));
+            false
+        }
+    }
+}
+
+fn check_string(results: &[Val], expected: &str, evidence: &mut Vec<String>) -> bool {
+    match results.first() {
+        Some(Val::String(got)) if got == expected => true,
+        Some(Val::String(got)) => {
+            evidence.push(format!(
+                "expected String({expected:?}), got String({got:?})"
+            ));
+            false
+        }
+        Some(other) => {
+            evidence.push(format!(
+                "expected String({expected:?}), got non-String result: {other:?}"
+            ));
+            false
+        }
+        None => {
+            evidence.push(format!("expected String({expected:?}), got no results"));
+            false
+        }
+    }
+}
+
+fn check_scalar(got: Option<&Val>, expected: &ExpectedScalar) -> bool {
+    match (got, expected) {
+        (Some(Val::Bool(b)), ExpectedScalar::Bool(eb)) => b == eb,
+        (Some(Val::S32(i)), ExpectedScalar::I32(ei)) => i == ei,
+        (Some(Val::String(s)), ExpectedScalar::String(es)) => s == es,
+        _ => false,
+    }
+}
+
+fn check_result(results: &[Val], expected: &ExpectedResult, evidence: &mut Vec<String>) -> bool {
+    match (results.first(), expected) {
+        (Some(Val::Result(Ok(inner))), ExpectedResult::Ok(exp_ok)) => {
+            if check_scalar(inner.as_deref(), exp_ok) {
+                true
+            } else {
+                evidence.push(format!("expected Ok({exp_ok:?}), got Ok({inner:?})"));
+                false
+            }
+        }
+        (Some(Val::Result(Err(inner))), ExpectedResult::Err(exp_err)) => {
+            if check_scalar(inner.as_deref(), exp_err) {
+                true
+            } else {
+                evidence.push(format!("expected Err({exp_err:?}), got Err({inner:?})"));
+                false
+            }
+        }
+        (Some(other), _) => {
+            evidence.push(format!("expected Result({expected:?}), got {other:?}"));
+            false
+        }
+        (None, _) => {
+            evidence.push(format!("expected Result({expected:?}), got no results"));
             false
         }
     }

@@ -84,10 +84,10 @@ Fuentes:
 | INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | completed (AN-039, AN-040) |
 | INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | completed (AN-041, AN-042) |
 | INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | completed (AN-043) |
-| **RM-07** | **Console I/O & WASI** | — | — | Programas con I/O autorizada | in-progress |
+| **RM-07** | **Console I/O & WASI** | — | — | Programas con I/O autorizada | completed |
 | INIT-07-01 | Baseline WASI preview2 + stdio autorizado | medium | INIT-06-01 | Programa con I/O autorizada y aislamiento | completed (AN-044, AN-045) |
 | INIT-07-02 | Extensión IR para `string` y errores | medium | INIT-02-01, INIT-04-05 | IR v0.6 bajo flag `--experimental`, sin romper v0.5 | completed (AN-048) |
-| INIT-07-03 | Stubs deterministas de I/O para pruebas | low | INIT-07-01, INIT-03-03 | Suite YAML con `stdin` simulado | nuevo |
+| INIT-07-03 | Stubs deterministas de I/O para pruebas | low | INIT-07-01, INIT-03-03 | Suite YAML con `stdin` simulado | completed (AN-049) |
 | **RM-08** | **Performance & Concurrency** | — | — | Runtime caracterizado por benchmarks | — |
 | INIT-08-01 | Harness de benchmarks reproducible | medium | INIT-03-06, INIT-05-01 | Varianza acotada entre corridas; cross-OS | nuevo |
 | INIT-08-02 | Línea base pública cross-OS | medium | INIT-08-01 | p50/p95/p99 publicados por operación | nuevo |
@@ -868,13 +868,12 @@ Habilita programas reales útiles sobre la base segura. No se adelanta a RM-06.
 
 #### INIT-07-03: Stubs deterministas de I/O para pruebas
 
-**Status:** candidate · **Priority:** low · **K2**
+**Status:** completed · **Priority:** low · **K2**
 
 **Dependencies:** INIT-07-01, INIT-03-03.
 
-**Suggested Work Items:**
-- WI-CANDIDATE-07-03-01: mocks `stdin`/`stdout` en executor YAML (`feature`)
-- WI-CANDIDATE-07-03-02: fixtures de I/O (`chore`)
+**Work Items:**
+- AN-049: stubs deterministas de I/O (`stdin`/`expected_stdout`/`expected_stderr`) y tipos v0.6 en el executor YAML (`feature`) (completed)
 
 ---
 

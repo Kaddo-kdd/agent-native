@@ -2,7 +2,7 @@
 type: initiative
 id: INI-007
 title: RM-07 — Console I/O & WASI
-status: in-progress
+status: completed
 knowledge_level: K4
 domains:
   - Runtime & Memory
@@ -29,7 +29,8 @@ candidates:
     materialized_as: AN-048 (completed)
   - id: INIT-07-03
     title: Stubs deterministas de I/O para pruebas
-    status: in-progress
+    status: completed
+    materialized_as: AN-049 (completed)
 ---
 
 # RM-07 — Console I/O & WASI
@@ -77,6 +78,7 @@ Ver `candidates:`.
 - `AN-044`: Adaptador WASI Preview 2 para I/O determinista en memoria (`feature`, completed).
 - `AN-045`: Autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`, completed).
 - `AN-048`: Extensión Semantic IR v0.6 para `string`, `result<T, E>` y política `--experimental` (`feature`, completed).
+- `AN-049`: Stubs deterministas de I/O (`stdin`/`expected_stdout`/`expected_stderr`) y tipos v0.6 en el executor YAML (`feature`, completed).
 
 ## Precisiones Arquitectónicas (INIT-07-01 / 2026-10-20)
 

@@ -29,4 +29,7 @@ pub use executor::run_suite;
 pub use host_ctx::{HostCtx, RecordedCall};
 pub use report::{CaseResult, CaseStatus, SuiteReport};
 pub use stub::{HostStubRegistry, StubKind};
-pub use suite::{Case, Expected, ExpectedHostCall, HostState, Suite, parse_suite};
+pub use suite::{
+    ArgValue, Case, Expected, ExpectedHostCall, ExpectedResult, ExpectedScalar, HostState, Suite,
+    parse_suite,
+};
