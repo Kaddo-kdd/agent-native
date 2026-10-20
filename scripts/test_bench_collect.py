@@ -16,7 +16,8 @@ class CollectionTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.output = Path(self.temp.name) / "bench-results"
+        # macOS /var aliases /private/var; Windows TEMP may use an 8.3 alias.
+        self.output = Path(self.temp.name).resolve() / "bench-results"
 
     def test_runs_have_unique_fresh_criterion_directories(self):
         seen = []
