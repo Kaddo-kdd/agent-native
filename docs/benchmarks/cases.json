@@ -1,0 +1,298 @@
+{
+  "output_semantics": "Expected fixture contract, not archived return-value observations",
+  "pinned_sources_by_os": {
+    "linux": {
+      "crates/compiler/tests/fixtures/ir/program-005.ir.json": "ae09cadab82a53a1a8e503a15f79cc9eb898ebb454eab7b0a6ecacc74544cf65",
+      "crates/runtime/benches/baseline.rs": "5617c86ae38b61af9799061f1a3b5bb3c2ee2057f67b1dbc73e8227571909bee",
+      "crates/runtime/benches/extended.rs": "88d88b50db4fe8c84bb9992829153f995d7867409798987ddc6475c507486239",
+      "crates/runtime/benches/fixtures/wasi_console_echo.wat": "d5d0834a4eac23440503cfe8610d0fb74f5d021b9c186c109e231b2c2657842b",
+      "crates/runtime/examples/bench_latency.rs": "682d67dc48835f9bbd7f74681a7b6ce5c64a9c9ba2fd5505f824cd6055d5ca53",
+      "crates/runtime/examples/latency/fixtures.rs": "54aa7e10583cd44edfa9fde7015271ec2ad34e5583bec85ae67631cf76160534"
+    },
+    "macos": {
+      "crates/compiler/tests/fixtures/ir/program-005.ir.json": "ae09cadab82a53a1a8e503a15f79cc9eb898ebb454eab7b0a6ecacc74544cf65",
+      "crates/runtime/benches/baseline.rs": "5617c86ae38b61af9799061f1a3b5bb3c2ee2057f67b1dbc73e8227571909bee",
+      "crates/runtime/benches/extended.rs": "88d88b50db4fe8c84bb9992829153f995d7867409798987ddc6475c507486239",
+      "crates/runtime/benches/fixtures/wasi_console_echo.wat": "d5d0834a4eac23440503cfe8610d0fb74f5d021b9c186c109e231b2c2657842b",
+      "crates/runtime/examples/bench_latency.rs": "682d67dc48835f9bbd7f74681a7b6ce5c64a9c9ba2fd5505f824cd6055d5ca53",
+      "crates/runtime/examples/latency/fixtures.rs": "54aa7e10583cd44edfa9fde7015271ec2ad34e5583bec85ae67631cf76160534"
+    },
+    "windows": {
+      "crates/compiler/tests/fixtures/ir/program-005.ir.json": "b493cb017f62e265489c9df2447ab5c689c21d0dbfe0ed5f6929e8e5ce0c1857",
+      "crates/runtime/benches/baseline.rs": "47e2f993c486695b7b4e34284b44a42f99cd67a28edf12a20a554443b85b402f",
+      "crates/runtime/benches/extended.rs": "3f224358e045ef16dc38f3b7345d009fe9d0776eb3e83b101c2ff765bbcc2874",
+      "crates/runtime/benches/fixtures/wasi_console_echo.wat": "0273caa5410457b5ae11ab08a9b6db0ec296477d6e267beca8cd2635a98b41d4",
+      "crates/runtime/examples/bench_latency.rs": "cfa88f1fcf17b1b8ff4c429a51998bad7bd2f24d74b9660d0abcaf687596d085",
+      "crates/runtime/examples/latency/fixtures.rs": "8900d3cd84099b4dc3cabf5e30fbeae25fc2cc4b90d385175ae00a474282ecfa"
+    }
+  },
+  "scenarios": {
+    "cache_hit_run_component_model_point_sum": {
+      "arguments": [
+        3,
+        4
+      ],
+      "criterion_api": "Resolver::load + invoke",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": {
+        "doubled": 14,
+        "sum": 7
+      },
+      "family": "Component Model / record",
+      "fixture": "cm_point_sum",
+      "individual_api": "Resolver::load + invoke",
+      "individual_timed_scope": "Resolver::load(cache hit) + invoke; prepared inputs and result drop outside timer",
+      "operation": "an:test/ops@0.1.0#make-point-sum",
+      "outputs_observed": false,
+      "stage": "cache_hit_run"
+    },
+    "cache_hit_run_core_identity": {
+      "arguments": [
+        42
+      ],
+      "criterion_api": "Resolver::load + invoke",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": [
+        42
+      ],
+      "family": "WASM básico",
+      "fixture": "core_identity",
+      "individual_api": "Resolver::load + invoke",
+      "individual_timed_scope": "Resolver::load(cache hit) + invoke; prepared inputs and result drop outside timer",
+      "operation": "identity",
+      "outputs_observed": false,
+      "stage": "cache_hit_run"
+    },
+    "cold_run_component_model_point_sum": {
+      "arguments": [
+        3,
+        4
+      ],
+      "criterion_api": "Engine::new + load_component + invoke",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": {
+        "doubled": 14,
+        "sum": 7
+      },
+      "family": "Component Model / record",
+      "fixture": "cm_point_sum",
+      "individual_api": null,
+      "individual_timed_scope": null,
+      "operation": "an:test/ops@0.1.0#make-point-sum",
+      "outputs_observed": false,
+      "stage": "cold_run"
+    },
+    "cold_run_component_model_wasi_echo": {
+      "arguments": {
+        "args": [
+          64,
+          0
+        ],
+        "stdin": "hello agent-native"
+      },
+      "criterion_api": "Engine::new + load_component_with_policy + invoke_with_wasi",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": {
+        "return": 18,
+        "stderr": "",
+        "stdout": "hello agent-native"
+      },
+      "family": "WASI I/O",
+      "fixture": "cm_wasi_echo",
+      "individual_api": null,
+      "individual_timed_scope": null,
+      "operation": "echo-and-log",
+      "outputs_observed": false,
+      "stage": "cold_run"
+    },
+    "cold_run_core_identity": {
+      "arguments": [
+        42
+      ],
+      "criterion_api": "Engine::new + load_component + invoke",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": [
+        42
+      ],
+      "family": "WASM básico",
+      "fixture": "core_identity",
+      "individual_api": null,
+      "individual_timed_scope": null,
+      "operation": "identity",
+      "outputs_observed": false,
+      "stage": "cold_run"
+    },
+    "engine_construct": {
+      "arguments": null,
+      "criterion_api": "Engine::new",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": "Engine construido (sin invocación)",
+      "family": "Engine",
+      "fixture": "engine",
+      "individual_api": null,
+      "individual_timed_scope": null,
+      "operation": "construct",
+      "outputs_observed": false,
+      "stage": "engine"
+    },
+    "load_component_model_point_sum": {
+      "arguments": null,
+      "criterion_api": "Engine::new + load_component",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": "Artefacto cargado; función no invocada",
+      "family": "Component Model / record",
+      "fixture": "cm_point_sum",
+      "individual_api": null,
+      "individual_timed_scope": null,
+      "operation": "an:test/ops@0.1.0#make-point-sum",
+      "outputs_observed": false,
+      "stage": "load"
+    },
+    "load_core_identity": {
+      "arguments": null,
+      "criterion_api": "Engine::new + load_component",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": "Artefacto cargado; función no invocada",
+      "family": "WASM básico",
+      "fixture": "core_identity",
+      "individual_api": null,
+      "individual_timed_scope": null,
+      "operation": "identity",
+      "outputs_observed": false,
+      "stage": "load"
+    },
+    "warm_run_component_model_point_sum": {
+      "arguments": [
+        3,
+        4
+      ],
+      "criterion_api": "invoke",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": {
+        "doubled": 14,
+        "sum": 7
+      },
+      "family": "Component Model / record",
+      "fixture": "cm_point_sum",
+      "individual_api": "invoke",
+      "individual_timed_scope": "invoke only; prepared inputs and result drop outside timer",
+      "operation": "an:test/ops@0.1.0#make-point-sum",
+      "outputs_observed": false,
+      "stage": "warm_run"
+    },
+    "warm_run_component_model_v06_greet": {
+      "arguments": [
+        "world"
+      ],
+      "criterion_api": "invoke",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": "hello, world",
+      "family": "IR v0.6 / string",
+      "fixture": "cm_v06",
+      "individual_api": "invoke",
+      "individual_timed_scope": "invoke only; prepared inputs and result drop outside timer",
+      "operation": "greet",
+      "outputs_observed": false,
+      "stage": "warm_run"
+    },
+    "warm_run_component_model_v06_safe_div": {
+      "arguments": [
+        42,
+        6
+      ],
+      "criterion_api": "invoke",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": {
+        "ok": 7
+      },
+      "family": "IR v0.6 / result",
+      "fixture": "cm_v06",
+      "individual_api": "invoke",
+      "individual_timed_scope": "invoke only; prepared inputs and result drop outside timer",
+      "operation": "safe-div",
+      "outputs_observed": false,
+      "stage": "warm_run"
+    },
+    "warm_run_component_model_wasi_echo": {
+      "arguments": {
+        "args": [
+          64,
+          0
+        ],
+        "stdin": "hello agent-native"
+      },
+      "criterion_api": "invoke_with_wasi",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": {
+        "return": 18,
+        "stderr": "",
+        "stdout": "hello agent-native"
+      },
+      "family": "WASI I/O",
+      "fixture": "cm_wasi_echo",
+      "individual_api": "invoke_with_wasi",
+      "individual_timed_scope": "invoke only; prepared inputs and result drop outside timer",
+      "operation": "echo-and-log",
+      "outputs_observed": false,
+      "stage": "warm_run"
+    },
+    "warm_run_core_identity": {
+      "arguments": [
+        42
+      ],
+      "criterion_api": "invoke",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": [
+        42
+      ],
+      "family": "WASM básico",
+      "fixture": "core_identity",
+      "individual_api": "invoke",
+      "individual_timed_scope": "invoke only; prepared inputs and result drop outside timer",
+      "operation": "identity",
+      "outputs_observed": false,
+      "stage": "warm_run"
+    },
+    "warm_run_core_identity_fuel": {
+      "arguments": [
+        42
+      ],
+      "criterion_api": "invoke_with_limits",
+      "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
+      "expected_outputs_contract": {
+        "fuel_consumed": "Some(unidades deterministas; cantidad no archivada)",
+        "values": [
+          42
+        ]
+      },
+      "family": "Fuel / identity",
+      "fixture": "core_identity",
+      "individual_api": "invoke_with_limits(fuel=1000000)",
+      "individual_timed_scope": "invoke only; prepared inputs and result drop outside timer",
+      "operation": "identity",
+      "outputs_observed": false,
+      "stage": "warm_run"
+    },
+    "warm_run_core_identity_limits_unmetered": {
+      "arguments": [
+        42
+      ],
+      "criterion_api": "invoke_with_limits",
+      "criterion_timed_scope": null,
+      "expected_outputs_contract": {
+        "fuel_consumed": null,
+        "values": [
+          42
+        ]
+      },
+      "family": "Control fuel / identity sin límite",
+      "fixture": "core_identity",
+      "individual_api": "invoke_with_limits(unmetered)",
+      "individual_timed_scope": "invoke only; prepared inputs and result drop outside timer",
+      "operation": "identity",
+      "outputs_observed": false,
+      "stage": "warm_run"
+    }
+  },
+  "schema_version": 1
+}

@@ -1,7 +1,7 @@
 ﻿---
 id: AN-055
 type: docs
-status: ready
+status: in-progress
 created_at: 2026-10-20T00:00:00.000Z
 title: Publicación reproducible de la línea base de rendimiento en docs/benchmarks
 knowledge_level: K3
@@ -136,3 +136,18 @@ work item y de INIT-08-02 sigue condicionado a esa revisión.
   sin eliminar las inestables; históricos separados y procedencia completa en JSON.
 - AC-09: ninguna cifra se etiqueta certificada; la referencia para INIT-08-03
   explicita qué información falta antes de decidir caché o warm pools.
+
+## Implementación disponible para revisión
+
+- `docs/benchmarks/README.md`, `cases.md`, `history.md` y `publication.json`
+  generados por `scripts/bench_publish.py`, sin acceso a red.
+- 9 archivos de evidencia (aprox. 1,5 MB comprimidos), 153 filas técnicas en total:
+  69 principales y 84 históricas. Todas las filas permanecen sin certificar.
+- Matriz principal: 31 candidatas sin avisos, 5 aceptables con revisión de
+  instrumento pendiente y 33 inestables excluidas de afirmaciones certificadas.
+  Esta clasificación editorial no constituye aprobación humana.
+- Integridad, procedencia, inputs incompletos/quick, contratos de escenarios y
+  regeneración comprobados con 36 pruebas Python; verificación offline en CI
+  para Linux, Windows y macOS.
+- AN-017 conserva sus cifras históricas y remite a la nueva candidata. INIT-08-02
+  sigue abierto; no se fija Z% ni se decide caché/warm pools antes de revisar datos.
