@@ -13,12 +13,37 @@ use wasmtime::component::{Linker as ComponentLinker, Val};
 
 use crate::engine::{Component, Payload};
 use crate::error::RuntimeError;
-use crate::limits::{ExecutionLimits, InvocationReport};
+use crate::limits::{ExecutionLimits, GrowthDenial, InvocationReport, StoreResourceLimiter};
 use crate::policy::HostPolicy;
 
 pub(crate) const UNMETERED_FUEL_BUDGET: u64 = u64::MAX;
 
-fn map_execution_error(err: &wasmtime::Error, fuel_budget: Option<u64>) -> RuntimeError {
+#[derive(Debug, Default)]
+pub(crate) struct StoreData {
+    pub(crate) limiter: StoreResourceLimiter,
+}
+
+fn map_instantiation_error(err: &wasmtime::Error, denial: Option<GrowthDenial>) -> RuntimeError {
+    if let Some(denial) = denial {
+        return RuntimeError::MemoryLimitExceeded {
+            requested_bytes: denial.requested_bytes,
+            max_bytes: denial.max_bytes,
+        };
+    }
+    RuntimeError::InstantiationFailed(err.to_string())
+}
+
+fn map_execution_error(
+    err: &wasmtime::Error,
+    fuel_budget: Option<u64>,
+    denial: Option<GrowthDenial>,
+) -> RuntimeError {
+    if let Some(denial) = denial {
+        return RuntimeError::MemoryLimitExceeded {
+            requested_bytes: denial.requested_bytes,
+            max_bytes: denial.max_bytes,
+        };
+    }
     for cause in err.chain() {
         if let Some(trap) = cause.downcast_ref::<wasmtime::Trap>() {
             if matches!(trap, wasmtime::Trap::OutOfFuel) {
@@ -224,15 +249,24 @@ fn invoke_component(
 ) -> Result<InvocationReport, RuntimeError> {
     precheck_component_imports(engine, component, policy)?;
 
-    let linker: ComponentLinker<()> = ComponentLinker::new(engine);
-    let mut store = Store::new(engine, ());
+    let linker: ComponentLinker<StoreData> = ComponentLinker::new(engine);
+    let mut store = Store::new(
+        engine,
+        StoreData {
+            limiter: StoreResourceLimiter {
+                limits: limits.instance_limits,
+                last_growth_denial: None,
+            },
+        },
+    );
+    store.limiter(|data| &mut data.limiter);
 
     let initial_budget = limits.fuel_budget.unwrap_or(UNMETERED_FUEL_BUDGET);
     let _ = store.set_fuel(initial_budget);
 
     let instance = linker
         .instantiate(&mut store, component)
-        .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
+        .map_err(|e| map_instantiation_error(&e, store.data().limiter.last_growth_denial))?;
 
     // Function lookup supports two forms:
     //
@@ -268,10 +302,20 @@ fn invoke_component(
     }
 
     let mut results = vec![Val::Bool(false); func.results(&store).len()];
-    func.call(&mut store, args, &mut results)
-        .map_err(|e| map_execution_error(&e, limits.fuel_budget))?;
-    func.post_return(&mut store)
-        .map_err(|e| map_execution_error(&e, limits.fuel_budget))?;
+    func.call(&mut store, args, &mut results).map_err(|e| {
+        map_execution_error(
+            &e,
+            limits.fuel_budget,
+            store.data().limiter.last_growth_denial,
+        )
+    })?;
+    func.post_return(&mut store).map_err(|e| {
+        map_execution_error(
+            &e,
+            limits.fuel_budget,
+            store.data().limiter.last_growth_denial,
+        )
+    })?;
 
     let remaining_fuel = store.get_fuel().unwrap_or(0);
     let fuel_consumed = limits.fuel_budget.map(|b| b.saturating_sub(remaining_fuel));
@@ -292,15 +336,24 @@ fn invoke_core(
 ) -> Result<InvocationReport, RuntimeError> {
     precheck_core_imports(module, policy)?;
 
-    let linker: wasmtime::Linker<()> = wasmtime::Linker::new(engine);
-    let mut store = Store::new(engine, ());
+    let linker: wasmtime::Linker<StoreData> = wasmtime::Linker::new(engine);
+    let mut store = Store::new(
+        engine,
+        StoreData {
+            limiter: StoreResourceLimiter {
+                limits: limits.instance_limits,
+                last_growth_denial: None,
+            },
+        },
+    );
+    store.limiter(|data| &mut data.limiter);
 
     let initial_budget = limits.fuel_budget.unwrap_or(UNMETERED_FUEL_BUDGET);
     let _ = store.set_fuel(initial_budget);
 
     let instance = linker
         .instantiate(&mut store, module)
-        .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
+        .map_err(|e| map_instantiation_error(&e, store.data().limiter.last_growth_denial))?;
 
     let func = instance
         .get_func(&mut store, func_name)
@@ -330,7 +383,13 @@ fn invoke_core(
     let core_args = component_vals_to_core(args, func_name)?;
     let mut core_results = vec![wasmtime::Val::I32(0); func_ty.results().len()];
     func.call(&mut store, &core_args, &mut core_results)
-        .map_err(|e| map_execution_error(&e, limits.fuel_budget))?;
+        .map_err(|e| {
+            map_execution_error(
+                &e,
+                limits.fuel_budget,
+                store.data().limiter.last_growth_denial,
+            )
+        })?;
 
     let lifted = core_results_to_component(&core_results)?;
     let remaining_fuel = store.get_fuel().unwrap_or(0);
@@ -413,7 +472,7 @@ fn invoke_core_with_host_ctx_impl<T: Send + 'static>(
     let core_args = component_vals_to_core(args, func_name)?;
     let mut core_results = vec![wasmtime::Val::I32(0); func_ty.results().len()];
     func.call(&mut store, &core_args, &mut core_results)
-        .map_err(|e| map_execution_error(&e, None))?;
+        .map_err(|e| map_execution_error(&e, None, None))?;
 
     let lifted = core_results_to_component(&core_results)?;
     Ok((lifted, store.into_data()))
@@ -467,9 +526,9 @@ fn invoke_component_with_host_ctx_impl<T: Send + 'static>(
 
     let mut results = vec![Val::Bool(false); func.results(&store).len()];
     func.call(&mut store, args, &mut results)
-        .map_err(|e| map_execution_error(&e, None))?;
+        .map_err(|e| map_execution_error(&e, None, None))?;
     func.post_return(&mut store)
-        .map_err(|e| map_execution_error(&e, None))?;
+        .map_err(|e| map_execution_error(&e, None, None))?;
 
     Ok((results, store.into_data()))
 }

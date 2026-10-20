@@ -51,7 +51,7 @@ pub mod testing;
 
 pub use engine::{Component, Engine};
 pub use error::{PolicyError, RuntimeError};
-pub use limits::{ExecutionLimits, InvocationReport};
+pub use limits::{ExecutionLimits, InstanceLimits, InvocationReport};
 pub use manifest::{
     CURRENT_MANIFEST_VERSION, ComponentManifest, CoreImport, ManifestCapabilities, WitOperation,
 };

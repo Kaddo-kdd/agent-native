@@ -58,6 +58,7 @@ dependencies = [
  "serde_yaml2",
  "sha2",
  "thiserror 2.0.21",
+ "wasm-encoder 0.221.3",
  "wasmtime",
 ]
 

@@ -65,6 +65,16 @@ pub enum RuntimeError {
     #[error("execution ran out of fuel (budget: {limit})")]
     FuelExhausted { limit: u64 },
 
+    /// A WebAssembly instance requested or grew linear memory or tables beyond
+    /// the allowed limit.
+    #[error(
+        "memory limit exceeded: requested {requested_bytes} bytes, maximum allowed is {max_bytes} bytes"
+    )]
+    MemoryLimitExceeded {
+        requested_bytes: usize,
+        max_bytes: usize,
+    },
+
     /// The component declares a host import that the runtime did not
     /// provide. Detected pre-instantiate per ADR-004 (fail-explicit).
     #[error("unauthorized or missing host import: {module}::{name}")]

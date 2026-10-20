@@ -30,6 +30,7 @@ wasmtime = { version = "27.0", default-features = false, features = [
 # downstream consumers of agent-native-runtime.
 agent-native-compiler = { path = "../compiler" }
 criterion = "0.5"
+wasm-encoder = "0.221.0"
 
 [[bench]]
 name = "baseline"
