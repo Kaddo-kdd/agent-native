@@ -16,6 +16,7 @@ jobs:
   bench:
     name: Bench (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -34,21 +35,22 @@ jobs:
         with:
           key: bench-${{ matrix.os }}
 
-      - name: Environment sheet
-        shell: bash
-        run: cargo run -q -p agent-native-runtime --example bench_env > bench-env.json
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-      - name: Baseline benches
-        run: cargo bench -p agent-native-runtime --bench baseline
+      - name: Verify collection and aggregation
+        run: python -m unittest discover -s scripts -p "test_bench_*.py" -v
 
-      - name: Extended benches
-        run: cargo bench -p agent-native-runtime --bench extended
+      - name: Three full repetitions on this runner
+        run: python scripts/bench_collect.py
 
       - name: Upload results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bench-${{ matrix.os }}
-          path: |
-            bench-env.json
-            target/criterion
+          name: bench-${{ matrix.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: bench-results/
           if-no-files-found: error
+          retention-days: 30
