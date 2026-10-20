@@ -28,7 +28,7 @@ candidates:
   - id: INIT-06-02
     title: Límites CPU/memoria (fuel + instance limits)
     status: in-progress
-    materialized_as: AN-035, AN-036, AN-037
+    materialized_as: AN-035 (in-progress), AN-036 (completed), AN-037 (completed), AN-038 (draft)
   - id: INIT-06-03
     title: Ciclo de vida de instancias y aislamiento multi-tenant
     status: candidate
@@ -66,11 +66,12 @@ Prerrequisito para habilitar I/O real (RM-07) y para presentar el runtime en esc
 
 ## Success Criteria
 
-1. Policy loader rechaza capabilities no listadas con error tipado; auditado por suite de pruebas negativas.
-2. Fuel overflow produce trap en ≤ N ms; memory limit excedido produce trap tipado.
+1. Policy loader rechaza capabilities no listadas con error tipado; auditado por suite de pruebas negativas (Completado: AN-033, AN-034).
+2. Fuel overflow produce trap determinista tipado (`RuntimeError::FuelExhausted`); memory limit excedido produce trap tipado (`RuntimeError::MemoryLimitExceeded`).
+   - *Estado actual:* Límites de memoria y tablas verificados en los escenarios cubiertos en todas las plataformas (AN-036). Agotamiento de fuel verificado en Linux y macOS; en Windows MSVC permanece como problema observado y brecha abierta en investigación activa (AN-035 in-progress, AN-038 draft).
 3. Test de contaminación cruzada entre tenants pasa con aislamiento, falla sin él.
 4. `run --verify` falla con componente alterado; pasa con firma válida.
-5. Fixtures de ejecución extrema disponibles y cubiertos en CI.
+5. Fixtures de ejecución extrema disponibles y cubiertos en CI (Completado: AN-037).
 
 ## Dependencies
 
@@ -87,6 +88,11 @@ Ver `candidates:`.
 - OQ L149 (modelo de permisos, firma, procedencia) — se cierra en INIT-06-01/06-04.
 - Riesgo R-11 (allocator incremental de la POC) — mitigado por INIT-02-05 + INIT-06-02/06-03.
 
-## Learning
+## Learning y Precisiones Técnicas (INIT-06-02 / 2026-10-19)
 
-_Pendiente._
+1. **Fuel no equivale a tiempo de CPU de reloj:** Wasmtime limita trabajo computacional determinista mediante conteo de instrucciones abstractas. Los tiempos de reloj deben registrarse como mediciones empíricas observadas, nunca como garantías rígidas universales.
+2. **Alcance real de `max_memory_bytes`:** Se evalúa en cada solicitud individual de crecimiento de memoria lineal WebAssembly (`ResourceLimiter::memory_growing()`) en el `Store` activo. No constituye una cuota acumulada de todas las memorias del Store, ni una cuota agregada o acumulativa entre múltiples invocaciones de un tenant, ni garantiza el aislamiento de toda la memoria del proceso anfitrión.
+3. **Mapeo de errores y diagnóstico heurístico:** `ResourceLimiter` instruye a `memory.grow` a devolver `-1`. Cuando el guest entra en trap consecuente (`unreachable`), el runtime mapea heurísticamente el error a `RuntimeError::MemoryLimitExceeded` basándose en la bandera de denegación del Store. Un trap posterior no demuestra formalmente que la causa raíz haya sido el fallo de memoria. En INIT-06-03 se refinará el diagnóstico para desacoplar trampas no relacionadas de fallos de memoria previos.
+4. **Variantes con host context:** Actualmente `invoke_*_with_host_ctx()` opera bajo rutas unmetered. INIT-06-03 unificará las rutas de ejecución bajo límites y cuotas homogéneas.
+5. **Brecha de contención de fuel en Windows MSVC:** En Wasmtime 27, el agotamiento de fuel en Windows desencadena `panic_cannot_unwind` (`0xc0000409`). No se declara completada la contención de CPU en Windows hasta que AN-038 valide una actualización de Wasmtime o un worker aislado por proceso.
+6. **Invariante no negociable de aislamiento:** Prohibición estricta de reutilización de instancias entre tenants (Store fresco por invocación garantizado).

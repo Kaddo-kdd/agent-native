@@ -6,6 +6,10 @@ date: 2026-10-17
 created_from: knowledge/tech/discovery/decision-candidates.md
 related_work_items:
   - AN-003
+  - AN-016
+  - AN-035
+  - AN-036
+  - AN-037
 code:
   - crates/ir/
   - crates/runtime/
@@ -80,6 +84,15 @@ Las tres preguntas que originalmente quedaron `[open]` fueron ejercitadas por lo
 - **[deferred to: INIT-06-02]** — **Allocator alternativo** (p. ej. arena por invocación). AN-012/013 miden que el default `wit-bindgen` **no es el término dominante** del cold start (~2 µs warm vs ~389 µs cold está dominado por parsing + Cranelift, no por allocación). Criterio objetivo: antes de proponer un allocator alternativo hay que medir bytes allocados reales con `wasmtime::ResourceLimiter`, cuya integración vive en INIT-06-02 (fuel + instance limits). Hasta entonces, mantener el default.
 - **[deferred to: INIT-06-03]** — **Estrategia de liberación en instancias persistentes**. El baseline operativa (fresh `Store` per invoke) hace la pregunta vacua: no hay instancias persistentes. INIT-06-03 debe decidir si levantar esa restricción con garantías de aislamiento multi-tenant; sólo entonces aplica una decisión sobre liberación.
 - **[deferred to: RM-07 / INIT-07-02]** — **Comportamiento ante allocación masiva o fuga en el guest**. Los experimentos de AN-016 §3 muestran que la gramática v0.5 **impide** construir fixtures de estrés (sin loops, listas ni strings; records anidados rechazados por diseño — ver AN-016 §2 y `nested_records.rs`). El experimento se habilita cuando IR v0.6+ relaje esas restricciones. Mientras tanto, INIT-06-05 cubre fixtures de recursión a nivel WASM (fuera del dominio del compilador).
+
+### Límites de memoria por instancia y contención (INIT-06-02 / AN-036)
+
+Añadido por AN-036:
+
+- **Contención de memoria lineal mediante `ResourceLimiter`:** Se intercepta cada solicitud individual de crecimiento dinámico (`ResourceLimiter::memory_growing()`) en tiempo de ejecución. Al alcanzar `max_memory_bytes`, el limiter deniega la petición retornando `Ok(false)`, lo que produce `-1` en el guest.
+- **Diagnóstico heurístico de traps:** Si el guest aborta tras una denegación registrada (`unreachable`), el runtime mapea heurísticamente el trap a `RuntimeError::MemoryLimitExceeded`.
+- **Delimitación de garantías:** Este límite opera evaluando solicitudes individuales de crecimiento de la memoria lineal dentro de un `Store` activo; **no** constituye una cuota acumulada de todas las memorias del Store, ni una cuota agregada o acumulativa entre múltiples invocaciones de un tenant, ni garantiza aislamiento de toda la memoria del proceso anfitrión (aspecto reservado para INIT-06-03).
+- **Invariante no negociable de aislamiento:** Se ratifica la prohibición estricta de reutilización de instancias entre tenants. Cada invocación mantiene su propio `wasmtime::Store` fresco y aislado.
 
 ### Canonical ABI — [chosen] copy-on-return + fresh Store per invoke
 

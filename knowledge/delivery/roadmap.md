@@ -80,7 +80,7 @@ Fuentes:
 | INIT-05-03 | Pipeline de release para 3 triples objetivo | medium | INIT-05-01 | Artefactos distribuibles; firma/empaquetado via ADR dedicada | completed (AN-031, AN-032) |
 | **RM-06** | **Runtime Security & Memory** | — | — | Runtime controlado por políticas | — |
 | INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | completed (AN-033, AN-034) |
-| INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | nuevo |
+| INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | in-progress (AN-035, AN-036, AN-037, AN-038) |
 | INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | nuevo |
 | INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | nuevo |
 | INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | nuevo |
@@ -762,19 +762,21 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 #### INIT-06-02: Límites CPU/memoria (fuel + instance limits)
 
-**Status:** candidate · **Priority:** high · **K4**
+**Status:** in-progress · **Priority:** high · **K4**
+
+**Materialized as:** AN-035 (in-progress), AN-036 (completed), AN-037 (completed), AN-038 (draft)
 
 **Source signals:** Risk R-11; ADR-005.
 
 **Dependencies:** INIT-03-01, INIT-02-05.
 
-**Notes:** recibe formalmente la medición de memoria por instancia (`ResourceLimiter`), diferida de M3 (INIT-03-06) por la decisión humana D3 (2026-10-19).
+**Notes:** AN-036 implementa contención de memoria lineal y tablas mediante `ResourceLimiter` (verificado en los escenarios cubiertos cross-OS). AN-037 provee suite negativa de estrés y Store isolation. AN-035 provee fuel accounting por Store; la contención de bucles infinitos ante agotamiento de fuel en Windows MSVC permanece en progreso e investigada en AN-038.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-06-02-01: fuel accounting (`feature`)
-- WI-CANDIDATE-06-02-02: `InstanceLimits` configurables (`feature`)
-- WI-CANDIDATE-06-02-03: defaults sanos documentados (`chore`)
-- WI-CANDIDATE-06-02-04: medición de memoria por instancia y límites de memoria (diferido de INIT-03-06 por D3) (`chore`)
+- WI-CANDIDATE-06-02-01: fuel accounting (`feature`, AN-035 — in-progress)
+- WI-CANDIDATE-06-02-02: `InstanceLimits` configurables y `ResourceLimiter` (`feature`, AN-036 — completed)
+- WI-CANDIDATE-06-02-03: suite de pruebas negativas y límites (`test`, AN-037 — completed)
+- WI-CANDIDATE-06-02-05: contención segura de agotamiento de fuel en Windows MSVC (`chore`, AN-038 — draft)
 
 ---
 
@@ -784,15 +786,15 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 **Source signals:** Risk R-11; OQ L146.
 
-**Problem / opportunity:** garantías de aislamiento verificables **antes** de habilitar reutilización de instancias entre tenants.
+**Problem / opportunity:** garantías de aislamiento verificables demostrando que un componente problemático no puede afectar a otro tenant. **Invariante obligatoria:** estrictamente sin reutilización de instancias entre tenants (Store fresco por invocación).
 
 **Dependencies:** INIT-06-02, INIT-02-05.
 
-**Notes:** sin esto, instancias siempre nuevas por tenant.
+**Notes:** incorpora la agregación de cuotas por tenant (más allá del límite por crecimiento de memoria lineal de una instancia individual de AN-036), unificación de rutas de invocación con host context (`invoke_*_with_host_ctx`) bajo los mismos límites, y refinamiento del diagnóstico de traps de memoria sin asumir falsos positivos correlacionados.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-06-03-01: API `Tenant` (`feature`)
-- WI-CANDIDATE-06-03-02: tests de contaminación cruzada (`chore`)
+- WI-CANDIDATE-06-03-01: API `Tenant` y ciclo de vida de invocación (`feature`)
+- WI-CANDIDATE-06-03-02: tests de contaminación cruzada y contención de blast radius (`chore`)
 
 ---
 
