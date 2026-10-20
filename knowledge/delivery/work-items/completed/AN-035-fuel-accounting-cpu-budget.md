@@ -1,8 +1,9 @@
 ---
 id: AN-035
 type: feature
-status: in-progress
+status: completed
 created_at: 2026-10-19T00:00:00.000Z
+completed_at: 2026-10-19T00:00:00.000Z
 title: Fuel accounting y presupuesto de CPU por invocación
 knowledge_level: K3
 suggested_knowledge_level: K3
@@ -38,14 +39,13 @@ risks:
     Mitigación: Medición de overhead en benchmarks existentes para cuantificar el costo.
   - >-
     R-FUEL-03: Interrupción por agotamiento de fuel en Windows MSVC (Wasmtime 27).
-    En Windows x64 MSVC, se observa que al agotarse el fuel el runtime desencadena `panic_cannot_unwind`
-    abortando el proceso anfitrión (`0xc0000409`). Se plantea como hipótesis técnica asociada al issue
-    upstream #10923 de Bytecode Alliance que el desenrollado de excepciones (`RtlUnwindEx`) durante `longjmp`
-    interactúa con marcos no preparados para unwinding. No obstante, no se asume que una convención de llamada
-    específica sea la causa única o suficiente.
-    Estado actual: En Linux y macOS la recuperación opera con normalidad (`RuntimeError::FuelExhausted`).
-    En Windows, la medición y el presupuesto operan según lo esperado, pero el agotamiento crítico aborta a nivel de proceso
-    hasta que se evalúe y resuelva mediante AN-038 (comparación de versiones de Wasmtime o worker de proceso aislado).
+    En Windows x64 MSVC con Wasmtime 27/28, al agotarse el fuel el runtime desencadenaba `panic_cannot_unwind`
+    abortando el proceso anfitrión (`0xc0000409`), debido a que los libcalls salían directamente mediante `longjmp`.
+    Mitigación y resolución definitiva: Resuelto en AN-038 mediante la promoción técnica a Wasmtime 29.0.1,
+    donde el PR #9710 de Bytecode Alliance migró los libcalls para devolver códigos de trap en lugar de provocar
+    el desenrollado forzado directamente. La contención opera de forma 100% segura cross-OS (Linux, macOS, Windows)
+    y todas las pruebas negativas y de agotamiento de fuel corren sin atributos `#[ignore]`. Se registra como
+    deuda de mantenimiento evaluar una versión más reciente (ej. Wasmtime 49+/50+) antes del lanzamiento de producción.
 dependencies:
   - AN-012
   - AN-029
@@ -66,15 +66,15 @@ template_version: 1
 
 # AN-035 — Fuel accounting y presupuesto de CPU por invocación
 
-## Estado del Work Item: `in-progress`
+## Estado del Work Item: `completed`
 
-La implementación base de fuel accounting, configuración de presupuesto por invocación, reporte de métricas y retrocompatibilidad no restringida se encuentra integrada en `crates/runtime` (commit `890bdf6`).
+La implementación base de fuel accounting, configuración de presupuesto por invocación, reporte de métricas y retrocompatibilidad no restringida se encuentra integrada en `crates/runtime`.
 
-Sin embargo, este Work Item permanece formalmente en estado **`in-progress`** debido a que la garantía de contención segura del host ante agotamiento de CPU no está satisfecha en Windows MSVC:
-- En **Linux y macOS**, el agotamiento de fuel es contenido limpiamente por Wasmtime y mapeado a `RuntimeError::FuelExhausted { limit }`.
-- En **Windows MSVC**, el agotamiento de fuel produce la terminación no controlada de todo el proceso anfitrión con código `0xc0000409` (`panic_cannot_unwind`).
-
-Esta brecha multiplataforma se aborda de forma dedicada en **AN-038**.
+La brecha de contención segura en Windows MSVC (donde Wasmtime 27 producía `0xc0000409 panic_cannot_unwind`) fue abordada e investigada en **AN-038**, logrando su resolución técnica mediante la promoción a **Wasmtime 29.0.1** (incorporando el PR #9710 de Bytecode Alliance: *Migrate libcalls to checking for traps*). Con ello:
+- En **Linux, macOS y Windows MSVC**, el agotamiento de fuel es contenido limpiamente por Wasmtime dentro del mismo Store y mapeado a `RuntimeError::FuelExhausted { limit }`.
+- Todas las pruebas de agotamiento de fuel en `crates/runtime/tests/fuel_accounting.rs` y `crates/runtime/tests/limits_negative_tests.rs` se ejecutan sin anotaciones `#[ignore]`.
+- Se valida formalmente la supervivencia del proceso padre mediante el harness de subproceso `repro_windows_fuel_abort.rs`.
+- Se registra una deuda técnica de mantenimiento para evaluar una versión de soporte a largo plazo más reciente de Wasmtime (49+/50+) previo a la fase de producción (RM-08).
 
 ---
 
@@ -131,7 +131,8 @@ FuelExhausted { limit: u64 },
 - Detección estructurada de `wasmtime::Trap::OutOfFuel` en el mapeador de errores.
 - Suite de pruebas de regresión y determinismo en `crates/runtime/tests/fuel_accounting.rs`.
 
-## Condiciones Pendientes para Cierre Definitivo
+## Cierre y Verificación
 
-1. Evaluar y resolver la contención de agotamiento de fuel en Windows MSVC mediante la comparación con versiones posteriores de Wasmtime o, si el problema persiste, mediante un worker de proceso aislado (sujeto a los resultados de la POC de AN-038).
-2. Garantizar que en Windows MSVC ningún agotamiento de fuel termine el proceso anfitrión que aloja el runtime.
+1. **Contención cross-platform:** Demostrada y verificada mediante la suite completa de pruebas en CI multiplataforma (Linux, macOS, Windows MSVC, AWS Lambda offline) con 100% de tests pasando y 0 exclusiones `#[ignore]`.
+2. **Supervivencia del host en Windows MSVC:** Confirmada mediante el test de subproceso `repro_windows_fuel_abort.rs`, donde el trap por agotamiento es atrapado de forma determinista y el host prosigue su ejecución normal.
+3. **Deuda técnica:** Registrada la necesidad de evaluar una versión más reciente (ej. Wasmtime 49+/50+) antes de la fase de producción en RM-08.

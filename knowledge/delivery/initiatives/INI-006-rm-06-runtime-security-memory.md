@@ -27,8 +27,8 @@ candidates:
     materialized_as: AN-033, AN-034
   - id: INIT-06-02
     title: Límites CPU/memoria (fuel + instance limits)
-    status: in-progress
-    materialized_as: AN-035 (in-progress), AN-036 (completed), AN-037 (completed), AN-038 (draft)
+    status: completed
+    materialized_as: AN-035 (completed), AN-036 (completed), AN-037 (completed), AN-038 (completed)
   - id: INIT-06-03
     title: Ciclo de vida de instancias y aislamiento multi-tenant
     status: candidate
@@ -68,7 +68,7 @@ Prerrequisito para habilitar I/O real (RM-07) y para presentar el runtime en esc
 
 1. Policy loader rechaza capabilities no listadas con error tipado; auditado por suite de pruebas negativas (Completado: AN-033, AN-034).
 2. Fuel overflow produce trap determinista tipado (`RuntimeError::FuelExhausted`); memory limit excedido produce trap tipado (`RuntimeError::MemoryLimitExceeded`).
-   - *Estado actual:* Límites de memoria y tablas verificados en los escenarios cubiertos en todas las plataformas (AN-036). Agotamiento de fuel verificado en Linux y macOS; en Windows MSVC permanece como problema observado y brecha abierta en investigación activa (AN-035 in-progress, AN-038 draft).
+   - *Estado actual:* Límites de memoria y tablas verificados cross-OS (AN-036). Agotamiento de fuel verificado y contenido de forma limpia en Linux, macOS y Windows MSVC sin terminar el proceso anfitrión tras la promoción técnica a Wasmtime 29.0.1 (Bytecode Alliance PR #9710) en AN-038. Suite de tests 100% pasando en CI con 0 exclusiones `#[ignore]` (Completado: AN-035, AN-036, AN-038). Se registra deuda de mantenimiento para evaluar Wasmtime 49+/50+ en RM-08.
 3. Test de contaminación cruzada entre tenants pasa con aislamiento, falla sin él.
 4. `run --verify` falla con componente alterado; pasa con firma válida.
 5. Fixtures de ejecución extrema disponibles y cubiertos en CI (Completado: AN-037).
@@ -94,5 +94,5 @@ Ver `candidates:`.
 2. **Alcance real de `max_memory_bytes`:** Se evalúa en cada solicitud individual de crecimiento de memoria lineal WebAssembly (`ResourceLimiter::memory_growing()`) en el `Store` activo. No constituye una cuota acumulada de todas las memorias del Store, ni una cuota agregada o acumulativa entre múltiples invocaciones de un tenant, ni garantiza el aislamiento de toda la memoria del proceso anfitrión.
 3. **Mapeo de errores y diagnóstico heurístico:** `ResourceLimiter` instruye a `memory.grow` a devolver `-1`. Cuando el guest entra en trap consecuente (`unreachable`), el runtime mapea heurísticamente el error a `RuntimeError::MemoryLimitExceeded` basándose en la bandera de denegación del Store. Un trap posterior no demuestra formalmente que la causa raíz haya sido el fallo de memoria. En INIT-06-03 se refinará el diagnóstico para desacoplar trampas no relacionadas de fallos de memoria previos.
 4. **Variantes con host context:** Actualmente `invoke_*_with_host_ctx()` opera bajo rutas unmetered. INIT-06-03 unificará las rutas de ejecución bajo límites y cuotas homogéneas.
-5. **Brecha de contención de fuel en Windows MSVC:** En Wasmtime 27, el agotamiento de fuel en Windows desencadena `panic_cannot_unwind` (`0xc0000409`). No se declara completada la contención de CPU en Windows hasta que AN-038 valide una actualización de Wasmtime o un worker aislado por proceso.
+5. **Resolución de la contención de fuel en Windows MSVC:** Tras reproducir el aborto no controlado (`0xc0000409`) en Wasmtime 27 y 28 debido al uso de `longjmp` en libcalls, la actualización técnica a Wasmtime 29.0.1 (Bytecode Alliance PR #9710) migró los libcalls al retorno estructurado de trap status, permitiendo a Cranelift y Wasmtime capturar `Trap::OutOfFuel` en Windows de forma idéntica a Linux/macOS sin abortar el host. Todas las pruebas corren habilitadas en CI. Se mantiene registrada la deuda técnica para actualizar a Wasmtime 49+/50+ en RM-08.
 6. **Invariante no negociable de aislamiento:** Prohibición estricta de reutilización de instancias entre tenants (Store fresco por invocación garantizado).

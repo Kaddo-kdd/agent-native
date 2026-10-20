@@ -80,7 +80,7 @@ Fuentes:
 | INIT-05-03 | Pipeline de release para 3 triples objetivo | medium | INIT-05-01 | Artefactos distribuibles; firma/empaquetado via ADR dedicada | completed (AN-031, AN-032) |
 | **RM-06** | **Runtime Security & Memory** | — | — | Runtime controlado por políticas | — |
 | INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | completed (AN-033, AN-034) |
-| INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | in-progress (AN-035, AN-036, AN-037, AN-038) |
+| INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | completed (AN-035, AN-036, AN-037, AN-038) |
 | INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | nuevo |
 | INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | nuevo |
 | INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | nuevo |
@@ -762,21 +762,21 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 #### INIT-06-02: Límites CPU/memoria (fuel + instance limits)
 
-**Status:** in-progress · **Priority:** high · **K4**
+**Status:** **completed 2026-10-19** · **Priority:** high · **K4**
 
-**Materialized as:** AN-035 (in-progress), AN-036 (completed), AN-037 (completed), AN-038 (draft)
+**Materialized as:** AN-035, AN-036, AN-037, AN-038 (completed)
 
 **Source signals:** Risk R-11; ADR-005.
 
 **Dependencies:** INIT-03-01, INIT-02-05.
 
-**Notes:** AN-036 implementa contención de memoria lineal y tablas mediante `ResourceLimiter` (verificado en los escenarios cubiertos cross-OS). AN-037 provee suite negativa de estrés y Store isolation. AN-035 provee fuel accounting por Store; la contención de bucles infinitos ante agotamiento de fuel en Windows MSVC permanece en progreso e investigada en AN-038.
+**Notes:** AN-036 implementa contención de memoria lineal y tablas mediante `ResourceLimiter` (verificado en los escenarios cubiertos cross-OS). AN-037 provee suite negativa de estrés y Store isolation. AN-035 provee fuel accounting por Store. AN-038 resolvió la contención de bucles infinitos ante agotamiento de fuel en Windows MSVC mediante la promoción técnica a Wasmtime 29.0.1 (Bytecode Alliance PR #9710: *Migrate libcalls to checking for traps*), garantizando atrapado limpio de `FuelExhausted` sin terminación de proceso en todas las plataformas y eliminando todas las exclusiones `#[ignore]`. Se registra la deuda de mantenimiento para evaluar Wasmtime 49+/50+ en RM-08.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-06-02-01: fuel accounting (`feature`, AN-035 — in-progress)
+- WI-CANDIDATE-06-02-01: fuel accounting (`feature`, AN-035 — completed)
 - WI-CANDIDATE-06-02-02: `InstanceLimits` configurables y `ResourceLimiter` (`feature`, AN-036 — completed)
 - WI-CANDIDATE-06-02-03: suite de pruebas negativas y límites (`test`, AN-037 — completed)
-- WI-CANDIDATE-06-02-05: contención segura de agotamiento de fuel en Windows MSVC (`chore`, AN-038 — draft)
+- WI-CANDIDATE-06-02-05: contención segura de agotamiento de fuel en Windows MSVC (`chore`, AN-038 — completed)
 
 ---
 
