@@ -38,21 +38,43 @@ fn map_execution_error(
     fuel_budget: Option<u64>,
     denial: Option<GrowthDenial>,
 ) -> RuntimeError {
+    for cause in err.chain() {
+        if let Some(trap) = cause.downcast_ref::<wasmtime::Trap>() {
+            match trap {
+                wasmtime::Trap::OutOfFuel => {
+                    return RuntimeError::FuelExhausted {
+                        limit: fuel_budget.unwrap_or(0),
+                    };
+                }
+                wasmtime::Trap::UnreachableCodeReached => {
+                    if let Some(denial) = denial {
+                        return RuntimeError::MemoryLimitExceeded {
+                            requested_bytes: denial.requested_bytes,
+                            max_bytes: denial.max_bytes,
+                        };
+                    }
+                }
+                wasmtime::Trap::IntegerOverflow
+                | wasmtime::Trap::IntegerDivisionByZero
+                | wasmtime::Trap::BadConversionToInteger
+                | wasmtime::Trap::TableOutOfBounds
+                | wasmtime::Trap::IndirectCallToNull
+                | wasmtime::Trap::BadSignature
+                | wasmtime::Trap::StackOverflow => {
+                    return RuntimeError::ExecutionFailed(format!("{trap}: {err}"));
+                }
+                _ => {}
+            }
+        }
+    }
+
     if let Some(denial) = denial {
         return RuntimeError::MemoryLimitExceeded {
             requested_bytes: denial.requested_bytes,
             max_bytes: denial.max_bytes,
         };
     }
-    for cause in err.chain() {
-        if let Some(trap) = cause.downcast_ref::<wasmtime::Trap>() {
-            if matches!(trap, wasmtime::Trap::OutOfFuel) {
-                return RuntimeError::FuelExhausted {
-                    limit: fuel_budget.unwrap_or(0),
-                };
-            }
-        }
-    }
+
     RuntimeError::ExecutionFailed(err.to_string())
 }
 
@@ -84,37 +106,29 @@ impl Component {
         args: &[Val],
         limits: &ExecutionLimits,
     ) -> Result<InvocationReport, RuntimeError> {
+        self.invoke_with_policy_and_limits(&self.policy, limits, func_name, args)
+    }
+
+    /// Invokes an exported function under explicit policy and execution limits.
+    pub fn invoke_with_policy_and_limits(
+        &self,
+        policy: &HostPolicy,
+        limits: &ExecutionLimits,
+        func_name: &str,
+        args: &[Val],
+    ) -> Result<InvocationReport, RuntimeError> {
         match &self.payload {
-            Payload::Component(component) => invoke_component(
-                &self.engine,
-                component,
-                &self.policy,
-                func_name,
-                args,
-                limits,
-            ),
+            Payload::Component(component) => {
+                invoke_component(&self.engine, component, policy, func_name, args, limits)
+            }
             Payload::Module(module) => {
-                invoke_core(&self.engine, module, &self.policy, func_name, args, limits)
+                invoke_core(&self.engine, module, policy, func_name, args, limits)
             }
         }
     }
 
     /// Invokes an exported Core WASM function with a caller-provided host
     /// context and `wasmtime::Linker<T>` builder under unmetered execution limits.
-    ///
-    /// The policy pre-check and function-resolution logic are shared with
-    /// [`Component::invoke`]; the caller only owns the `Linker` population,
-    /// which is where stubs for host imports are registered.
-    ///
-    /// Returns the lifted results **and** the final `T` so the caller can
-    /// read back mutable state (host-call log, kv store, etc.) populated by
-    /// stub closures.
-    ///
-    /// # Errors
-    ///
-    /// Returns the same [`RuntimeError`] variants as [`Component::invoke`].
-    /// Returns [`RuntimeError::ExecutionFailed`] with a descriptive message
-    /// when called on a Component-Model payload.
     pub fn invoke_core_with_host_ctx<T: Send + 'static>(
         &self,
         func_name: &str,
@@ -125,6 +139,52 @@ impl Component {
             &mut wasmtime::Linker<T>,
         ) -> Result<(), wasmtime::Error>,
     ) -> Result<(Vec<Val>, T), RuntimeError> {
+        let (report, ctx) = self.invoke_core_with_host_ctx_and_limits(
+            func_name,
+            args,
+            &ExecutionLimits::unmetered(),
+            host_ctx,
+            build_linker,
+        )?;
+        Ok((report.values, ctx))
+    }
+
+    /// Invokes an exported Core WASM function with a caller-provided host
+    /// context and explicit execution limits.
+    pub fn invoke_core_with_host_ctx_and_limits<T: Send + 'static>(
+        &self,
+        func_name: &str,
+        args: &[Val],
+        limits: &ExecutionLimits,
+        host_ctx: T,
+        build_linker: impl FnOnce(
+            &wasmtime::Engine,
+            &mut wasmtime::Linker<T>,
+        ) -> Result<(), wasmtime::Error>,
+    ) -> Result<(InvocationReport, T), RuntimeError> {
+        self.invoke_core_with_host_ctx_and_policy_limits(
+            &self.policy,
+            limits,
+            func_name,
+            args,
+            host_ctx,
+            build_linker,
+        )
+    }
+
+    /// Invokes an exported Core WASM function under explicit policy and execution limits.
+    pub fn invoke_core_with_host_ctx_and_policy_limits<T: Send + 'static>(
+        &self,
+        policy: &HostPolicy,
+        limits: &ExecutionLimits,
+        func_name: &str,
+        args: &[Val],
+        host_ctx: T,
+        build_linker: impl FnOnce(
+            &wasmtime::Engine,
+            &mut wasmtime::Linker<T>,
+        ) -> Result<(), wasmtime::Error>,
+    ) -> Result<(InvocationReport, T), RuntimeError> {
         let Payload::Module(module) = &self.payload else {
             return Err(RuntimeError::ExecutionFailed(
                 "invoke_core_with_host_ctx called on a Component-Model payload".to_string(),
@@ -133,9 +193,10 @@ impl Component {
         invoke_core_with_host_ctx_impl(
             &self.engine,
             module,
-            &self.policy,
+            policy,
             func_name,
             args,
+            limits,
             host_ctx,
             build_linker,
         )
@@ -143,12 +204,6 @@ impl Component {
 
     /// Invokes an exported Component-Model function with a caller-provided
     /// host context and `wasmtime::component::Linker<T>` builder under unmetered execution limits.
-    ///
-    /// # Errors
-    ///
-    /// Returns the same [`RuntimeError`] variants as [`Component::invoke`].
-    /// Returns [`RuntimeError::ExecutionFailed`] with a descriptive message
-    /// when called on a Core-WASM payload.
     pub fn invoke_component_with_host_ctx<T: Send + 'static>(
         &self,
         func_name: &str,
@@ -159,6 +214,52 @@ impl Component {
             &mut ComponentLinker<T>,
         ) -> Result<(), wasmtime::Error>,
     ) -> Result<(Vec<Val>, T), RuntimeError> {
+        let (report, ctx) = self.invoke_component_with_host_ctx_and_limits(
+            func_name,
+            args,
+            &ExecutionLimits::unmetered(),
+            host_ctx,
+            build_linker,
+        )?;
+        Ok((report.values, ctx))
+    }
+
+    /// Invokes an exported Component-Model function with a caller-provided
+    /// host context and explicit execution limits.
+    pub fn invoke_component_with_host_ctx_and_limits<T: Send + 'static>(
+        &self,
+        func_name: &str,
+        args: &[Val],
+        limits: &ExecutionLimits,
+        host_ctx: T,
+        build_linker: impl FnOnce(
+            &wasmtime::Engine,
+            &mut ComponentLinker<T>,
+        ) -> Result<(), wasmtime::Error>,
+    ) -> Result<(InvocationReport, T), RuntimeError> {
+        self.invoke_component_with_host_ctx_and_policy_limits(
+            &self.policy,
+            limits,
+            func_name,
+            args,
+            host_ctx,
+            build_linker,
+        )
+    }
+
+    /// Invokes an exported Component-Model function under explicit policy and execution limits.
+    pub fn invoke_component_with_host_ctx_and_policy_limits<T: Send + 'static>(
+        &self,
+        policy: &HostPolicy,
+        limits: &ExecutionLimits,
+        func_name: &str,
+        args: &[Val],
+        host_ctx: T,
+        build_linker: impl FnOnce(
+            &wasmtime::Engine,
+            &mut ComponentLinker<T>,
+        ) -> Result<(), wasmtime::Error>,
+    ) -> Result<(InvocationReport, T), RuntimeError> {
         let Payload::Component(component) = &self.payload else {
             return Err(RuntimeError::ExecutionFailed(
                 "invoke_component_with_host_ctx called on a Core-WASM payload".to_string(),
@@ -167,9 +268,10 @@ impl Component {
         invoke_component_with_host_ctx_impl(
             &self.engine,
             component,
-            &self.policy,
+            policy,
             func_name,
             args,
+            limits,
             host_ctx,
             build_linker,
         )
@@ -422,25 +524,28 @@ fn resolve_component_func<T>(
 /// Core-WASM variant that runs with a caller-populated `Linker<T>` and
 /// returns the final `T` alongside the lifted results. Shares the policy
 /// pre-check and function-resolution logic with [`invoke_core`].
+#[allow(clippy::too_many_arguments)]
 fn invoke_core_with_host_ctx_impl<T: Send + 'static>(
     engine: &wasmtime::Engine,
     module: &wasmtime::Module,
     policy: &HostPolicy,
     func_name: &str,
     args: &[Val],
+    limits: &ExecutionLimits,
     host_ctx: T,
     build_linker: impl FnOnce(
         &wasmtime::Engine,
         &mut wasmtime::Linker<T>,
     ) -> Result<(), wasmtime::Error>,
-) -> Result<(Vec<Val>, T), RuntimeError> {
+) -> Result<(InvocationReport, T), RuntimeError> {
     precheck_core_imports(module, policy)?;
 
     let mut linker: wasmtime::Linker<T> = wasmtime::Linker::new(engine);
     build_linker(engine, &mut linker)
         .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
     let mut store = Store::new(engine, host_ctx);
-    let _ = store.set_fuel(UNMETERED_FUEL_BUDGET);
+    let initial_budget = limits.fuel_budget.unwrap_or(UNMETERED_FUEL_BUDGET);
+    let _ = store.set_fuel(initial_budget);
 
     let instance = linker
         .instantiate(&mut store, module)
@@ -474,29 +579,41 @@ fn invoke_core_with_host_ctx_impl<T: Send + 'static>(
     let core_args = component_vals_to_core(args, func_name)?;
     let mut core_results = vec![wasmtime::Val::I32(0); func_ty.results().len()];
     func.call(&mut store, &core_args, &mut core_results)
-        .map_err(|e| map_execution_error(&e, None, None))?;
+        .map_err(|e| map_execution_error(&e, limits.fuel_budget, None))?;
 
     let lifted = core_results_to_component(&core_results)?;
-    Ok((lifted, store.into_data()))
+    let remaining_fuel = store.get_fuel().unwrap_or(0);
+    let fuel_consumed = limits.fuel_budget.map(|b| b.saturating_sub(remaining_fuel));
+
+    Ok((
+        InvocationReport {
+            values: lifted,
+            fuel_consumed,
+        },
+        store.into_data(),
+    ))
 }
 
 /// Component-Model variant with host context (symmetric to the core one).
+#[allow(clippy::too_many_arguments)]
 fn invoke_component_with_host_ctx_impl<T: Send + 'static>(
     engine: &wasmtime::Engine,
     component: &wasmtime::component::Component,
     policy: &HostPolicy,
     func_name: &str,
     args: &[Val],
+    limits: &ExecutionLimits,
     host_ctx: T,
     build_linker: impl FnOnce(&wasmtime::Engine, &mut ComponentLinker<T>) -> Result<(), wasmtime::Error>,
-) -> Result<(Vec<Val>, T), RuntimeError> {
+) -> Result<(InvocationReport, T), RuntimeError> {
     precheck_component_imports(engine, component, policy)?;
 
     let mut linker: ComponentLinker<T> = ComponentLinker::new(engine);
     build_linker(engine, &mut linker)
         .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
     let mut store = Store::new(engine, host_ctx);
-    let _ = store.set_fuel(UNMETERED_FUEL_BUDGET);
+    let initial_budget = limits.fuel_budget.unwrap_or(UNMETERED_FUEL_BUDGET);
+    let _ = store.set_fuel(initial_budget);
 
     let instance = linker
         .instantiate(&mut store, component)
@@ -530,11 +647,20 @@ fn invoke_component_with_host_ctx_impl<T: Send + 'static>(
 
     let mut results = vec![Val::Bool(false); func.results(&store).len()];
     func.call(&mut store, args, &mut results)
-        .map_err(|e| map_execution_error(&e, None, None))?;
+        .map_err(|e| map_execution_error(&e, limits.fuel_budget, None))?;
     func.post_return(&mut store)
-        .map_err(|e| map_execution_error(&e, None, None))?;
+        .map_err(|e| map_execution_error(&e, limits.fuel_budget, None))?;
 
-    Ok((results, store.into_data()))
+    let remaining_fuel = store.get_fuel().unwrap_or(0);
+    let fuel_consumed = limits.fuel_budget.map(|b| b.saturating_sub(remaining_fuel));
+
+    Ok((
+        InvocationReport {
+            values: results,
+            fuel_consumed,
+        },
+        store.into_data(),
+    ))
 }
 
 /// Returns a short, stable kebab-style name for an imported component item,

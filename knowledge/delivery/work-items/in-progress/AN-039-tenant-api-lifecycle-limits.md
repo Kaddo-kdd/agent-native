@@ -1,7 +1,7 @@
 ---
 id: AN-039
 type: feature
-status: draft
+status: in-progress
 created_at: 2026-10-19T00:00:00.000Z
 title: API Tenant, gobernanza y unificación del ciclo de vida bajo límites homogéneos
 knowledge_level: K4
@@ -66,7 +66,7 @@ template_version: 1
 
 # AN-039 — API Tenant, gobernanza y unificación del ciclo de vida bajo límites homogéneos
 
-## Estado del Work Item: `draft`
+## Estado del Work Item: `in-progress`
 
 Este borrador formaliza el diseño técnico de la API `Tenant` y la unificación de las rutas de invocación del runtime de Agent Native bajo las garantías de aislamiento de **ADR-005**.
 
