@@ -1,0 +1,212 @@
+---
+import Site from "../layouts/Site.astro";
+import { Image } from "astro:assets";
+import banner from "../assets/wasma-banner.png";
+const capabilities = [
+  [
+    "01",
+    "Construcción verificable",
+    "Una especificación se transforma en Semantic IR. El verifier comprueba su estructura antes de compilar a WebAssembly.",
+    "/docs/concepts/",
+    "Explorar los conceptos",
+  ],
+  [
+    "02",
+    "Ejecución independiente",
+    "El runtime ejecuta componentes sin un LLM ni el compilador. Construcción y ejecución tienen responsabilidades distintas.",
+    "/docs/runtime/",
+    "Conocer el runtime",
+  ],
+  [
+    "03",
+    "Permisos explícitos",
+    "Políticas de acceso, cuotas de fuel, límites de memoria y verificación de integridad. Cada frontera tiene un contrato.",
+    "/docs/security/",
+    "Leer sobre seguridad",
+  ],
+  [
+    "04",
+    "Una CLI, todo el recorrido",
+    "Verifica, compila, prueba, ejecuta y publica en un almacén local. Los comandos actuales usan el nombre agent-native.",
+    "/docs/cli/",
+    "Consultar los comandos",
+  ],
+  [
+    "05",
+    "Comportamiento comprobable",
+    "Suites de aceptación YAML y pruebas de regresión acompañan al componente. Un resultado esperado se puede volver a comprobar.",
+    "/docs/first-component/",
+    "Ejecutar el ejemplo",
+  ],
+  [
+    "06",
+    "Evolución con contexto",
+    "SystemSpec y los artefactos versionados conservan el vínculo entre requisitos, componentes y cambios.",
+    "/roadmap/",
+    "Ver hacia dónde vamos",
+  ],
+];
+const code =
+  "agent-native verify identity.json\nagent-native build identity.json --output identity.wasm\nagent-native run --component identity.wasm \\\n  --function identity --fuel 100000 42";
+---
+
+<Site
+  title="From spec to wasm."
+  description="Transforma especificaciones funcionales en componentes WebAssembly verificables y ejecutables. Conoce Wasma y construye tu primer componente."
+>
+  <section class="hero">
+    <div class="container">
+      <div class="eyebrow">Runtime declarativo · Open source</div>
+      <h1>
+        From spec
+        <br />
+        to <span class="gradient">wasm.</span>
+      </h1>
+      <p class="lead">
+        Tu especificación, convertida en un componente ejecutable. Construye con
+        IA, verifica con reglas y ejecuta con un runtime independiente.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="/docs/first-component/">
+          Construye tu primer componente <span aria-hidden="true">↗</span>
+        </a>
+        <a class="button" href="/docs/">
+          Explora la documentación <span aria-hidden="true">→</span>
+        </a>
+      </div>
+      <p class="hero-note">WebAssembly · Component Model · Rust · MIT</p>
+      <figure class="hero-art">
+        <Image
+          src={banner}
+          alt="Identidad de Wasma: llama violeta y cian. From spec to wasm. Deterministic, portable, open."
+          widths={[720, 1200, 1774]}
+          sizes="(max-width: 768px) 100vw, 1200px"
+          format="webp"
+          loading="eager"
+        />
+      </figure>
+      <div class="status-strip">
+        <span class="pill">En desarrollo activo</span>
+        <p>
+          Un núcleo funcional. Una evolución abierta. Consulta el estado y los
+          límites de cada capacidad.
+        </p>
+        <a class="text-link" href="/roadmap/">
+          Ver roadmap →
+        </a>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <div class="eyebrow">01 / Del contrato al componente</div>
+          <h2>
+            Una intención.
+            <br />
+            Un recorrido verificable.
+          </h2>
+        </div>
+        <p>
+          La IA participa en la construcción. La validación y la ejecución
+          tienen contratos explícitos.
+        </p>
+      </div>
+      <div class="pipeline" aria-label="Flujo de construcción y ejecución">
+        {[
+          ["Specification", "La intención"],
+          ["Semantic IR", "La estructura"],
+          ["Verification", "Las reglas"],
+          ["Compilation", "El artefacto"],
+          ["WebAssembly", "El componente"],
+          ["Runtime", "La ejecución"],
+        ].map(([name, desc], i) => (
+          <div>
+            <span>0{i + 1} /</span>
+            <strong>{name}</strong>
+            <small>{desc}</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <div class="eyebrow">02 / El núcleo de Wasma</div>
+          <h2>
+            Menos suposiciones.
+            <br />
+            Más contratos.
+          </h2>
+        </div>
+        <p>
+          Herramientas concretas para construir, comprobar y ejecutar
+          componentes.
+        </p>
+      </div>
+      <div class="capabilities">
+        {capabilities.map(([n, title, desc, url, label]) => (
+          <article>
+            <div class="number">{n} /</div>
+            <h3>{title}</h3>
+            <p>{desc}</p>
+            <a class="text-link" href={url}>
+              {label} →
+            </a>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container code-section">
+      <div>
+        <div class="eyebrow">03 / Pruébalo en tu terminal</div>
+        <h2>
+          Empieza pequeño.
+          <br />
+          Ejecuta de verdad.
+        </h2>
+        <p>
+          Un componente que recibe 42 y devuelve 42. Sin servicios externos ni
+          claves de IA. El tutorial incluye el archivo de entrada y cada paso.
+        </p>
+        <a class="text-link" href="/docs/first-component/">
+          Abrir el ejemplo completo →
+        </a>
+      </div>
+      <div class="terminal">
+        <div class="terminal-head">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span>terminal · agent-native</span>
+          <button data-copy="quick-code" aria-live="polite">
+            Copiar
+          </button>
+        </div>
+        <pre><code id="quick-code">{code}</code></pre>
+        <div class="terminal-output">Resultado esperado: 42</div>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <div class="closing">
+        <div>
+          <div class="eyebrow">Construido en abierto</div>
+          <h2>El siguiente paso también es tuyo.</h2>
+          <p>
+            Explora el código, comparte un caso de uso o contribuye al proyecto.
+          </p>
+        </div>
+        <a class="button" href="https://github.com/Kaddo-kdd/agent-native">
+          Ver el repositorio <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </div>
+  </section>
+</Site>

@@ -3,7 +3,7 @@ id: AN-059
 type: feature
 work_type: feature
 title: Blog y roadmap público trazable de Wasma
-status: draft
+status: in-progress
 created_at: '2026-10-20'
 knowledge_level: K3
 scope_confidence: medium
@@ -78,3 +78,12 @@ con fixtures, ausencia de fuentes y propagación de cambios de estado. Revisar
 manualmente las afirmaciones contra fuentes y capturar blog/roadmap en ambos temas.
 DoD: AC satisfechos, fuentes identificables y revisión editorial/visual integrada.
 Aplican todas las aprobaciones de AN-056; no publicar artículos durante refinamiento.
+
+
+## Implementación autorizada — 2026-10-20
+
+El usuario autorizó implementación, commit y push y suministró referencias de marca.
+Sitio implementado en website/. Evidencia: website/validation/README.md.
+Los PNG recibidos resuelven la referencia visual; fuente exacta y aceptación estética
+siguen pendientes. Propuesta de hosting documentada, sin DNS ni despliegue.
+Estado in-progress hasta revisión humana; no equivale a cierre ni merge autorizado.

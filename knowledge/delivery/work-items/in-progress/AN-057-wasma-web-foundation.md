@@ -3,7 +3,7 @@ id: AN-057
 type: feature
 work_type: feature
 title: Fundación web y landing oficial de Wasma
-status: draft
+status: in-progress
 created_at: '2026-10-20'
 knowledge_level: K3
 scope_confidence: medium
@@ -74,3 +74,12 @@ contraste en los tres tamaños; capturar landing y shell documental. Verificar p
 de assets y revisar diff de Cargo. DoD: AC satisfechos, evidencia local y revisión humana
 de branding registrada. Sin commit hasta autorización explícita; mantener draft hasta
 confirmación humana de readiness.
+
+
+## Implementación autorizada — 2026-10-20
+
+El usuario autorizó implementación, commit y push y suministró referencias de marca.
+Sitio implementado en website/. Evidencia: website/validation/README.md.
+Los PNG recibidos resuelven la referencia visual; fuente exacta y aceptación estética
+siguen pendientes. Propuesta de hosting documentada, sin DNS ni despliegue.
+Estado in-progress hasta revisión humana; no equivale a cierre ni merge autorizado.

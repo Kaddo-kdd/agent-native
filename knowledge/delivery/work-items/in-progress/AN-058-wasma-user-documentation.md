@@ -3,7 +3,7 @@ id: AN-058
 type: feature
 work_type: feature
 title: Documentación inicial y tutorial verificable de Wasma
-status: draft
+status: in-progress
 created_at: '2026-10-20'
 knowledge_level: K3
 scope_confidence: medium
@@ -86,3 +86,12 @@ versiones, salida y códigos de error. Ejecutar check/build/check:links de AN-06
 integrar. Probar búsqueda sobre build, copia y enlace GitHub de edición. DoD: todos
 los AC con evidencia y contenido revisado; no afirmar pruebas que aún no se ejecutaron.
 Las aprobaciones y exclusiones de AN-056 siguen aplicando.
+
+
+## Implementación autorizada — 2026-10-20
+
+El usuario autorizó implementación, commit y push y suministró referencias de marca.
+Sitio implementado en website/. Evidencia: website/validation/README.md.
+Los PNG recibidos resuelven la referencia visual; fuente exacta y aceptación estética
+siguen pendientes. Propuesta de hosting documentada, sin DNS ni despliegue.
+Estado in-progress hasta revisión humana; no equivale a cierre ni merge autorizado.

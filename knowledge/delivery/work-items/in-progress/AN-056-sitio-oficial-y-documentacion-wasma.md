@@ -2,7 +2,7 @@
 type: feature
 id: AN-056
 title: AN-056 — Sitio oficial y portal de documentación de Wasma
-status: draft
+status: in-progress
 work_type: feature
 created_at: '2026-10-20'
 source:
@@ -559,3 +559,12 @@ AN-056 podrá considerarse completado cuando el sitio cumpla los criterios funci
 La publicación en `wasma.org` puede quedar condicionada a una autorización operativa independiente, siempre que el sitio esté técnicamente listo y el bloqueo quede documentado.
 
 **El objetivo de AN-056 es construir la presencia pública y la documentación inicial de Wasma, no completar la transición técnica de nombre ni el roadmap RM-08.**
+
+
+## Implementación autorizada — 2026-10-20
+
+El usuario autorizó implementación, commit y push y suministró referencias de marca.
+Sitio implementado en website/. Evidencia: website/validation/README.md.
+Los PNG recibidos resuelven la referencia visual; fuente exacta y aceptación estética
+siguen pendientes. Propuesta de hosting documentada, sin DNS ni despliegue.
+Estado in-progress hasta revisión humana; no equivale a cierre ni merge autorizado.

@@ -1,0 +1,55 @@
+---
+import { Image } from "astro:assets";
+import lockup from "../assets/wasma-lockup.png";
+import banner from "../assets/wasma-banner.png";
+---
+
+<a class="brand" href="/" aria-label="Wasma — inicio">
+  <span class="brand-crop light-logo">
+    <Image src={lockup} alt="Wasma" width={420} format="webp" loading="eager" />
+  </span>
+  <span class="brand-crop dark-logo">
+    <Image src={banner} alt="Wasma" width={600} format="webp" loading="eager" />
+  </span>
+</a>
+<style>
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    width: 150px;
+    height: 46px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .brand-crop {
+    width: 150px;
+    height: 40px;
+    overflow: hidden;
+    position: relative;
+    background: #fff;
+  }
+  .brand-crop :global(img) {
+    position: absolute;
+    width: 190px;
+    max-width: none;
+    height: auto;
+    left: -20px;
+    top: -27px;
+  }
+  .dark-logo {
+    display: none;
+    background: #0a0b12;
+  }
+  .dark-logo :global(img) {
+    width: 290px;
+    left: -32px;
+    top: -33px;
+  }
+  :global([data-theme="dark"]) .dark-logo {
+    display: block;
+  }
+  :global([data-theme="dark"]) .light-logo {
+    display: none;
+  }
+</style>

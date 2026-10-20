@@ -1,0 +1,169 @@
+---
+import Brand from "../components/Brand.astro";
+import "../styles/site.css";
+interface Props {
+  title: string;
+  description: string;
+}
+const { title, description } = Astro.props;
+const path = Astro.url.pathname;
+const canonical = new URL(path, Astro.site);
+const preview = import.meta.env.CONTEXT === "deploy-preview";
+---
+
+<!doctype html>
+<html lang="es" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title} · Wasma</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content={title + " · Wasma"} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content="https://wasma.org/brand/social.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    {preview && <meta name="robots" content="noindex,nofollow" />}
+    <script is:inline>
+      try {
+        const theme = localStorage.getItem("starlight-theme");
+        document.documentElement.dataset.theme =
+          theme === "light" || theme === "dark" ? theme : "dark";
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">
+      Saltar al contenido
+    </a>
+    <header class="site-header">
+      <div class="nav-wrap">
+        <Brand />
+        <button
+          class="menu-toggle"
+          aria-expanded="false"
+          aria-controls="main-nav"
+        >
+          Menú <span aria-hidden="true">☰</span>
+        </button>
+        <nav id="main-nav" aria-label="Principal">
+          <a href="/docs/">Documentación</a>
+          <a
+            href="/roadmap/"
+            aria-current={path === "/roadmap/" ? "page" : undefined}
+          >
+            Roadmap
+          </a>
+          <a
+            href="/blog/"
+            aria-current={path.startsWith("/blog/") ? "page" : undefined}
+          >
+            Blog
+          </a>
+          <a href="https://github.com/Kaddo-kdd/agent-native">
+            GitHub <span aria-hidden="true">↗</span>
+          </a>
+        </nav>
+        <button
+          id="theme"
+          class="theme-button"
+          aria-label="Cambiar a tema claro"
+        >
+          ◐
+        </button>
+      </div>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div>
+        <Brand />
+        <p>De la especificación al mundo real.</p>
+        <small>Open source · Licencia MIT</small>
+      </div>
+      <div>
+        <strong>Construye</strong>
+        <a href="/docs/first-component/">Primer componente</a>
+        <a href="/docs/cli/">Referencia CLI</a>
+        <a href="/docs/security/">Seguridad</a>
+      </div>
+      <div>
+        <strong>Explora</strong>
+        <a href="/roadmap/">Roadmap</a>
+        <a href="/blog/">Blog</a>
+        <a href="/docs/performance/">Rendimiento</a>
+      </div>
+      <div>
+        <strong>Participa</strong>
+        <a href="https://github.com/Kaddo-kdd/agent-native/issues">Issues ↗</a>
+        <a href="https://github.com/Kaddo-kdd/agent-native#contribuir">
+          Contribuir ↗
+        </a>
+        <a href="https://github.com/Kaddo-kdd/agent-native/releases">
+          Releases ↗
+        </a>
+        <a href="https://github.com/Kaddo-kdd/agent-native/blob/main/LICENSE">
+          Licencia ↗
+        </a>
+      </div>
+    </footer>
+    <script>
+      const themeButton = document.querySelector<HTMLButtonElement>("#theme");
+      function syncLabel() {
+        themeButton?.setAttribute(
+          "aria-label",
+          document.documentElement.dataset.theme === "dark"
+            ? "Cambiar a tema claro"
+            : "Cambiar a tema oscuro",
+        );
+      }
+      syncLabel();
+      themeButton?.addEventListener("click", () => {
+        const theme =
+          document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        document.documentElement.dataset.theme = theme;
+        try {
+          localStorage.setItem("starlight-theme", theme);
+        } catch {}
+        syncLabel();
+      });
+      const menu = document.querySelector<HTMLButtonElement>(".menu-toggle");
+      menu?.addEventListener("click", () =>
+        menu.setAttribute(
+          "aria-expanded",
+          String(menu.getAttribute("aria-expanded") !== "true"),
+        ),
+      );
+      document.addEventListener("keydown", (event) => {
+        if (
+          event.key === "Escape" &&
+          menu?.getAttribute("aria-expanded") === "true"
+        ) {
+          menu.setAttribute("aria-expanded", "false");
+          menu.focus();
+        }
+      });
+      document
+        .querySelectorAll<HTMLButtonElement>("[data-copy]")
+        .forEach((button) =>
+          button.addEventListener("click", async () => {
+            const code = document.getElementById(
+              button.dataset.copy ?? "",
+            )?.textContent;
+            if (!code) return;
+            try {
+              await navigator.clipboard.writeText(code);
+              button.textContent = "Copiado";
+            } catch {
+              button.textContent = "Selecciona el código";
+            }
+          }),
+        );
+    </script>
+  </body>
+</html>

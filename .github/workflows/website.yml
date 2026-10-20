@@ -1,0 +1,71 @@
+name: Website
+on:
+  push:
+    branches: ["main", "codex/**"]
+    paths:
+      [
+        "website/**",
+        ".github/workflows/website.yml",
+        "knowledge/delivery/initiatives/**",
+        "knowledge/delivery/work-items/**",
+        "docs/benchmarks/**",
+        "crates/**",
+        "Cargo.*",
+        "rust-toolchain.toml",
+      ]
+  pull_request:
+    paths:
+      [
+        "website/**",
+        ".github/workflows/website.yml",
+        "knowledge/delivery/initiatives/**",
+        "knowledge/delivery/work-items/**",
+        "docs/benchmarks/**",
+        "crates/**",
+        "Cargo.*",
+        "rust-toolchain.toml",
+      ]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  website:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm check:links
+      - run: pnpm check:content
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasma-static-site
+          path: website/dist
+  documentation-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.0
+      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked --release -p agent-native
+      - run: node scripts/test-docs.mjs
+        working-directory: website
