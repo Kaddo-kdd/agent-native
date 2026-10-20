@@ -35,7 +35,8 @@ candidates:
     materialized_as: AN-039 (completed), AN-040 (completed)
   - id: INIT-06-04
     title: Verificación de integridad y procedencia en carga
-    status: candidate
+    status: in-progress
+    materialized_as: AN-041 (draft), AN-042 (draft)
   - id: INIT-06-05
     title: Fixtures de ejecución extrema
     status: candidate

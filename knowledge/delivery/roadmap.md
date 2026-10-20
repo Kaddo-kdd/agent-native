@@ -82,7 +82,7 @@ Fuentes:
 | INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | completed (AN-033, AN-034) |
 | INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | completed (AN-035, AN-036, AN-037, AN-038) |
 | INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | completed (AN-039, AN-040) |
-| INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | nuevo |
+| INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | in-progress (AN-041, AN-042) |
 | INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | nuevo |
 | **RM-07** | **Console I/O & WASI** | — | — | Programas con I/O autorizada | — |
 | INIT-07-01 | Baseline WASI preview2 + stdio autorizado | medium | INIT-06-01 | Programa `echo` interactivo autorizado | nuevo |
@@ -802,15 +802,15 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 #### INIT-06-04: Verificación de integridad y procedencia en carga
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** in-progress · **Priority:** medium · **K3**
 
 **Source signals:** ADR-004; INIT-05-03 define el formato.
 
 **Dependencies:** INIT-04-05, INIT-05-03.
 
-**Suggested Work Items:**
-- WI-CANDIDATE-06-04-01: `run --verify` (SHA-256) (`feature`)
-- WI-CANDIDATE-06-04-02: verificación de firma (`feature`)
+**Work Items:**
+- AN-041: `run --verify` (SHA-256) (`feature`) (draft)
+- AN-042: verificación de firma criptográfica Minisign (`feature`) (draft)
 
 ---
 
