@@ -1,7 +1,7 @@
 ---
 id: AN-040
 type: test
-status: draft
+status: in-progress
 created_at: 2026-10-19T00:00:00.000Z
 title: Suite de pruebas de aislamiento multi-tenant y contención de blast radius
 knowledge_level: K3
@@ -54,7 +54,7 @@ template_version: 1
 
 # AN-040 — Suite de pruebas de aislamiento multi-tenant y contención de blast radius
 
-## Estado del Work Item: `draft`
+## Estado del Work Item: `in-progress`
 
 Este borrador define la matriz experimental y la suite de pruebas automatizadas destinadas a verificar el aislamiento estricto y la contención de radio de impacto (*blast radius*) entre tenants en el runtime de Agent Native.
 
