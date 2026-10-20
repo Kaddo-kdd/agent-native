@@ -135,6 +135,7 @@ impl Engine {
     }
 
     /// Creates a new tenant execution context configured with the specified options.
+    #[must_use]
     pub fn create_tenant(&self, config: crate::tenant::TenantConfig) -> crate::tenant::Tenant {
         crate::tenant::Tenant::new(config)
     }

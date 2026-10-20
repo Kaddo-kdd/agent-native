@@ -14,7 +14,9 @@ fn sample_math_wasm() -> Vec<u8> {
     let mut module = Module::new();
 
     let mut types = TypeSection::new();
-    types.ty().function([ValType::I32, ValType::I32], [ValType::I32]);
+    types
+        .ty()
+        .function([ValType::I32, ValType::I32], [ValType::I32]);
     module.section(&types);
 
     let mut funcs = FunctionSection::new();
@@ -185,7 +187,10 @@ fn test_tenant_invoke_with_homogeneous_limits_and_fuel_accounting() {
         .invoke(&component, "add", &[Val::S32(100), Val::S32(200)])
         .expect("tenant B invoke");
     assert_eq!(report_b.values, vec![Val::S32(300)]);
-    assert_eq!(report_b.fuel_consumed, None, "unmetered tenant reports None fuel");
+    assert_eq!(
+        report_b.fuel_consumed, None,
+        "unmetered tenant reports None fuel"
+    );
 }
 
 #[test]
@@ -198,7 +203,8 @@ fn test_tenant_fuel_exhaustion_does_not_affect_next_tenant() {
     let tenant_a = engine.create_tenant(TenantConfig::new("starved-tenant").with_fuel_budget(1));
 
     // Tenant B: normal quota (budget = 50,000 units)
-    let tenant_b = engine.create_tenant(TenantConfig::new("normal-tenant").with_fuel_budget(50_000));
+    let tenant_b =
+        engine.create_tenant(TenantConfig::new("normal-tenant").with_fuel_budget(50_000));
 
     // Tenant A fails immediately with FuelExhausted
     let err_a = tenant_a
@@ -229,18 +235,25 @@ fn test_tenant_policy_enforcement_per_tenant() {
     // Tenant B: Explicitly authorized for ("env", "read")
     let mut policy_b = HostPolicy::deny_all();
     policy_b.allow_core("env", "read");
-    let tenant_b = engine.create_tenant(TenantConfig::new("tenant-authorized").with_policy(policy_b));
+    let tenant_b =
+        engine.create_tenant(TenantConfig::new("tenant-authorized").with_policy(policy_b));
 
     // Pre-execution validation check:
     let check_a = tenant_a.validate_component(&component);
-    assert!(matches!(check_a, Err(RuntimeError::UnauthorizedImport { .. })));
+    assert!(matches!(
+        check_a,
+        Err(RuntimeError::UnauthorizedImport { .. })
+    ));
 
     let check_b = tenant_b.validate_component(&component);
     assert!(check_b.is_ok(), "tenant B policy authorizes the import");
 
     // Invocation check:
     let invoke_a = tenant_a.invoke(&component, "run", &[Val::S32(10)]);
-    assert!(matches!(invoke_a, Err(RuntimeError::UnauthorizedImport { .. })));
+    assert!(matches!(
+        invoke_a,
+        Err(RuntimeError::UnauthorizedImport { .. })
+    ));
 }
 
 #[test]
@@ -295,6 +308,11 @@ fn test_tenant_decoupled_memory_trap_diagnosis() {
 
 #[test]
 fn test_tenant_invoke_core_with_host_ctx_and_limits() {
+    #[derive(Debug, Default)]
+    struct CustomHostCtx {
+        calls: Vec<i32>,
+    }
+
     let engine = Engine::new().expect("engine");
     let wasm = sample_imported_wasm();
 
@@ -309,11 +327,6 @@ fn test_tenant_invoke_core_with_host_ctx_and_limits() {
 
     let component = engine.load_component(&wasm).expect("load component");
 
-    #[derive(Debug, Default)]
-    struct CustomHostCtx {
-        calls: Vec<i32>,
-    }
-
     let initial_ctx = CustomHostCtx::default();
 
     let (report, ctx) = tenant
@@ -323,10 +336,14 @@ fn test_tenant_invoke_core_with_host_ctx_and_limits() {
             &[Val::S32(42)],
             initial_ctx,
             |_engine, linker| {
-                linker.func_wrap("env", "read", |mut caller: wasmtime::Caller<'_, CustomHostCtx>, arg: i32| -> i32 {
-                    caller.data_mut().calls.push(arg);
-                    arg * 2
-                })?;
+                linker.func_wrap(
+                    "env",
+                    "read",
+                    |mut caller: wasmtime::Caller<'_, CustomHostCtx>, arg: i32| -> i32 {
+                        caller.data_mut().calls.push(arg);
+                        arg * 2
+                    },
+                )?;
                 Ok(())
             },
         )
@@ -334,6 +351,8 @@ fn test_tenant_invoke_core_with_host_ctx_and_limits() {
 
     assert_eq!(report.values, vec![Val::S32(84)]);
     assert_eq!(ctx.calls, vec![42]);
-    let fuel = report.fuel_consumed.expect("fuel consumed must be reported");
+    let fuel = report
+        .fuel_consumed
+        .expect("fuel consumed must be reported");
     assert!(fuel > 0 && fuel <= 25_000);
 }

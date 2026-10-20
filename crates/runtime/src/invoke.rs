@@ -524,6 +524,7 @@ fn resolve_component_func<T>(
 /// Core-WASM variant that runs with a caller-populated `Linker<T>` and
 /// returns the final `T` alongside the lifted results. Shares the policy
 /// pre-check and function-resolution logic with [`invoke_core`].
+#[allow(clippy::too_many_arguments)]
 fn invoke_core_with_host_ctx_impl<T: Send + 'static>(
     engine: &wasmtime::Engine,
     module: &wasmtime::Module,
@@ -594,6 +595,7 @@ fn invoke_core_with_host_ctx_impl<T: Send + 'static>(
 }
 
 /// Component-Model variant with host context (symmetric to the core one).
+#[allow(clippy::too_many_arguments)]
 fn invoke_component_with_host_ctx_impl<T: Send + 'static>(
     engine: &wasmtime::Engine,
     component: &wasmtime::component::Component,
