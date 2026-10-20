@@ -290,7 +290,9 @@ fn invoke_component(
         });
     }
 
-    for (index, (expected_ty, provided)) in params.iter().zip(args.iter()).enumerate() {
+    for (index, ((_param_name, expected_ty), provided)) in
+        params.iter().zip(args.iter()).enumerate()
+    {
         if !component_val_matches_type(provided, expected_ty) {
             return Err(RuntimeError::ArgTypeMismatch {
                 function: func_name.to_string(),
@@ -513,7 +515,9 @@ fn invoke_component_with_host_ctx_impl<T: Send + 'static>(
         });
     }
 
-    for (index, (expected_ty, provided)) in params.iter().zip(args.iter()).enumerate() {
+    for (index, ((_param_name, expected_ty), provided)) in
+        params.iter().zip(args.iter()).enumerate()
+    {
         if !component_val_matches_type(provided, expected_ty) {
             return Err(RuntimeError::ArgTypeMismatch {
                 function: func_name.to_string(),

@@ -178,10 +178,6 @@ fn wasm_module_with_table_grow() -> Vec<u8> {
 }
 
 #[test]
-#[cfg_attr(
-    target_os = "windows",
-    ignore = "Wasmtime 27 upstream issue #10923: libcall out_of_gas is declared as extern \"C\" instead of extern \"C-unwind\", causing MSVC RtlUnwindEx to abort on Windows"
-)]
 fn test_infinite_loop_fuel_exhaustion() {
     let engine = Engine::new().expect("engine");
     let wasm = wasm_module_with_infinite_loop();

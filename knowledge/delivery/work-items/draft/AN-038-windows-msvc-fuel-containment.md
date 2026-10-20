@@ -61,9 +61,9 @@ template_version: 1
 
 Durante la implementación de AN-035 y AN-037, se identificó un fallo reproducible en la plataforma `x86_64-pc-windows-msvc` con Wasmtime 27.0.0: cuando un componente WebAssembly agota su presupuesto de fuel, el proceso anfitrión finaliza abruptamente con código de excepción `0xc0000409` (`panic_cannot_unwind`).
 
-Como hipótesis técnica —asociada a discusiones en Bytecode Alliance sobre el manejo de excepciones y unwinding en Windows— se plantea que la ruta de terminación activada por el libcall `out_of_gas` (mediante `wasmtime_longjmp` y `RtlUnwindEx`) interactúa deficientemente con las guardas de Rust sobre marcos `extern "C"`. No obstante, esto debe tratarse estrictamente como una hipótesis de trabajo y no como una atribución probada ni una causa única.
+La explicación técnica precisa de este fallo y su posterior corrección reside en el **[PR #9710 de Bytecode Alliance — Migrate libcalls to checking for traps](https://github.com/bytecodealliance/wasmtime/pull/9710)** (integrado en diciembre de 2024 e incluido en la versión 29.0.0). En versiones anteriores (v27/v28), los libcalls como `out_of_gas` salían invocando directamente `longjmp`, lo que en Windows MSVC activa `RtlUnwindEx`, violando las restricciones `nounwind` de Rust e induciendo el aborto forzoso. A partir de Wasmtime 29, los libcalls devuelven explícitamente un estado de trampa comprobado por el código generado, evitando desenrollados no controlados.
 
-Mientras que en Linux y macOS el trap es interceptado como `RuntimeError::FuelExhausted`, en Windows el fallo no contenido compromete la integridad del proceso que aloja el runtime.
+Mientras que en Linux y macOS el trap siempre se interceptó como `RuntimeError::FuelExhausted`, en Windows se requería actualizar a Wasmtime 29 para contener el fallo y evitar comprometer la integridad del proceso que aloja el runtime.
 
 ---
 
