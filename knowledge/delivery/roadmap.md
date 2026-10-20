@@ -84,8 +84,8 @@ Fuentes:
 | INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | completed (AN-039, AN-040) |
 | INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | completed (AN-041, AN-042) |
 | INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | completed (AN-043) |
-| **RM-07** | **Console I/O & WASI** | — | — | Programas con I/O autorizada | — |
-| INIT-07-01 | Baseline WASI preview2 + stdio autorizado | medium | INIT-06-01 | Programa `echo` interactivo autorizado | nuevo |
+| **RM-07** | **Console I/O & WASI** | — | — | Programas con I/O autorizada | in-progress |
+| INIT-07-01 | Baseline WASI preview2 + stdio autorizado | medium | INIT-06-01 | Programa con I/O autorizada y aislamiento | in-progress (AN-044, AN-045) |
 | INIT-07-02 | Extensión IR para `string` y errores | medium | INIT-02-01, INIT-04-05 | IR v0.6 bajo flag `--experimental`, sin romper v0.5 | nuevo |
 | INIT-07-03 | Stubs deterministas de I/O para pruebas | low | INIT-07-01, INIT-03-03 | Suite YAML con `stdin` simulado | nuevo |
 | **RM-08** | **Performance & Concurrency** | — | — | Runtime caracterizado por benchmarks | — |
@@ -835,17 +835,17 @@ Habilita programas reales útiles sobre la base segura. No se adelanta a RM-06.
 
 #### INIT-07-01: Baseline WASI preview2 + stdio autorizado
 
-**Status:** candidate · **Priority:** medium · **K3**
+**Status:** in-progress · **Priority:** medium · **K3**
 
 **Source signals:** OQ L152; capability `wasi:cli/stdio`.
 
 **Dependencies:** INIT-06-01.
 
-**Risks:** churn en preview2 — pinnear versión.
+**Risks:** churn en preview2 — pinnear versión `wasmtime-wasi = "29.0.1"`.
 
-**Suggested Work Items:**
-- WI-CANDIDATE-07-01-01: adaptador WASI preview2 (`feature`)
-- WI-CANDIDATE-07-01-02: capability `stdio` autorizada (`feature`)
+**Work Items:**
+- AN-044: adaptador WASI preview2 para I/O determinista en memoria (`feature`) (draft)
+- AN-045: autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`) (draft)
 
 ---
 
