@@ -9,6 +9,14 @@ work_item: AN-017 (consolidación de AN-012 + AN-013)
 
 # Runtime baseline
 
+> **Referencia histórica (AN-017).** El snapshot Wasmtime 27 / `--quick` de abajo
+> se conserva íntegro como historial. Para nuevas decisiones se sustituye por la
+> [publicación medida candidata de AN-055](../../../docs/benchmarks/README.md),
+> basada en Wasmtime 29.0.1 y corridas completas cross-OS. Esa publicación sigue
+> pendiente de certificación humana; las filas inestables no constituyen una
+> línea base certificada. No interpretar el cambio de referencia como mejora
+> cuantificada entre versiones, máquinas o métodos distintos.
+
 Línea base técnica de `agent-native-runtime`. **No es un SLA.** Es la medición mínima requerida por el principio del roadmap #5 ("mediciones antes que optimización") y la contraparte local de la futura matrix cross-OS que materialice INIT-08-01/02.
 
 Cualquier optimización futura debe **documentar su mejora cuantificada contra la fila específica** de esta tabla; afirmaciones agregadas (p. ej. "mejora del runtime") sin especificar etapa y tipo de artefacto no son aceptables.

@@ -1,7 +1,8 @@
 ﻿---
 id: AN-054
 type: chore
-status: in-progress
+status: completed
+completed_at: 2026-10-20T00:00:00.000Z
 created_at: 2026-10-20T00:00:00.000Z
 title: Medición de warm invocation y distribución de latencias por invocación
 knowledge_level: K4
@@ -124,3 +125,17 @@ entrada, salida, API y etapa comparables; en otro caso describir escenarios.
 ## Fuera de alcance
 
 Concurrencia (INIT-08-04) y caché de componentes (INIT-08-03).
+
+## Evidencia de cierre
+
+- [PR #7](https://github.com/Kaddo-kdd/agent-native/pull/7) integrado en `main`
+  por autorización humana; merge `17d5059`. CI completo verde en los tres sistemas.
+- [Workflow manual](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474)
+  sobre `3cc3f9f`: tres repeticiones por OS, nueve escenarios individuales,
+  N=10 000 y warmup=1 000 en cada repetición; calibración antes y después.
+- 25 pruebas Python y 3 Rust, ejecución release local y validación de omisión de
+  p99 con N=10. Los dos JSON y REPORT.md se regeneraron idénticos en los tres OS.
+- p50 individual: Linux 5 aceptables / 4 inestables; Windows 5 / 4; macOS 6 / 3.
+  Los nueve escenarios Windows advierten que la mediana vacía de 0 ns no queda
+  resuelta por el reloj (salto observado de 100 ns). No se resta overhead.
+- Cierre de implementación y recolección; no certifica cifras ni cierra INIT-08-02.

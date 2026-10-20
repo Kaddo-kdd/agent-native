@@ -11,6 +11,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  benchmark-publication:
+    name: benchmark publication / offline integrity (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify benchmark integrity and publication gates
+        run: python -m unittest discover -s scripts -p "test_bench_*.py" -v
+      - name: Verify offline publication regeneration
+        run: python scripts/bench_publish.py --check
+
   check:
     name: fmt / clippy / test / build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

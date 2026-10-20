@@ -36,7 +36,7 @@ Lo que ya funciona:
 Bloques del roadmap:
 
 - ✅ **RM-01 a RM-07 Completados:** Baseline arquitectónico, compilador determinista, runtime autónomo, pipeline generativo con LLMs, CLI unificada, seguridad de recursos y Console I/O WASI Preview 2.
-- 🟡 **RM-08 (Performance & Concurrency) — PRÓXIMO BLOQUE:** Harness formal de benchmarks reproducibles cross-OS, caché de componentes / warm pool y concurrencia host-side. Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
+- 🟡 **RM-08 (Performance & Concurrency) — EN CURSO:** Harness y recolección cross-OS implementados. La [publicación medida candidata](docs/benchmarks/README.md) separa medianas y percentiles individuales, conserva resultados inestables y espera certificación humana. Caché / warm pool y concurrencia host-side siguen en el [roadmap](knowledge/delivery/roadmap.md).
 
 > La POC histórica vive en [`Trycatch-tv/poc-agent-native`](https://github.com/Trycatch-tv/poc-agent-native) (commit `26b6a18`) y bajo `_reference/`. Es **sólo lectura** — ver [`knowledge/tech/reference-policy.md`](knowledge/tech/reference-policy.md).
 
