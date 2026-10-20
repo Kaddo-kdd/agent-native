@@ -1,4 +1,4 @@
-"""Run three full Criterion repetitions in one runner with isolated evidence.
+"""Run three full Criterion and individual-latency repetitions with isolated evidence.
 
 Usage: python scripts/bench_collect.py [--output bench-results]
 No quick mode, pooled workflow data, or publication/certification step.
@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from bench_aggregate import RUNS, aggregate, write_json
+from bench_latency_aggregate import aggregate_latency
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -24,6 +25,9 @@ SOURCES = (
     "crates/compiler/tests/fixtures/ir/program-005.ir.json",
     "crates/runtime/examples/bench_env.rs", "scripts/bench_collect.py",
     "scripts/bench_aggregate.py", ".github/workflows/bench.yml",
+    "crates/runtime/examples/bench_latency.rs",
+    "crates/runtime/examples/latency/fixtures.rs", "scripts/bench_latency_aggregate.py",
+    "scripts/bench_summary.py",
 )
 
 
@@ -75,6 +79,10 @@ def collect(output):
             "cargo", "bench", "--locked", "-p", "agent-native-runtime",
             "--bench", "baseline", "--bench", "extended", "--no-run",
         ], cwd=REPO, check=True)
+        subprocess.run([
+            "cargo", "build", "--release", "--locked", "-p", "agent-native-runtime",
+            "--example", "bench_latency",
+        ], cwd=REPO, check=True)
         for run in RUNS:
             directory = output / run
             status = {"started_at_utc": utc_now(), "complete": False, "commands": {}}
@@ -94,6 +102,15 @@ def collect(output):
                         result = subprocess.run(command, cwd=REPO, env=child_env, stdout=log, stderr=subprocess.STDOUT)
                     status["commands"][suite] = result.returncode
                     write_json(directory / "collection.json", status)
+                status["criterion_complete"] = all(status["commands"].get(suite) == 0 for suite in ("baseline", "extended"))
+                command = ["cargo", "run", "--release", "--locked", "-q", "-p", "agent-native-runtime",
+                           "--example", "bench_latency", "--", "--environment", str(directory / "environment.json")]
+                print(run + ": individual invocation latencies", flush=True)
+                with (directory / "latency/measurements.json").open("w", encoding="utf-8") as output_stream, \
+                        (directory / "latency.log").open("w", encoding="utf-8") as log:
+                    result = subprocess.run(command, cwd=REPO, env=child_env, stdout=output_stream, stderr=log)
+                status["commands"]["latency"] = result.returncode
+                status["latency_complete"] = result.returncode == 0
                 status["complete"] = all(code == 0 for code in status["commands"].values())
                 failed = failed or not status["complete"]
             except (OSError, ValueError, subprocess.SubprocessError) as exc:
@@ -109,10 +126,12 @@ def collect(output):
     finally:
         summary = aggregate(output)
         write_json(output / "summary.json", summary)
+        latency_summary = aggregate_latency(output)
+        write_json(output / "latency-summary.json", latency_summary)
         for row in summary["rows"]:
             print(row["benchmark"] + ": " + row["status"], flush=True)
     # Noise is data: instability does not fail collection. Missing/invalid evidence does.
-    return 1 if failed or not summary["complete"] else 0
+    return 1 if failed or not summary["complete"] or not latency_summary["complete"] else 0
 
 
 def main():

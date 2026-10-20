@@ -1,6 +1,7 @@
 """Test collection failure paths and isolation without running benchmarks."""
 
 import os
+import json
 import subprocess
 import tempfile
 import unittest
@@ -10,6 +11,7 @@ from unittest.mock import patch
 from bench_aggregate import RUNS, read_json
 from bench_collect import collect
 from test_bench_aggregate import environment_fixture, write_run
+from test_bench_latency import latency_document
 
 
 class CollectionTests(unittest.TestCase):
@@ -23,7 +25,12 @@ class CollectionTests(unittest.TestCase):
         seen = []
 
         def command(args, **kwargs):
-            if "--no-run" not in args:
+            if args[1] == "build":
+                return subprocess.CompletedProcess(args, 0)
+            if "--example" in args:
+                run = Path(kwargs["env"]["CRITERION_HOME"]).parent.name
+                json.dump(latency_document(run), kwargs["stdout"])
+            elif "--no-run" not in args:
                 home = Path(kwargs["env"]["CRITERION_HOME"])
                 self.assertNotIn("CARGO_CRITERION_PORT", kwargs["env"])
                 self.assertNotIn("--quick", args)

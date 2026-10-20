@@ -1,7 +1,8 @@
 ﻿---
 id: AN-053
 type: chore
-status: draft
+status: completed
+completed_at: 2026-10-20T00:00:00.000Z
 created_at: 2026-10-20T00:00:00.000Z
 title: Medición cross-OS de cold start en GitHub-hosted runners (engine, load, cold-run)
 knowledge_level: K3
@@ -120,3 +121,18 @@ humana del diff y de los resultados del workflow manual. INIT-08-02 permanece ab
 ## Fuera de alcance
 
 Percentiles por invocación (AN-054) y publicación (AN-055).
+
+## Evidencia de implementación y revisión
+
+- [PR #6](https://github.com/Kaddo-kdd/agent-native/pull/6) integrado en `main`
+  por autorización humana; merge `48f7518`. CI verde en los tres sistemas.
+- [Workflow inicial](https://github.com/Kaddo-kdd/agent-native/actions/runs/39441524333):
+  tres repeticiones completas por OS; resúmenes regenerados idénticos. macOS:
+  14 filas inestables; Linux y Windows: 9 aceptables y 5 inestables cada uno.
+- [Verificación independiente desde main](https://github.com/Kaddo-kdd/agent-native/actions/runs/39446048498):
+  artefacto macOS completo, resumen regenerado idéntico; 13 filas inestables y
+  1 aceptable. Mismo modelo Apple M1 (Virtual), imagen y hashes de fuentes.
+  En ambas ejecuciones las 14 medianas de R3 son menores que las de R1.
+  Hay deriva temporal reiterada, sin telemetría suficiente para atribuir su causa.
+- El cierre acredita integridad de recolección y evaluación; no certifica una
+  línea base ni modifica el umbral del 10 %. INIT-08-02 permanece abierto.

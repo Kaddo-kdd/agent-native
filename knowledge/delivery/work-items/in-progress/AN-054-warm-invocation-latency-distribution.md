@@ -1,7 +1,7 @@
 ﻿---
 id: AN-054
 type: chore
-status: draft
+status: in-progress
 created_at: 2026-10-20T00:00:00.000Z
 title: Medición de warm invocation y distribución de latencias por invocación
 knowledge_level: K4
@@ -10,6 +10,10 @@ scope_confidence: medium
 code:
   - crates/runtime/examples/bench_latency.rs
   - .github/workflows/bench.yml
+  - crates/runtime/examples/latency/fixtures.rs
+  - scripts/bench_latency_aggregate.py
+  - scripts/bench_collect.py
+  - scripts/bench_summary.py
 source_work_item_candidate:
   - WI-CANDIDATE-08-02-02
 depends_on:
@@ -102,6 +106,20 @@ costes de operación de sobrecarga de ejecución; cambiar de fixture (identity,
 echo, greet, safe_div) no aísla por sí solo la sobrecarga de WASI o IR v0.6.
 Solo atribuir diferencias a una característica con controles de operación,
 entrada, salida, API y etapa comparables; en otro caso describir escenarios.
+
+## Implementación en revisión
+
+- Nueve escenarios: los ocho warm/cache-hit previstos y un control adicional
+  `invoke_with_limits(unmetered)` de identity para comparar fuel con igual API.
+- Datos individuales en `run-XX/latency/measurements.json`, incluidos hashes del
+  WASM efectivo, entradas y calibración antes/después. No se resta overhead.
+- `latency-summary.json` evalúa p50 independientemente de `summary.json` Criterion;
+  valida estadísticas contra muestras crudas y guarda rangos p95/p99 sin umbral.
+- Diferencias de fuel: rango de diferencias emparejadas de p50 por repetición,
+  sin atribución causal ni intervalo de confianza. Un orden fijo puede incluir
+  deriva temporal: debe figurar como limitación.
+- El resumen visible de cada job y `REPORT.md` muestran resultados técnicos de
+  ambos métodos en tablas separadas. AN-055 y certificación humana pendientes.
 
 ## Fuera de alcance
 

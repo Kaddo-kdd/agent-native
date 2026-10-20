@@ -102,7 +102,7 @@ def aggregate(root):
             directory = root / run / "criterion" / name / "new"
             try:
                 status = read_json(root / run / "collection.json")
-                if status.get("commands", {}).get(suite) != 0 or status.get("complete") is not True:
+                if status.get("commands", {}).get(suite) != 0 or status.get("criterion_complete", status.get("complete")) is not True:
                     raise ValueError("collection incomplete or benchmark command failed")
                 identity = read_json(directory / "benchmark.json")
                 if identity["full_id"] != name:

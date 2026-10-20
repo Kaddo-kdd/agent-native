@@ -43,8 +43,71 @@ duradero antes de publicar una referencia. Una repetición fallida o con datos
 incompletos no puede aceptarse, aunque haya archivos de resultados parciales.
 
 Las estimaciones agregadas de Criterion no son percentiles por invocación.
-El recolector individual, calibración de reloj/overhead y p50/p95/p99 pertenecen
-a AN-054; `summary.json` de AN-053 solo evalúa medianas Criterion.
+`summary.json` solo evalúa medianas Criterion. AN-054 añade `latency-summary.json`
+para los percentiles individuales y sus controles del instrumento. El resumen
+del job en GitHub y `REPORT.md` dentro del artefacto muestran ambos métodos en
+tablas separadas, sin certificar ninguna fila.
+
+## Invocaciones individuales (AN-054)
+
+`bench_latency` se compila en release antes de las repeticiones. En cada una
+descarta 1 000 invocaciones de warmup por escenario y guarda 10 000 duraciones
+individuales en orden de medición en `run-XX/latency/measurements.json`.
+La compilación y carga de fixtures, la preparación de entradas (incluidos buffers
+WASI) y la destrucción del resultado quedan fuera del temporizador. `cache_hit_run`
+incluye `Resolver::load` y la invocación; toda invocación conserva Store nuevo.
+Por ello sus fronteras de medición no son intercambiables con las de Criterion,
+que en algunos escenarios también incluye preparación y destrucción.
+
+El soporte del ejemplo reproduce los fixtures deterministas de los benches existentes,
+en un soporte exclusivo del ejemplo; cada escenario registra el hash SHA-256 del
+WASM efectivo, operación, API, argumentos, N y warmup. El inventario contiene los
+ocho escenarios warm/cache-hit existentes y un noveno control `identity` mediante
+`invoke_with_limits(unmetered)`, para comparar fuel con la misma API.
+
+Percentiles por rango más cercano: ordenar una copia y seleccionar
+`ceil(k/100 * N) - 1`, sin interpolación. Se conservan los datos crudos originales.
+Con N < 1 000, omitir p99; las muestras y warmup son parametrizables en el ejemplo,
+con valores efectivos explícitos. El workflow usa los valores completos por defecto.
+El agregador recalcula los percentiles desde las muestras y rechaza inconsistencias.
+
+El reloj `Instant` se calibra antes y después de la sesión: mínimo salto positivo
+entre lecturas consecutivas y 10 000 mediciones de una operación vacía con el mismo
+envoltorio temporal (warmup 1 000). El salto es una cota empírica superior de la
+resolución intrínseca; la operación vacía aproxima un límite inferior del overhead,
+no una corrección exacta. Guardar min/p50/p95/p99/max y todas las muestras vacías.
+Una mediana vacía de 0 ns puede reflejar cuantización: no demuestra overhead cero.
+No restar ninguna estimación a las latencias. Por escenario y repetición, advertir:
+
+- p50 menor a 10 veces el mayor salto observado antes/después de la sesión;
+- resolución no observada, o mediana vacía no resuelta por el reloj;
+- overhead p50 de al menos el 10 % del p50 de invocación (heurística del instrumento,
+  independiente del umbral de estabilidad entre repeticiones);
+- N o warmup menores a los mínimos documentados.
+
+`latency-summary.json` evalúa los tres p50 con la regla estricta < 10 %, por
+separado de Criterion. p95/p99 llevan rangos min–max entre repeticiones y advertencia
+de variabilidad, sin aplicarles el umbral. Si falla el recolector individual se
+conserva y evalúa la evidencia Criterion válida de manera independiente.
+
+Las diferencias de fuel se guardan en ns por repetición frente a `invoke(identity)`
+y frente al control de igual API sin fuel. Su intervalo es el rango observado de
+las tres diferencias emparejadas de p50, **no un intervalo de confianza** ni un
+coste causal certificado. Verificar estabilidad y advertencias de ambos escenarios
+antes de interpretar la diferencia. No usar un porcentaje aislado.
+Los escenarios siguen un orden fijo, preservado en el JSON: sus diferencias pueden
+incluir deriva temporal del host, incluso con la misma operación y API.
+
+Regeneración: `python scripts/bench_latency_aggregate.py bench-results` y
+`python scripts/bench_summary.py bench-results`. Ejecución individual local:
+
+```text
+cargo run --release --locked -p agent-native-runtime --example bench_latency -- --environment environment.json
+```
+
+`environment.json` es la ficha generada por el recolector; el ejemplo la incorpora
+íntegra para comprobar procedencia por repetición. Las cifras locales de prueba con
+fuentes sin commit o parámetros reducidos no constituyen una línea base publicable.
 
 No usar `--quick` para publicar cifras: solo sirve para comprobar que compila y corre.
 
