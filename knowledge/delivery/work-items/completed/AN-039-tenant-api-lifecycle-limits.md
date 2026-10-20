@@ -1,8 +1,9 @@
 ---
 id: AN-039
 type: feature
-status: in-progress
+status: completed
 created_at: 2026-10-19T00:00:00.000Z
+completed_at: 2026-10-19T00:00:00.000Z
 title: API Tenant, gobernanza y unificación del ciclo de vida bajo límites homogéneos
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -66,9 +67,9 @@ template_version: 1
 
 # AN-039 — API Tenant, gobernanza y unificación del ciclo de vida bajo límites homogéneos
 
-## Estado del Work Item: `in-progress`
+## Estado del Work Item: `completed`
 
-Este borrador formaliza el diseño técnico de la API `Tenant` y la unificación de las rutas de invocación del runtime de Agent Native bajo las garantías de aislamiento de **ADR-005**.
+La API `Tenant` y la unificación del ciclo de vida bajo límites homogéneos se encuentran plenamente implementadas, verificadas y fusionadas en `main` (PR #2, commit `b3df809`).
 
 ---
 
@@ -201,3 +202,19 @@ impl Tenant {
 3. **Desacoplamiento de Diagnóstico:** Una llamada que maneje internamente una denegación de memoria y luego trapée por otra causa retorna el trap causal adecuado en lugar de asumir `MemoryLimitExceeded`.
 4. **Retrocompatibilidad:** La API pública existente de `Component::invoke` e `invoke_with_limits` se mantiene intacta para casos de uso que no requieran gobernanza de tenant.
 5. **Multiplataforma:** La suite completa de pruebas pasa en Linux, macOS y Windows MSVC sin atributos `#[ignore]`.
+
+
+---
+
+## Verificación y Cierre Técnico
+
+1. **API y Gobernanza:** Abstracciones `TenantId`, `TenantConfig`, `Tenant` implementadas en `crates/runtime/src/tenant.rs` y exportadas en el root del crate (`agent_native_runtime`).
+2. **Cero Reutilización de Instancias (ADR-005):** Validado que cada llamada a `tenant.invoke()` y `tenant.invoke_core_with_host_ctx()` ejecuta en un `wasmtime::Store` fresco y efímero que se destruye al salir, sin retención de instancias ni acumulación de fuel.
+3. **Desacoplamiento de Diagnóstico de Traps:** En `map_execution_error`, los traps explícitos (`OutOfFuel`, `IntegerOverflow`, `IntegerDivisionByZero`, `BadConversionToInteger`, `TableOutOfBounds`, `StackOverflow`) tienen precedencia sobre eventos previos de `growth_denied`, evitando clasificaciones falsas de `MemoryLimitExceeded` cuando el código guest maneja `-1` en memoria y luego falla por causas aritméticas o computacionales.
+4. **Retrocompatibilidad Preservada:** Todas las firmas existentes (`invoke`, `invoke_with_limits`, `invoke_core_with_host_ctx`, `invoke_component_with_host_ctx`) se mantienen operativas sin breaking changes.
+5. **Calidad y CI:**
+   - Suite `tenant_lifecycle.rs` con 6 tests específicos pasando.
+   - `public_api_audit.rs` auditando reexportaciones de `Tenant`.
+   - `cargo fmt --check` limpio.
+   - `cargo clippy --workspace --all-targets -- -D warnings` limpio.
+   - CI de GitHub Actions (run `39366330410`) 100% verde en Linux, macOS, Windows MSVC y AWS Lambda.

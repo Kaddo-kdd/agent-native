@@ -31,8 +31,8 @@ candidates:
     materialized_as: AN-035 (completed), AN-036 (completed), AN-037 (completed), AN-038 (completed)
   - id: INIT-06-03
     title: Ciclo de vida de instancias y aislamiento multi-tenant
-    status: candidate
-    materialized_as: AN-039 (draft), AN-040 (draft)
+    status: in-progress
+    materialized_as: AN-039 (completed), AN-040 (draft)
   - id: INIT-06-04
     title: Verificación de integridad y procedencia en carga
     status: candidate
