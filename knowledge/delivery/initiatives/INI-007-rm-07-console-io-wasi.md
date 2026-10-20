@@ -22,7 +22,7 @@ candidates:
   - id: INIT-07-01
     title: Baseline WASI preview2 + stdio autorizado
     status: in-progress
-    materialized_as: AN-044 (draft), AN-045 (draft)
+    materialized_as: AN-044 (completed), AN-045 (ready)
   - id: INIT-07-02
     title: Extensión IR para `string` y errores
     status: candidate
@@ -73,8 +73,8 @@ Convierte el producto de "núcleo técnico de cálculo" a "ejecuta programas int
 ## Work Item Candidates
 
 Ver `candidates:`.
-- `AN-044`: Adaptador WASI Preview 2 para I/O determinista en memoria (`feature`, draft).
-- `AN-045`: Autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`, draft).
+- `AN-044`: Adaptador WASI Preview 2 para I/O determinista en memoria (`feature`, completed).
+- `AN-045`: Autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`, ready).
 
 ## Precisiones Arquitectónicas (INIT-07-01 / 2026-10-20)
 

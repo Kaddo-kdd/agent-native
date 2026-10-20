@@ -25,6 +25,7 @@ use crate::engine::Component;
 use crate::error::RuntimeError;
 use crate::limits::{ExecutionLimits, InstanceLimits, InvocationReport};
 use crate::policy::HostPolicy;
+use crate::wasi::{WasiInvocationReport, WasiIoConfig};
 
 /// Immutable identifier of a tenant.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -189,6 +190,31 @@ impl Tenant {
             &self.config.limits,
             func_name,
             args,
+        )
+    }
+
+    /// Invokes an exported function on a Component Model artifact with in-memory WASI
+    /// console I/O under this tenant's policy and execution limits (AN-044).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RuntimeError::UnauthorizedImport`] if any WASI interface imported by the
+    /// component is not granted by the tenant's policy, [`RuntimeError::IoLimitExceeded`]
+    /// if a captured output stream exceeds its byte limit, or [`RuntimeError::FuelExhausted`] /
+    /// [`RuntimeError::MemoryLimitExceeded`] when resource quotas are breached.
+    pub fn invoke_with_wasi(
+        &self,
+        component: &Component,
+        func_name: &str,
+        args: &[Val],
+        io: WasiIoConfig,
+    ) -> Result<WasiInvocationReport, RuntimeError> {
+        component.invoke_with_wasi(
+            &self.config.policy,
+            &self.config.limits,
+            func_name,
+            args,
+            io,
         )
     }
 

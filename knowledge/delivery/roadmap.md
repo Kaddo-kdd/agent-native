@@ -844,8 +844,8 @@ Habilita programas reales útiles sobre la base segura. No se adelanta a RM-06.
 **Risks:** churn en preview2 — pinnear versión `wasmtime-wasi = "29.0.1"`.
 
 **Work Items:**
-- AN-044: adaptador WASI preview2 para I/O determinista en memoria (`feature`) (draft)
-- AN-045: autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`) (draft)
+- AN-044: adaptador WASI preview2 para I/O determinista en memoria (`feature`) (completed)
+- AN-045: autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`) (ready)
 
 ---
 

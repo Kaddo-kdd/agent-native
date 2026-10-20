@@ -30,8 +30,26 @@ pub enum PolicyError {
     WildcardForbidden(String),
 }
 
+/// Identifies a captured WASI output stream (AN-044).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum IoStream {
+    /// `wasi:cli/stdout`.
+    Stdout,
+    /// `wasi:cli/stderr`.
+    Stderr,
+}
+
+impl std::fmt::Display for IoStream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Stdout => f.write_str("stdout"),
+            Self::Stderr => f.write_str("stderr"),
+        }
+    }
+}
+
 /// All failure modes exposed by the Agent-Native runtime.
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum RuntimeError {
     /// A capability manifest or policy rule failed validation or parsing.
     #[error("policy error: {0}")]
@@ -73,6 +91,22 @@ pub enum RuntimeError {
     MemoryLimitExceeded {
         requested_bytes: usize,
         max_bytes: usize,
+    },
+
+    /// A captured WASI output stream would have exceeded its configured byte limit
+    /// (AN-044, ADR-004).
+    ///
+    /// `attempted_bytes` is the **accumulated** size the stream would have retained had the
+    /// rejected write been accepted (bytes already retained + length of the rejected write),
+    /// so it is always greater than `limit`. A retained total equal to `limit` is valid.
+    /// The rejected write is atomic: none of its bytes are retained.
+    #[error(
+        "I/O limit exceeded on {stream}: limit {limit} bytes, attempted accumulated size {attempted_bytes} bytes"
+    )]
+    IoLimitExceeded {
+        stream: IoStream,
+        limit: usize,
+        attempted_bytes: usize,
     },
 
     /// The component declares a host import that the runtime did not

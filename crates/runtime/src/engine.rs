@@ -73,12 +73,16 @@ impl Engine {
         bytes: &[u8],
         policy: &HostPolicy,
     ) -> Result<Component, RuntimeError> {
-        let payload = if let Ok(component) = WtComponent::new(&self.inner, bytes) {
-            Payload::Component(component)
-        } else {
-            let module = wasmtime::Module::new(&self.inner, bytes)
-                .map_err(|e| RuntimeError::LoadFailed(e.to_string()))?;
-            Payload::Module(module)
+        let payload = match WtComponent::new(&self.inner, bytes) {
+            Ok(component) => Payload::Component(component),
+            Err(comp_err) => {
+                if bytes.starts_with(b"\0asm\x0d\x00\x01\x00") {
+                    return Err(RuntimeError::LoadFailed(format!("{comp_err:#}")));
+                }
+                let module = wasmtime::Module::new(&self.inner, bytes)
+                    .map_err(|e| RuntimeError::LoadFailed(e.to_string()))?;
+                Payload::Module(module)
+            }
         };
         Ok(Component {
             payload,

@@ -49,9 +49,10 @@ pub mod policy;
 pub mod resolver;
 pub mod tenant;
 pub mod testing;
+pub mod wasi;
 
 pub use engine::{Component, Engine};
-pub use error::{PolicyError, RuntimeError};
+pub use error::{IoStream, PolicyError, RuntimeError};
 pub use limits::{ExecutionLimits, InstanceLimits, InvocationReport};
 pub use manifest::{
     CURRENT_MANIFEST_VERSION, ComponentManifest, CoreImport, ManifestCapabilities, WitOperation,
@@ -59,4 +60,5 @@ pub use manifest::{
 pub use policy::HostPolicy;
 pub use resolver::Resolver;
 pub use tenant::{Tenant, TenantConfig, TenantId};
+pub use wasi::{DEFAULT_MAX_OUTPUT_BYTES, WasiInvocationReport, WasiIoConfig, WasiIoOutput};
 pub use wasmtime::component::Val;

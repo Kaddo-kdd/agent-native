@@ -23,7 +23,10 @@ pub(crate) struct StoreData {
     pub(crate) limiter: StoreResourceLimiter,
 }
 
-fn map_instantiation_error(err: &wasmtime::Error, denial: Option<GrowthDenial>) -> RuntimeError {
+pub(crate) fn map_instantiation_error(
+    err: &wasmtime::Error,
+    denial: Option<GrowthDenial>,
+) -> RuntimeError {
     if let Some(denial) = denial {
         return RuntimeError::MemoryLimitExceeded {
             requested_bytes: denial.requested_bytes,
@@ -33,7 +36,7 @@ fn map_instantiation_error(err: &wasmtime::Error, denial: Option<GrowthDenial>) 
     RuntimeError::InstantiationFailed(err.to_string())
 }
 
-fn map_execution_error(
+pub(crate) fn map_execution_error(
     err: &wasmtime::Error,
     fuel_budget: Option<u64>,
     denial: Option<GrowthDenial>,
@@ -509,7 +512,7 @@ fn invoke_core(
 /// Resolves an exported function. Supports top-level exports and functions
 /// nested inside an exported WIT interface, referenced as
 /// `interface_id#operation`.
-fn resolve_component_func<T>(
+pub(crate) fn resolve_component_func<T>(
     instance: &wasmtime::component::Instance,
     store: &mut Store<T>,
     func_name: &str,
@@ -681,7 +684,7 @@ fn component_item_name(item: &wasmtime::component::types::ComponentItem) -> &'st
 
 /// Returns a short kebab-style tag for a component `Val`, used in error
 /// messages.
-fn component_val_kind(v: &Val) -> &'static str {
+pub(crate) fn component_val_kind(v: &Val) -> &'static str {
     match v {
         Val::Bool(_) => "bool",
         Val::S8(_) => "s8",
@@ -708,7 +711,7 @@ fn component_val_kind(v: &Val) -> &'static str {
     }
 }
 
-fn component_val_matches_type(v: &Val, ty: &wasmtime::component::types::Type) -> bool {
+pub(crate) fn component_val_matches_type(v: &Val, ty: &wasmtime::component::types::Type) -> bool {
     use wasmtime::component::types::Type;
     matches!(
         (v, ty),

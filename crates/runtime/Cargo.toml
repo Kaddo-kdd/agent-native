@@ -23,6 +23,10 @@ wasmtime = { version = "29.0.1", default-features = false, features = [
     "component-model",
     "std",
 ] }
+# INIT-07-01 (AN-044): WASI Preview 2 host. Pinned exactly (churn risk R-05) and
+# confined to this crate (ADR-002). `preview1` is not needed.
+wasmtime-wasi = { version = "=29.0.1", default-features = false }
+bytes = "1"
 
 [dev-dependencies]
 # Compiler used only to produce WASM artifacts for smoke tests. ADR-002
@@ -30,7 +34,12 @@ wasmtime = { version = "29.0.1", default-features = false, features = [
 # downstream consumers of agent-native-runtime.
 agent-native-compiler = { path = "../compiler" }
 criterion = "0.5"
-wasm-encoder = "0.221.0"
+wasm-encoder = "=0.221.3"
+# WASI fixtures (AN-044): minimal Component Model artifacts that import exact
+# `wasi:*` interface versions. Dev-only; pinned for Rust 1.85 compatibility (AC-S5).
+wat = "=1.221.3"
+wit-component = "0.219.2"
+wit-parser = "0.219.2"
 
 [[bench]]
 name = "baseline"
