@@ -26,6 +26,7 @@ candidates:
   - id: INIT-08-02
     title: Línea base pública cross-OS
     status: candidate
+    materialized_as: AN-053 (draft), AN-054 (draft), AN-055 (draft)
   - id: INIT-08-03
     title: Caché de componentes y warm pool
     status: candidate
@@ -76,6 +77,24 @@ Materializa el business goal "decisiones basadas en evidencia" y permite publica
 Ver `candidates:`.
 
 ## Open Questions
+
+### Decisiones humanas para INIT-08-02 (2026-10-20)
+
+- Aprobadas tres repeticiones completas por job en el mismo runner, con evidencia
+  independiente por OS, ejecución, repetición y benchmark (AN-053).
+- Umbral estricto < 10 % sobre `(max - min) / mediana` de las tres medianas
+  Criterion y, por separado, de los tres p50 individuales (AN-054).
+  p95/p99 se publican con rangos y advertencias, sin este umbral inicialmente.
+- Recolector independiente con nearest-rank; calibrar resolución y overhead,
+  sin sustracción automática. Conservar resultados inestables, sin certificarlos.
+- Separar repetibilidad local de reproducibilidad entre workflows independientes.
+- Commit documental de AN-053/054/055 autorizado en `draft`. Implementar AN-053;
+  AN-054 puede avanzar tras estabilizar esa recolección. AN-055 espera mediciones.
+  Integrar código de AN-053 en `main` requiere revisión del diff y workflow manual.
+- La certificación requiere revisión humana. INIT-08-02 permanece abierto.
+- Entregar tabla WASM básico / WASI / fuel / IR v0.6 con operación y sobrecarga
+  diferenciadas, sin atribuir a una característica diferencias de operaciones.
+  Usarla para decidir con evidencia las optimizaciones de INIT-08-03.
 
 - OQ L153 (umbrales de rendimiento) — se cierra al publicar INIT-08-02; los números concretos salen de la medición, no de supuestos.
 - Riesgo R-10 (afirmaciones de rendimiento sin medición) — mitigado por este bloque entero.
