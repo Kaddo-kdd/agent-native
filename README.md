@@ -12,8 +12,9 @@
 
 ## Estado del proyecto
 
-🟢 **M6 alcanzado (2026-10-20) — En desarrollo activo hacia M7.** Hitos publicados:
+🟢 **M7 alcanzado (2026-10-20) — En desarrollo activo hacia M8.** Hitos publicados:
 
+- [`v0.0.7-m7`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.7-m7) — **M7 Console I/O & WASI** (RM-07 completo). Adaptador WASI Preview 2 determinista en memoria con streams acotados (`RuntimeError::IoLimitExceeded`, AN-044), autorización granular e independiente de interfaces `wasi:cli/*` e `io/*` bajo `Requested ∩ Granted` (AN-045), Semantic IR v0.6 experimental (`string` y `result<T, E>` bajo `--experimental`, AN-048), y stubs deterministas de consola (`stdin`, `expected_stdout`, `expected_stderr`) en el executor YAML sin TTY (AN-049).
 - [`v0.0.6-m6`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.6-m6) — **M6 Runtime Security & Memory** (RM-06 completo). Límites de fuel deterministas y memoria (`ResourceLimiter`), contención en Windows MSVC (Wasmtime 29.0.1), aislamiento multi-tenant con Store efímero (ADR-005), verificación de procedencia (SHA-256) y firmas criptográficas Minisign Ed25519 100% offline, y suite de fixtures extremos.
 - [`v0.0.4-m3`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.4-m3) — **M3 Runtime autónomo con cobertura regresiva + línea base** (RM-03 completo). Cierre de INI-003 bajo los 7 criterios reformulados por decisión humana (D1/D2/D3).
 - [`v0.0.3-hardening`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.3-hardening) — **Hardening pass** post Technical Review (AN-014 end-to-end v0.5 Component Model + AN-015 políticas WIT granulares + AN-016 `CompileContext` sin dependencia del cwd).
@@ -21,24 +22,21 @@
 
 Lo que ya funciona:
 
-- **Workspace Rust robusto (4 crates)** + CI matrix en Linux/Windows/macOS (**140 tests** verdes).
+- **Workspace Rust robusto (4 crates)** + CI matrix en Linux/Windows/macOS (**162 tests** verdes).
 - **CLI Unificado `agent-native` (RM-05):** Subcomandos funcionales `spec`, `build`, `verify`, `test`, `run`, `publish`.
 - **Integración LLM en tiempo de construcción (RM-04 / AN-046):** Generación asistida con modos `fixtures`, `synthesizer` y `real` (adaptador HTTP síncrono para Anthropic y OpenAI con validación estricta de Semantic IR v0.5 y sanitización de credenciales).
 - **Control de Recursos y Límites en CLI (RM-06 / AN-047):** Invocación con `--fuel`, `--max-memory-bytes` y `--max-table-elements`, con reporte de `fuel_consumed` en JSON/texto y captura limpia de errores tipados.
 - **Verificación Criptográfica y Procedencia (RM-06 / AN-041, AN-042):** Validación de integridad mediante hashes SHA-256 (`--manifest`, `--expected-sha256`) y verificación de firmas Minisign Ed25519 offline (`--signature`, `--public-key`).
 - **Runtime Autónomo y Seguro (Wasmtime 29.0.1):** Aislamiento multi-tenant estricto con ciclo de vida de Store efímero (ADR-005), `HostPolicy` deny-by-default manifest-driven y contención probada frente a traps de CPU y desbordamiento de memoria.
-- **Semantic IR v0.5 + Verifier:** Validación formal de tipos, signaturas WIT, imports de interfaces y operaciones.
+- **Console I/O & WASI Preview 2 (RM-07 / AN-044, AN-045):** Adaptador determinista en memoria (`wasmtime-wasi = "=29.0.1"`) con autorización granular por interfaz (`allow_wasi_stdout`, `allow_wasi_stderr`, `allow_wasi_stdin`, `allow_wasi_stdio`) y límites de salida por stream (`RuntimeError::IoLimitExceeded`).
+- **Semantic IR v0.5 (estable) + v0.6 (`--experimental` / AN-048):** Validación formal de tipos, signaturas WIT, imports de interfaces/operaciones, y soporte experimental de `string` y `result<T, E>` bajo `--experimental`.
 - **Compilador Determinista IR → WASM:** Generación reproducible de Component Model con hash SHA-256 idéntico bit a bit cross-platform.
-- **Executor YAML declarativo:** Batería de pruebas de aceptación y contratos de stubs (`StateReader`, `StateWriter`, `Noop`).
+- **Executor YAML declarativo (RM-03 / RM-07 / AN-049):** Batería de pruebas de aceptación con contratos de stubs (`StateReader`, `StateWriter`, `Noop`), redirección determinista de `stdin`/`expected_stdout`/`expected_stderr` sin TTY, y soporte de `string`/`result<T, E>`.
 
 Bloques del roadmap:
 
-- ✅ **RM-01 a RM-06 Completados:** Baseline arquitectónico, compilador determinista, runtime autónomo, pipeline generativo con LLMs, CLI unificada y seguridad de recursos.
-- 🟡 **RM-07 (Console I/O & WASI) — EN CURSO:**
-  - **INIT-07-01:** Adaptador WASI Preview 2 e I/O determinista en memoria (AN-044) y autorización granular de interfaces WIT `wasi:cli/*` e `io/streams` bajo Requested ∩ Granted (AN-045).
-  - **INIT-07-02:** Semantic IR v0.6 para programas de consola (echo, cat).
-  - **INIT-07-03:** Composición multi-componente y stubs funcionales en Component Model.
-- ⚪ **RM-08 (Performance & Concurrency):** Harness formal de benchmarks, warm pool y concurrencia host-side. Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
+- ✅ **RM-01 a RM-07 Completados:** Baseline arquitectónico, compilador determinista, runtime autónomo, pipeline generativo con LLMs, CLI unificada, seguridad de recursos y Console I/O WASI Preview 2.
+- 🟡 **RM-08 (Performance & Concurrency) — PRÓXIMO BLOQUE:** Harness formal de benchmarks reproducibles cross-OS, caché de componentes / warm pool y concurrencia host-side. Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
 
 > La POC histórica vive en [`Trycatch-tv/poc-agent-native`](https://github.com/Trycatch-tv/poc-agent-native) (commit `26b6a18`) y bajo `_reference/`. Es **sólo lectura** — ver [`knowledge/tech/reference-policy.md`](knowledge/tech/reference-policy.md).
 
@@ -67,7 +65,7 @@ git clone https://github.com/Kaddo-kdd/agent-native
 cd agent-native
 
 cargo build --workspace
-cargo test --workspace     # 140 tests verdes (18 ir + 14 compiler + 54 runtime + 54 cli)
+cargo test --workspace     # 162 tests verdes (18 ir + 17 compiler + 73 runtime + 54 cli)
 ```
 
 ### Uso de la CLI
@@ -121,7 +119,7 @@ Comandos del día a día:
 ```bash
 cargo fmt --all                                        # formato
 cargo clippy --workspace --all-targets -- -D warnings  # lint
-cargo test --workspace                                 # 140 tests
+cargo test --workspace                                 # 162 tests
 cargo build --workspace --release                      # binario optimizado
 ```
 
