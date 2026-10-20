@@ -1,0 +1,86 @@
+[
+  {
+    "width": 375,
+    "route": "/",
+    "content": 360,
+    "title": "From spec to wasm. · Wasma",
+    "viewport": 375
+  },
+  {
+    "width": 375,
+    "route": "/docs/first-component/",
+    "content": 360,
+    "title": "Tu primer componente | Wasma",
+    "viewport": 375
+  },
+  {
+    "width": 375,
+    "route": "/blog/",
+    "content": 360,
+    "title": "Blog · Wasma",
+    "viewport": 375
+  },
+  {
+    "width": 375,
+    "route": "/roadmap/",
+    "content": 360,
+    "title": "Roadmap · Wasma",
+    "viewport": 375
+  },
+  {
+    "width": 768,
+    "route": "/",
+    "content": 753,
+    "title": "From spec to wasm. · Wasma",
+    "viewport": 768
+  },
+  {
+    "width": 768,
+    "route": "/docs/first-component/",
+    "content": 753,
+    "title": "Tu primer componente | Wasma",
+    "viewport": 768
+  },
+  {
+    "width": 768,
+    "route": "/blog/",
+    "content": 753,
+    "title": "Blog · Wasma",
+    "viewport": 768
+  },
+  {
+    "width": 768,
+    "route": "/roadmap/",
+    "content": 753,
+    "title": "Roadmap · Wasma",
+    "viewport": 768
+  },
+  {
+    "width": 1440,
+    "route": "/",
+    "content": 1425,
+    "title": "From spec to wasm. · Wasma",
+    "viewport": 1440
+  },
+  {
+    "width": 1440,
+    "route": "/docs/first-component/",
+    "content": 1425,
+    "title": "Tu primer componente | Wasma",
+    "viewport": 1440
+  },
+  {
+    "width": 1440,
+    "route": "/blog/",
+    "content": 1425,
+    "title": "Blog · Wasma",
+    "viewport": 1440
+  },
+  {
+    "width": 1440,
+    "route": "/roadmap/",
+    "content": 1425,
+    "title": "Roadmap · Wasma",
+    "viewport": 1440
+  }
+]

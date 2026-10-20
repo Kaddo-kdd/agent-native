@@ -1,0 +1,81 @@
+---
+import Site from "../layouts/Site.astro";
+import { readRoadmap } from "../lib/roadmap.mjs";
+const rows = readRoadmap();
+const descriptions: Record<string, string> = {
+  "RM-01":
+    "Base del proyecto y evaluación de la prueba de concepto. Decisiones arquitectónicas y límites de responsabilidad.",
+  "RM-02":
+    "Representación semántica, validación y compilación de componentes WebAssembly.",
+  "RM-03":
+    "Carga, ejecución, pruebas de aceptación y resolución de dependencias en un runtime independiente.",
+  "RM-04":
+    "Interpretación de especificaciones, generación, evolución y publicación versionada de artefactos.",
+  "RM-05":
+    "CLI unificada y API del runtime. Consulta instalación para los requisitos reales de distribución.",
+  "RM-06":
+    "Políticas, cuotas, aislamiento entre invocaciones y verificación de integridad.",
+  "RM-07":
+    "Baseline WASI con I/O en memoria. IR v0.6 experimental. El soporte ampliado de binarios reales sigue en AN-050.",
+  "RM-08":
+    "Medición reproducible de rendimiento. La evidencia publicada es candidata; warm pool y concurrencia siguen planeados.",
+};
+---
+
+<Site
+  title="Roadmap"
+  description="El estado de los ocho hitos de Wasma, derivado del conocimiento canónico del repositorio, con límites y capacidades experimentales explícitos."
+>
+  <div class="container">
+    <header class="page-hero">
+      <div class="eyebrow">Una dirección abierta</div>
+      <h1>
+        Lo construido.
+        <br />
+        <span class="gradient">Lo que sigue.</span>
+      </h1>
+      <p>
+        Ocho hitos, un recorrido incremental. El estado de cada bloque se lee
+        del repositorio al generar esta página.
+      </p>
+    </header>
+    <div class="notice">
+      Un hito completado describe su alcance aceptado, no compatibilidad
+      universal. Las capacidades experimentales y las ampliaciones pendientes
+      conservan sus propios límites.
+    </div>
+    <section aria-label="Hitos del proyecto">
+      {rows.map((row) => (
+        <article class="roadmap-row">
+          <span class="rm-id">{row.block}</span>
+          <div>
+            <h2>{row.title}</h2>
+            <p>{descriptions[row.block]}</p>
+            <a class="text-link" href={row.source}>
+              Ver alcance y evidencia ↗
+            </a>
+          </div>
+          <span class="pill">{row.label}</span>
+        </article>
+      ))}
+    </section>
+    <div class="notice">
+      <strong>Experimental no significa estable.</strong> Semantic IR v0.6
+      requiere <code>--experimental</code>. La ampliación WASI de AN-050 no se
+      da por entregada por el cierre de RM-07. Los benchmarks no certifican un
+      SLA ni superioridad frente a otros runtimes.
+    </div>
+    <p class="spaced">
+      <a
+        class="text-link"
+        href="https://github.com/Kaddo-kdd/agent-native/blob/main/knowledge/delivery/roadmap.md"
+      >
+        Roadmap técnico completo ↗
+      </a>{" "}
+      ·{" "}
+      <a class="text-link" href="/docs/performance/">
+        Cómo leer las mediciones →
+      </a>
+    </p>
+  </div>
+</Site>

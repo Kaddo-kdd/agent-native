@@ -1,0 +1,53 @@
+---
+import { getCollection } from "astro:content";
+import Site from "../../layouts/Site.astro";
+const posts = (await getCollection("blog")).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+);
+---
+
+<Site
+  title="Blog"
+  description="Notas de desarrollo, arquitectura y evolución de Wasma. Un registro abierto de las decisiones detrás del proyecto."
+>
+  <div class="container">
+    <header class="page-hero">
+      <div class="eyebrow">Desde el proyecto</div>
+      <h1>
+        Ideas que
+        <br />
+        <span class="gradient">toman forma.</span>
+      </h1>
+      <p>
+        Notas sobre construcción, decisiones y el camino de una especificación a
+        un componente ejecutable.
+      </p>
+    </header>
+    <section class="post-list" aria-label="Artículos">
+      {posts.map((post) => (
+        <a class="post-card" href={`/blog/${post.id}/`}>
+          <time datetime={post.data.date.toISOString()}>
+            {post.data.date.toLocaleDateString("es", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              timeZone: "UTC",
+            })}
+          </time>
+          <div>
+            <h2>{post.data.title}</h2>
+            <p>{post.data.description}</p>
+            <div class="tags">
+              {post.data.tags.map((tag) => (
+                <span class="pill">{tag}</span>
+              ))}
+            </div>
+          </div>
+          <span class="arrow" aria-hidden="true">
+            ↗
+          </span>
+        </a>
+      ))}
+    </section>
+  </div>
+</Site>
