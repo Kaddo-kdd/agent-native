@@ -84,10 +84,6 @@ fn test_fuel_consumption_and_determinism_on_core_wasm() {
 }
 
 #[test]
-#[cfg_attr(
-    target_os = "windows",
-    ignore = "Wasmtime 27 upstream issue #10923: libcall out_of_gas is declared as extern \"C\" instead of extern \"C-unwind\", causing MSVC RtlUnwindEx to abort on Windows"
-)]
 fn test_fuel_exhaustion_on_core_wasm() {
     let wasm = sample_math_wasm();
     let engine = Engine::new().expect("engine");
@@ -136,10 +132,6 @@ fn test_fuel_consumption_and_determinism_on_component_model() {
 }
 
 #[test]
-#[cfg_attr(
-    target_os = "windows",
-    ignore = "Wasmtime 27 upstream issue #10923: libcall out_of_gas is declared as extern \"C\" instead of extern \"C-unwind\", causing MSVC RtlUnwindEx to abort on Windows"
-)]
 fn test_fuel_exhaustion_on_component_model() {
     let wasm = probe_cm_wasm();
     let engine = Engine::new().expect("engine");
@@ -181,10 +173,6 @@ fn test_unmetered_invoke_backward_compatibility() {
 }
 
 #[test]
-#[cfg_attr(
-    target_os = "windows",
-    ignore = "Wasmtime 27 upstream issue #10923: libcall out_of_gas is declared as extern \"C\" instead of extern \"C-unwind\", causing MSVC RtlUnwindEx to abort on Windows"
-)]
 fn test_consecutive_store_fuel_isolation_adr005() {
     let wasm = sample_math_wasm();
     let engine = Engine::new().expect("engine");
