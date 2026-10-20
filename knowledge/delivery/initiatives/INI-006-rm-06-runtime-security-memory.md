@@ -2,7 +2,7 @@
 type: initiative
 id: INI-006
 title: RM-06 — Runtime Security & Memory
-status: planned
+status: in-progress
 knowledge_level: K4
 domains:
   - Runtime & Memory
@@ -32,6 +32,7 @@ candidates:
   - id: INIT-06-03
     title: Ciclo de vida de instancias y aislamiento multi-tenant
     status: candidate
+    materialized_as: AN-039 (draft), AN-040 (draft)
   - id: INIT-06-04
     title: Verificación de integridad y procedencia en carga
     status: candidate

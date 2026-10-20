@@ -81,7 +81,7 @@ Fuentes:
 | **RM-06** | **Runtime Security & Memory** | — | — | Runtime controlado por políticas | — |
 | INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | completed (AN-033, AN-034) |
 | INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | completed (AN-035, AN-036, AN-037, AN-038) |
-| INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | nuevo |
+| INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | draft (AN-039, AN-040) |
 | INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | nuevo |
 | INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | nuevo |
 | **RM-07** | **Console I/O & WASI** | — | — | Programas con I/O autorizada | — |
@@ -784,6 +784,8 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 **Status:** candidate · **Priority:** medium · **K4**
 
+**Materialized as:** AN-039 (draft), AN-040 (draft)
+
 **Source signals:** Risk R-11; OQ L146.
 
 **Problem / opportunity:** garantías de aislamiento verificables demostrando que un componente problemático no puede afectar a otro tenant. **Invariante obligatoria:** estrictamente sin reutilización de instancias entre tenants (Store fresco por invocación).
@@ -793,8 +795,8 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 **Notes:** incorpora la agregación de cuotas por tenant (más allá del límite por crecimiento de memoria lineal de una instancia individual de AN-036), unificación de rutas de invocación con host context (`invoke_*_with_host_ctx`) bajo los mismos límites, y refinamiento del diagnóstico de traps de memoria sin asumir falsos positivos correlacionados.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-06-03-01: API `Tenant` y ciclo de vida de invocación (`feature`)
-- WI-CANDIDATE-06-03-02: tests de contaminación cruzada y contención de blast radius (`chore`)
+- WI-CANDIDATE-06-03-01: API `Tenant` y ciclo de vida de invocación (`feature`, AN-039 — draft)
+- WI-CANDIDATE-06-03-02: tests de contaminación cruzada y contención de blast radius (`chore`/`test`, AN-040 — draft)
 
 ---
 
