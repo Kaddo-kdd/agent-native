@@ -40,7 +40,7 @@ use std::collections::{HashMap, HashSet};
 use agent_native_ir::context::Context;
 use agent_native_ir::diagnostic::Diagnostic;
 use agent_native_ir::model::{FuncSignature, ImportSignature, IrType, RecordDef, WitContractDef};
-use agent_native_ir::verify_ir;
+use agent_native_ir::{VerifyOptions, verify_ir_with_options};
 use serde_json::Value;
 use wasm_encoder::{
     BlockType, CodeSection, ConstExpr, CustomSection, EntityType, ExportKind, ExportSection,
@@ -90,7 +90,10 @@ pub fn compile_ir_to_wasm_with_context(
     root: &Value,
     wit_ctx: &CompileContext,
 ) -> Result<Vec<u8>, Vec<Diagnostic>> {
-    let diags = verify_ir(root);
+    let verify_opts = VerifyOptions {
+        allow_experimental: wit_ctx.allow_experimental(),
+    };
+    let diags = verify_ir_with_options(root, &verify_opts);
     if !diags.is_empty() {
         return Err(diags);
     }
@@ -101,10 +104,12 @@ pub fn compile_ir_to_wasm_with_context(
         .unwrap_or("0.1");
 
     let mut record_defs: HashMap<String, RecordDef> = HashMap::new();
+    let mut known_records: HashSet<String> = HashSet::new();
     if let Some(types_arr) = root.get("types").and_then(|v| v.as_array()) {
         for type_val in types_arr {
             let type_obj = type_val.as_object().unwrap();
             let name = type_obj["name"].as_str().unwrap().to_string();
+            known_records.insert(name.clone());
             let mut fields = Vec::new();
             for f_val in type_obj["fields"].as_array().unwrap() {
                 let f_obj = f_val.as_object().unwrap();
@@ -112,6 +117,7 @@ pub fn compile_ir_to_wasm_with_context(
                 let f_ty = match f_obj["type"].as_str().unwrap() {
                     "i32" => IrType::I32,
                     "bool" => IrType::Bool,
+                    "string" => IrType::String,
                     other => IrType::Record(other.to_string()),
                 };
                 fields.push((f_name, f_ty));
@@ -149,23 +155,19 @@ pub fn compile_ir_to_wasm_with_context(
                     for p_val in p_arr {
                         let p_obj = p_val.as_object().unwrap();
                         let p_name = p_obj["name"].as_str().unwrap().to_string();
-                        let p_ty = match p_obj["type"].as_str().unwrap() {
-                            "i32" => IrType::I32,
-                            "bool" => IrType::Bool,
-                            other => IrType::Record(other.to_string()),
-                        };
+                        let p_ty_str = p_obj["type"].as_str().unwrap();
+                        let p_ty =
+                            IrType::from_str_for_version(p_ty_str, &known_records, ir_version)
+                                .unwrap_or_else(|| IrType::Record(p_ty_str.to_string()));
                         parsed_params.push((p_name, p_ty));
                     }
                 }
-                let ret_ty = match imp_obj
+                let ret_str = imp_obj
                     .get("returns")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("i32")
-                {
-                    "i32" => IrType::I32,
-                    "bool" => IrType::Bool,
-                    other => IrType::Record(other.to_string()),
-                };
+                    .unwrap_or("i32");
+                let ret_ty = IrType::from_str_for_version(ret_str, &known_records, ir_version)
+                    .unwrap_or_else(|| IrType::Record(ret_str.to_string()));
                 let wit_interface = imp_obj
                     .get("wit_interface")
                     .and_then(|v| v.as_str())
@@ -208,18 +210,14 @@ pub fn compile_ir_to_wasm_with_context(
         let mut params = Vec::new();
         for p_val in params_arr {
             let p_name = p_val["name"].as_str().unwrap().to_string();
-            let p_ty = match p_val["type"].as_str().unwrap() {
-                "i32" => IrType::I32,
-                "bool" => IrType::Bool,
-                other => IrType::Record(other.to_string()),
-            };
+            let p_ty_str = p_val["type"].as_str().unwrap();
+            let p_ty = IrType::from_str_for_version(p_ty_str, &known_records, ir_version)
+                .unwrap_or_else(|| IrType::Record(p_ty_str.to_string()));
             params.push((p_name, p_ty));
         }
-        let returns = match func_obj["returns"].as_str().unwrap() {
-            "i32" => IrType::I32,
-            "bool" => IrType::Bool,
-            other => IrType::Record(other.to_string()),
-        };
+        let ret_str = func_obj["returns"].as_str().unwrap();
+        let returns = IrType::from_str_for_version(ret_str, &known_records, ir_version)
+            .unwrap_or_else(|| IrType::Record(ret_str.to_string()));
         function_signatures.insert(
             name.clone(),
             FuncSignature {
@@ -233,7 +231,9 @@ pub fn compile_ir_to_wasm_with_context(
         );
     }
 
-    let wit_contract_def = if ir_version == "0.4" || ir_version == "0.5" {
+    let is_cm_version = ir_version == "0.4" || ir_version == "0.5" || ir_version == "0.6";
+
+    let wit_contract_def = if is_cm_version {
         root.get("wit_contract")
             .and_then(|v| v.as_object())
             .map(|obj| WitContractDef {
@@ -281,7 +281,10 @@ pub fn compile_ir_to_wasm_with_context(
         num_imports,
     };
 
-    let needs_memory = ir_version == "0.2" || ir_version == "0.3" || !ctx.records.is_empty();
+    let needs_memory = ir_version == "0.2"
+        || ir_version == "0.3"
+        || ir_version == "0.6"
+        || !ctx.records.is_empty();
 
     let mut module = Module::new();
     let mut types = TypeSection::new();
@@ -292,12 +295,30 @@ pub fn compile_ir_to_wasm_with_context(
 
     for (imp_idx, imp_name) in import_order.iter().enumerate() {
         let imp_sig = &ctx.imports[imp_name];
-        let wasm_params: Vec<ValType> = imp_sig.params.iter().map(|_| ValType::I32).collect();
-        let results = [ValType::I32];
+        let mut wasm_params: Vec<ValType> = Vec::new();
+        for (_, p_ty) in &imp_sig.params {
+            if matches!(p_ty, IrType::String) {
+                wasm_params.push(ValType::I32);
+                wasm_params.push(ValType::I32);
+            } else {
+                wasm_params.push(ValType::I32);
+            }
+        }
+        let returns_via_retptr = ir_version == "0.6"
+            && matches!(
+                imp_sig.returns,
+                IrType::String | IrType::Result { .. } | IrType::Record(_)
+            );
+        let results: &[ValType] = if returns_via_retptr {
+            wasm_params.push(ValType::I32);
+            &[]
+        } else {
+            &[ValType::I32]
+        };
         let type_idx = imp_idx as u32;
-        types.ty().function(wasm_params, results);
+        types.ty().function(wasm_params, results.iter().copied());
 
-        let (imp_mod, imp_field) = if ir_version == "0.4" || ir_version == "0.5" {
+        let (imp_mod, imp_field) = if is_cm_version {
             if let (Some(contract), Some(wit_iface)) = (&ctx.wit_contract, &imp_sig.wit_interface) {
                 let pkg = if imp_sig.module.contains(':') && imp_sig.module.contains('@') {
                     &imp_sig.module
@@ -325,25 +346,44 @@ pub fn compile_ir_to_wasm_with_context(
             .get("export")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
-        let params_arr = func_obj["params"].as_array().unwrap();
         let body = &func_obj["body"];
+        let sig = &ctx.functions[name];
 
         let mut param_map = HashMap::new();
-        let mut wasm_params = Vec::with_capacity(params_arr.len());
-        for (p_idx, p_val) in params_arr.iter().enumerate() {
-            let p_name = p_val["name"].as_str().unwrap().to_string();
-            param_map.insert(p_name, p_idx as u32);
-            wasm_params.push(ValType::I32);
+        let mut param_type_map = HashMap::new();
+        let mut wasm_params = Vec::new();
+        let mut string_param_pairs: Vec<(String, u32, u32)> = Vec::new();
+
+        for (p_name, p_ty) in &sig.params {
+            param_type_map.insert(p_name.clone(), p_ty.clone());
+            if ir_version == "0.6" && matches!(p_ty, IrType::String) {
+                let ptr_idx = wasm_params.len() as u32;
+                wasm_params.push(ValType::I32);
+                let len_idx = wasm_params.len() as u32;
+                wasm_params.push(ValType::I32);
+                string_param_pairs.push((p_name.clone(), ptr_idx, len_idx));
+            } else {
+                let idx = wasm_params.len() as u32;
+                param_map.insert(p_name.clone(), idx);
+                wasm_params.push(ValType::I32);
+            }
         }
 
         let results = [ValType::I32];
         let func_type_idx = num_imports + func_idx as u32;
-        types.ty().function(wasm_params, results);
+        types.ty().function(wasm_params.clone(), results);
         func_section.function(func_type_idx);
 
         if is_export {
             exports.export(name, ExportKind::Func, num_imports + func_idx as u32);
-            if ir_version == "0.4" || ir_version == "0.5" {
+            if ir_version == "0.6" && name.contains('_') {
+                exports.export(
+                    &name.replace('_', "-"),
+                    ExportKind::Func,
+                    num_imports + func_idx as u32,
+                );
+            }
+            if is_cm_version {
                 if let (Some(contract), Some(wit_iface)) = (
                     &ctx.wit_contract,
                     func_obj.get("wit_interface").and_then(|v| v.as_str()),
@@ -362,13 +402,99 @@ pub fn compile_ir_to_wasm_with_context(
             }
         }
 
-        // Local 0..num_params-1: params
-        // Local num_params: temporary rec_ptr (i32)
-        let rec_ptr_local = params_arr.len() as u32;
-        let mut wasm_func = Function::new([(1, ValType::I32)]);
-        emit_expr(body, &param_map, rec_ptr_local, &ctx, &mut wasm_func);
-        wasm_func.instruction(&Instruction::End);
-        code.function(&wasm_func);
+        let base_local = wasm_params.len() as u32;
+        if ir_version == "0.6" {
+            let num_str_descs = string_param_pairs.len() as u32;
+            let rec_ptr_local = base_local + num_str_descs;
+            let total_extra_locals = num_str_descs + 4;
+            let mut wasm_func = Function::new([(total_extra_locals, ValType::I32)]);
+
+            for (offset, (p_name, ptr_idx, len_idx)) in string_param_pairs.iter().enumerate() {
+                let desc_local = base_local + offset as u32;
+                param_map.insert(p_name.clone(), desc_local);
+                wasm_func.instruction(&Instruction::GlobalGet(0));
+                wasm_func.instruction(&Instruction::LocalTee(desc_local));
+                wasm_func.instruction(&Instruction::I32Const(8));
+                wasm_func.instruction(&Instruction::I32Add);
+                wasm_func.instruction(&Instruction::GlobalSet(0));
+
+                wasm_func.instruction(&Instruction::LocalGet(desc_local));
+                wasm_func.instruction(&Instruction::LocalGet(*ptr_idx));
+                wasm_func.instruction(&Instruction::I32Store(MemArg {
+                    offset: 0,
+                    align: 2,
+                    memory_index: 0,
+                }));
+
+                wasm_func.instruction(&Instruction::LocalGet(desc_local));
+                wasm_func.instruction(&Instruction::LocalGet(*len_idx));
+                wasm_func.instruction(&Instruction::I32Store(MemArg {
+                    offset: 4,
+                    align: 2,
+                    memory_index: 0,
+                }));
+            }
+
+            emit_expr(
+                body,
+                &param_map,
+                &param_type_map,
+                rec_ptr_local,
+                &ctx,
+                &mut wasm_func,
+            );
+            wasm_func.instruction(&Instruction::End);
+            code.function(&wasm_func);
+        } else {
+            // Preserve 100% byte-identical v0.1..v0.5 local layout
+            let rec_ptr_local = base_local;
+            let mut wasm_func = Function::new([(1, ValType::I32)]);
+            emit_expr(
+                body,
+                &param_map,
+                &param_type_map,
+                rec_ptr_local,
+                &ctx,
+                &mut wasm_func,
+            );
+            wasm_func.instruction(&Instruction::End);
+            code.function(&wasm_func);
+        }
+    }
+
+    if ir_version == "0.6" {
+        let realloc_func_idx = num_imports + functions.len() as u32;
+        types.ty().function(
+            [ValType::I32, ValType::I32, ValType::I32, ValType::I32],
+            [ValType::I32],
+        );
+        func_section.function(realloc_func_idx);
+        exports.export("cabi_realloc", ExportKind::Func, realloc_func_idx);
+
+        // (param $old_ptr 0) (param $old_size 1) (param $align 2) (param $new_size 3) (local $ptr 4)
+        let mut realloc_fn = Function::new([(1, ValType::I32)]);
+        realloc_fn.instruction(&Instruction::GlobalGet(0));
+        realloc_fn.instruction(&Instruction::LocalGet(2));
+        realloc_fn.instruction(&Instruction::I32Const(1));
+        realloc_fn.instruction(&Instruction::I32Sub);
+        realloc_fn.instruction(&Instruction::I32Add);
+        realloc_fn.instruction(&Instruction::LocalGet(2));
+        realloc_fn.instruction(&Instruction::I32Const(1));
+        realloc_fn.instruction(&Instruction::I32Sub);
+        realloc_fn.instruction(&Instruction::I32Const(-1));
+        realloc_fn.instruction(&Instruction::I32Xor);
+        realloc_fn.instruction(&Instruction::I32And);
+        realloc_fn.instruction(&Instruction::LocalTee(4));
+        realloc_fn.instruction(&Instruction::LocalGet(3));
+        realloc_fn.instruction(&Instruction::I32Add);
+        realloc_fn.instruction(&Instruction::I32Const(3));
+        realloc_fn.instruction(&Instruction::I32Add);
+        realloc_fn.instruction(&Instruction::I32Const(-4));
+        realloc_fn.instruction(&Instruction::I32And);
+        realloc_fn.instruction(&Instruction::GlobalSet(0));
+        realloc_fn.instruction(&Instruction::LocalGet(4));
+        realloc_fn.instruction(&Instruction::End);
+        code.function(&realloc_fn);
     }
 
     module.section(&types);
@@ -405,7 +531,7 @@ pub fn compile_ir_to_wasm_with_context(
     module.section(&exports);
     module.section(&code);
 
-    if ir_version == "0.4" || ir_version == "0.5" {
+    if is_cm_version {
         if let Some(ref wit_contract) = ctx.wit_contract {
             let wit_content = if let Some(ref p) = wit_contract.wit_file {
                 match wit_ctx.resolve(p) {
@@ -444,7 +570,7 @@ pub fn compile_ir_to_wasm_with_context(
                     }
                 }
             } else if ir_version == "0.4" {
-                // Embedded fallback for IR v0.4 compatibility only. v0.5
+                // Embedded fallback for IR v0.4 compatibility only. v0.5+
                 // (ADR-003) always expects an explicit `wit_file` field.
                 include_str!("../wit/order.wit").to_string()
             } else {
@@ -542,6 +668,53 @@ pub fn compile_ir_to_wasm_with_context(
                 data: encoded_metadata.into(),
             };
             module.section(&custom);
+        } else if ir_version == "0.6" {
+            let wit_content = synthesize_v06_wit(&ctx, functions);
+            let mut resolve = wit_parser::Resolve::new();
+            let pkg = resolve
+                .push_str("synthesized-v06.wit", &wit_content)
+                .map_err(|e| {
+                    vec![Diagnostic {
+                        code: "E_WIT_PARSE_ERROR".to_string(),
+                        function: None,
+                        path: "$".to_string(),
+                        message: format!("Failed to parse synthesized v0.6 WIT contract: {e}"),
+                        expected: Some("valid WIT syntax".to_string()),
+                        found: None,
+                    }]
+                })?;
+            let world_name = "component-world";
+            let world = resolve.select_world(pkg, Some(world_name)).map_err(|e| {
+                vec![Diagnostic {
+                    code: "E_WIT_WORLD_NOT_FOUND".to_string(),
+                    function: None,
+                    path: "$".to_string(),
+                    message: format!("World '{world_name}' not found in synthesized WIT: {e}"),
+                    expected: Some(format!("world '{world_name}'")),
+                    found: None,
+                }]
+            })?;
+            let encoded_metadata = wit_component::metadata::encode(
+                &resolve,
+                world,
+                wit_component::StringEncoding::UTF8,
+                None,
+            )
+            .map_err(|e| {
+                vec![Diagnostic {
+                    code: "E_WIT_METADATA_ENCODE".to_string(),
+                    function: None,
+                    path: "$".to_string(),
+                    message: format!("Failed to encode synthesized WIT metadata: {e}"),
+                    expected: None,
+                    found: None,
+                }]
+            })?;
+            let custom = CustomSection {
+                name: format!("component-type:{world_name}").into(),
+                data: encoded_metadata.into(),
+            };
+            module.section(&custom);
         } else if ir_version == "0.5" {
             return Err(vec![Diagnostic {
                 code: "E_WIT_CONTRACT_MISSING".to_string(),
@@ -556,7 +729,7 @@ pub fn compile_ir_to_wasm_with_context(
 
     let core_bytes = module.finish();
 
-    if ir_version == "0.4" || ir_version == "0.5" {
+    if is_cm_version {
         let component_bytes = wit_component::ComponentEncoder::default()
             .module(&core_bytes)
             .map_err(|e| {
@@ -591,30 +764,175 @@ pub fn compile_ir_to_wasm_with_context(
     Ok(core_bytes)
 }
 
+fn to_wit_kebab(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 4);
+    for (idx, ch) in s.chars().enumerate() {
+        if ch == '_' {
+            out.push('-');
+        } else if ch.is_ascii_uppercase() {
+            if idx > 0 && !out.ends_with('-') {
+                out.push('-');
+            }
+            out.push(ch.to_ascii_lowercase());
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
+fn wit_type_name(ty: &IrType) -> String {
+    match ty {
+        IrType::I32 => "s32".to_string(),
+        IrType::Bool => "bool".to_string(),
+        IrType::String => "string".to_string(),
+        IrType::Record(name) => to_wit_kebab(name),
+        IrType::Result { ok, err, .. } => {
+            format!("result<{}, {}>", wit_type_name(ok), wit_type_name(err))
+        }
+    }
+}
+
+fn synthesize_v06_wit(ctx: &Context, functions: &[Value]) -> String {
+    let mut out = String::from("package kaddo:agent-native@0.6.0;\n\nworld component-world {\n");
+    let mut rec_names: Vec<&String> = ctx.records.keys().collect();
+    rec_names.sort();
+    for r_name in rec_names {
+        let rec = &ctx.records[r_name];
+        out.push_str(&format!("  record {} {{\n", to_wit_kebab(r_name)));
+        for (f_name, f_ty) in &rec.fields {
+            out.push_str(&format!(
+                "    {}: {},\n",
+                to_wit_kebab(f_name),
+                wit_type_name(f_ty)
+            ));
+        }
+        out.push_str("  }\n");
+    }
+    for func_val in functions {
+        let func_obj = func_val.as_object().unwrap();
+        let is_export = func_obj
+            .get("export")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+        if !is_export {
+            continue;
+        }
+        let name = func_obj["name"].as_str().unwrap();
+        let sig = &ctx.functions[name];
+        let params_str = sig
+            .params
+            .iter()
+            .map(|(p_name, p_ty)| format!("{}: {}", to_wit_kebab(p_name), wit_type_name(p_ty)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        out.push_str(&format!(
+            "  export {}: func({}) -> {};\n",
+            to_wit_kebab(name),
+            params_str,
+            wit_type_name(&sig.returns)
+        ));
+    }
+    out.push_str("}\n");
+    out
+}
+
+fn record_field_offsets(rec_def: &RecordDef) -> (Vec<u64>, i32) {
+    let mut offsets = Vec::with_capacity(rec_def.fields.len());
+    let mut cur: u64 = 0;
+    for (_, f_ty) in &rec_def.fields {
+        offsets.push(cur);
+        cur += if matches!(f_ty, IrType::String) { 8 } else { 4 };
+    }
+    (offsets, cur as i32)
+}
+
+fn result_payload_offset(ok: &IrType, err: &IrType) -> u64 {
+    if matches!(ok, IrType::Bool) && matches!(err, IrType::Bool) {
+        1
+    } else {
+        4
+    }
+}
+
 fn emit_expr(
     expr: &Value,
     params: &HashMap<String, u32>,
+    param_types: &HashMap<String, IrType>,
     rec_ptr_local: u32,
     ctx: &Context,
     func: &mut Function,
 ) {
+    let s0 = rec_ptr_local;
+    let s1 = rec_ptr_local + 1;
+    let s2 = rec_ptr_local + 2;
+    let s3 = rec_ptr_local + 3;
+
     let obj = expr.as_object().unwrap();
     let op = obj["op"].as_str().unwrap();
     match op {
         "const" => {
             let ty = obj["type"].as_str().unwrap();
-            let val_i32 = match ty {
-                "i32" => obj["value"].as_i64().unwrap() as i32,
+            match ty {
+                "i32" => {
+                    let val_i32 = obj["value"].as_i64().unwrap() as i32;
+                    func.instruction(&Instruction::I32Const(val_i32));
+                }
                 "bool" => {
-                    if obj["value"].as_bool().unwrap() {
+                    let val_i32 = if obj["value"].as_bool().unwrap() {
                         1
                     } else {
                         0
+                    };
+                    func.instruction(&Instruction::I32Const(val_i32));
+                }
+                "string" => {
+                    let s = obj["value"].as_str().unwrap();
+                    let bytes = s.as_bytes();
+                    let len = bytes.len() as i32;
+                    let aligned_total = (8 + len + 3) & !3;
+
+                    // Allocate `aligned_total` bytes at `s0` (`desc_ptr`)
+                    func.instruction(&Instruction::GlobalGet(0));
+                    func.instruction(&Instruction::LocalTee(s0));
+                    func.instruction(&Instruction::I32Const(aligned_total));
+                    func.instruction(&Instruction::I32Add);
+                    func.instruction(&Instruction::GlobalSet(0));
+
+                    // [s0 + 0] = s0 + 8 (data_ptr)
+                    func.instruction(&Instruction::LocalGet(s0));
+                    func.instruction(&Instruction::LocalGet(s0));
+                    func.instruction(&Instruction::I32Const(8));
+                    func.instruction(&Instruction::I32Add);
+                    func.instruction(&Instruction::I32Store(MemArg {
+                        offset: 0,
+                        align: 2,
+                        memory_index: 0,
+                    }));
+
+                    // [s0 + 4] = len
+                    func.instruction(&Instruction::LocalGet(s0));
+                    func.instruction(&Instruction::I32Const(len));
+                    func.instruction(&Instruction::I32Store(MemArg {
+                        offset: 4,
+                        align: 2,
+                        memory_index: 0,
+                    }));
+
+                    for (idx, &b) in bytes.iter().enumerate() {
+                        func.instruction(&Instruction::LocalGet(s0));
+                        func.instruction(&Instruction::I32Const(i32::from(b)));
+                        func.instruction(&Instruction::I32Store8(MemArg {
+                            offset: 8 + idx as u64,
+                            align: 0,
+                            memory_index: 0,
+                        }));
                     }
+
+                    func.instruction(&Instruction::LocalGet(s0));
                 }
                 _ => unreachable!(),
-            };
-            func.instruction(&Instruction::I32Const(val_i32));
+            }
         }
         "param" => {
             let name = obj["name"].as_str().unwrap();
@@ -622,12 +940,103 @@ fn emit_expr(
             func.instruction(&Instruction::LocalGet(local_idx));
         }
         "not" => {
-            emit_expr(&obj["value"], params, rec_ptr_local, ctx, func);
+            emit_expr(&obj["value"], params, param_types, rec_ptr_local, ctx, func);
             func.instruction(&Instruction::I32Eqz);
         }
         "add" | "sub" | "mul" | "div_s" | "eq" | "lt_s" | "gte_s" | "and" | "or" => {
-            emit_expr(&obj["left"], params, rec_ptr_local, ctx, func);
-            emit_expr(&obj["right"], params, rec_ptr_local, ctx, func);
+            if op == "eq"
+                && ctx.ir_version == "0.6"
+                && matches!(
+                    infer_expr_type(&obj["left"], param_types, ctx),
+                    Some(IrType::String)
+                )
+            {
+                // String equality: evaluate left & right onto stack, then compare length & bytes.
+                emit_expr(&obj["left"], params, param_types, rec_ptr_local, ctx, func);
+                emit_expr(&obj["right"], params, param_types, rec_ptr_local, ctx, func);
+                func.instruction(&Instruction::LocalSet(s1));
+                func.instruction(&Instruction::LocalSet(s0));
+
+                func.instruction(&Instruction::LocalGet(s0));
+                func.instruction(&Instruction::I32Load(MemArg {
+                    offset: 4,
+                    align: 2,
+                    memory_index: 0,
+                }));
+                func.instruction(&Instruction::LocalTee(s2));
+                func.instruction(&Instruction::LocalGet(s1));
+                func.instruction(&Instruction::I32Load(MemArg {
+                    offset: 4,
+                    align: 2,
+                    memory_index: 0,
+                }));
+                func.instruction(&Instruction::I32Ne);
+                func.instruction(&Instruction::If(BlockType::Result(ValType::I32)));
+                func.instruction(&Instruction::I32Const(0));
+                func.instruction(&Instruction::Else);
+                // Lengths match (`s2`). Compare bytes `0..s2` using index `s3`.
+                func.instruction(&Instruction::I32Const(0));
+                func.instruction(&Instruction::LocalSet(s3));
+                func.instruction(&Instruction::Block(BlockType::Result(ValType::I32)));
+                func.instruction(&Instruction::Loop(BlockType::Empty));
+                func.instruction(&Instruction::LocalGet(s3));
+                func.instruction(&Instruction::LocalGet(s2));
+                func.instruction(&Instruction::I32GeU);
+                func.instruction(&Instruction::If(BlockType::Empty));
+                func.instruction(&Instruction::I32Const(1));
+                func.instruction(&Instruction::Br(2));
+                func.instruction(&Instruction::End);
+
+                // Load left[s3]
+                func.instruction(&Instruction::LocalGet(s0));
+                func.instruction(&Instruction::I32Load(MemArg {
+                    offset: 0,
+                    align: 2,
+                    memory_index: 0,
+                }));
+                func.instruction(&Instruction::LocalGet(s3));
+                func.instruction(&Instruction::I32Add);
+                func.instruction(&Instruction::I32Load8U(MemArg {
+                    offset: 0,
+                    align: 0,
+                    memory_index: 0,
+                }));
+
+                // Load right[s3]
+                func.instruction(&Instruction::LocalGet(s1));
+                func.instruction(&Instruction::I32Load(MemArg {
+                    offset: 0,
+                    align: 2,
+                    memory_index: 0,
+                }));
+                func.instruction(&Instruction::LocalGet(s3));
+                func.instruction(&Instruction::I32Add);
+                func.instruction(&Instruction::I32Load8U(MemArg {
+                    offset: 0,
+                    align: 0,
+                    memory_index: 0,
+                }));
+
+                func.instruction(&Instruction::I32Ne);
+                func.instruction(&Instruction::If(BlockType::Empty));
+                func.instruction(&Instruction::I32Const(0));
+                func.instruction(&Instruction::Br(2));
+                func.instruction(&Instruction::End);
+
+                func.instruction(&Instruction::LocalGet(s3));
+                func.instruction(&Instruction::I32Const(1));
+                func.instruction(&Instruction::I32Add);
+                func.instruction(&Instruction::LocalSet(s3));
+                func.instruction(&Instruction::Br(0));
+                func.instruction(&Instruction::End); // end loop
+                func.instruction(&Instruction::I32Const(1));
+                func.instruction(&Instruction::End); // end block
+                func.instruction(&Instruction::End); // end if
+                return;
+            }
+
+            emit_expr(&obj["left"], params, param_types, rec_ptr_local, ctx, func);
+            emit_expr(&obj["right"], params, param_types, rec_ptr_local, ctx, func);
             match op {
                 "add" => func.instruction(&Instruction::I32Add),
                 "sub" => func.instruction(&Instruction::I32Sub),
@@ -642,19 +1051,42 @@ fn emit_expr(
             };
         }
         "if" => {
-            emit_expr(&obj["condition"], params, rec_ptr_local, ctx, func);
+            emit_expr(
+                &obj["condition"],
+                params,
+                param_types,
+                rec_ptr_local,
+                ctx,
+                func,
+            );
             func.instruction(&Instruction::If(BlockType::Result(ValType::I32)));
-            emit_expr(&obj["then"], params, rec_ptr_local, ctx, func);
+            emit_expr(&obj["then"], params, param_types, rec_ptr_local, ctx, func);
             func.instruction(&Instruction::Else);
-            emit_expr(&obj["else"], params, rec_ptr_local, ctx, func);
+            emit_expr(&obj["else"], params, param_types, rec_ptr_local, ctx, func);
             func.instruction(&Instruction::End);
         }
         "call" => {
             let callee_name = obj["function"].as_str().unwrap();
             let callee_sig = &ctx.functions[callee_name];
             let args_arr = obj["args"].as_array().unwrap();
-            for arg_val in args_arr {
-                emit_expr(arg_val, params, rec_ptr_local, ctx, func);
+            for (arg_idx, arg_val) in args_arr.iter().enumerate() {
+                emit_expr(arg_val, params, param_types, rec_ptr_local, ctx, func);
+                if ctx.ir_version == "0.6" && matches!(callee_sig.params[arg_idx].1, IrType::String)
+                {
+                    func.instruction(&Instruction::LocalSet(s0));
+                    func.instruction(&Instruction::LocalGet(s0));
+                    func.instruction(&Instruction::I32Load(MemArg {
+                        offset: 0,
+                        align: 2,
+                        memory_index: 0,
+                    }));
+                    func.instruction(&Instruction::LocalGet(s0));
+                    func.instruction(&Instruction::I32Load(MemArg {
+                        offset: 4,
+                        align: 2,
+                        memory_index: 0,
+                    }));
+                }
             }
             func.instruction(&Instruction::Call(callee_sig.index));
         }
@@ -662,89 +1094,458 @@ fn emit_expr(
             let import_name = obj["import"].as_str().unwrap();
             let imp_sig = &ctx.imports[import_name];
             let args_arr = obj["args"].as_array().unwrap();
-            for arg_val in args_arr {
-                emit_expr(arg_val, params, rec_ptr_local, ctx, func);
+            for (arg_idx, arg_val) in args_arr.iter().enumerate() {
+                emit_expr(arg_val, params, param_types, rec_ptr_local, ctx, func);
+                if ctx.ir_version == "0.6" && matches!(imp_sig.params[arg_idx].1, IrType::String) {
+                    func.instruction(&Instruction::LocalSet(s0));
+                    func.instruction(&Instruction::LocalGet(s0));
+                    func.instruction(&Instruction::I32Load(MemArg {
+                        offset: 0,
+                        align: 2,
+                        memory_index: 0,
+                    }));
+                    func.instruction(&Instruction::LocalGet(s0));
+                    func.instruction(&Instruction::I32Load(MemArg {
+                        offset: 4,
+                        align: 2,
+                        memory_index: 0,
+                    }));
+                }
             }
-            func.instruction(&Instruction::Call(imp_sig.index));
+            let returns_via_retptr = ctx.ir_version == "0.6"
+                && matches!(
+                    imp_sig.returns,
+                    IrType::String | IrType::Result { .. } | IrType::Record(_)
+                );
+            if returns_via_retptr {
+                func.instruction(&Instruction::GlobalGet(0));
+                func.instruction(&Instruction::LocalTee(s0));
+                func.instruction(&Instruction::GlobalGet(0));
+                func.instruction(&Instruction::I32Const(16));
+                func.instruction(&Instruction::I32Add);
+                func.instruction(&Instruction::GlobalSet(0));
+                func.instruction(&Instruction::Call(imp_sig.index));
+                func.instruction(&Instruction::LocalGet(s0));
+            } else {
+                func.instruction(&Instruction::Call(imp_sig.index));
+            }
         }
         "record.construct" => {
             let rec_type_name = obj["type"].as_str().unwrap();
             let rec_def = &ctx.records[rec_type_name];
             let fields_map = obj["fields"].as_object().unwrap();
-            let total_size_bytes = (rec_def.fields.len() * 4) as i32;
+            let (offsets, total_size_bytes) = record_field_offsets(rec_def);
 
-            // 1. Get current heap pointer and store in rec_ptr_local
-            func.instruction(&Instruction::GlobalGet(0));
-            func.instruction(&Instruction::LocalSet(rec_ptr_local));
+            if ctx.ir_version == "0.6"
+                && rec_def
+                    .fields
+                    .iter()
+                    .any(|(_, t)| matches!(t, IrType::String))
+            {
+                // Evaluate all fields onto the stack first, then allocate record & store in reverse
+                for (f_name, _) in &rec_def.fields {
+                    let f_expr = &fields_map[f_name];
+                    emit_expr(f_expr, params, param_types, rec_ptr_local, ctx, func);
+                }
+                func.instruction(&Instruction::GlobalGet(0));
+                func.instruction(&Instruction::LocalSet(s0));
+                func.instruction(&Instruction::GlobalGet(0));
+                func.instruction(&Instruction::I32Const(total_size_bytes));
+                func.instruction(&Instruction::I32Add);
+                func.instruction(&Instruction::GlobalSet(0));
 
-            // 2. Bump global heap pointer
-            func.instruction(&Instruction::GlobalGet(0));
-            func.instruction(&Instruction::I32Const(total_size_bytes));
-            func.instruction(&Instruction::I32Add);
-            func.instruction(&Instruction::GlobalSet(0));
+                for (f_idx, (_, f_ty)) in rec_def.fields.iter().enumerate().rev() {
+                    let byte_offset = offsets[f_idx];
+                    func.instruction(&Instruction::LocalSet(s1));
+                    if matches!(f_ty, IrType::String) {
+                        func.instruction(&Instruction::LocalGet(s0));
+                        func.instruction(&Instruction::LocalGet(s1));
+                        func.instruction(&Instruction::I32Load(MemArg {
+                            offset: 0,
+                            align: 2,
+                            memory_index: 0,
+                        }));
+                        func.instruction(&Instruction::I32Store(MemArg {
+                            offset: byte_offset,
+                            align: 2,
+                            memory_index: 0,
+                        }));
 
-            // 3. For each field, store at (rec_ptr_local + offset)
-            for (f_idx, (f_name, _)) in rec_def.fields.iter().enumerate() {
-                let f_expr = &fields_map[f_name];
-                let byte_offset = (f_idx * 4) as u64;
+                        func.instruction(&Instruction::LocalGet(s0));
+                        func.instruction(&Instruction::LocalGet(s1));
+                        func.instruction(&Instruction::I32Load(MemArg {
+                            offset: 4,
+                            align: 2,
+                            memory_index: 0,
+                        }));
+                        func.instruction(&Instruction::I32Store(MemArg {
+                            offset: byte_offset + 4,
+                            align: 2,
+                            memory_index: 0,
+                        }));
+                    } else {
+                        func.instruction(&Instruction::LocalGet(s0));
+                        func.instruction(&Instruction::LocalGet(s1));
+                        func.instruction(&Instruction::I32Store(MemArg {
+                            offset: byte_offset,
+                            align: 2,
+                            memory_index: 0,
+                        }));
+                    }
+                }
+                func.instruction(&Instruction::LocalGet(s0));
+            } else {
+                // Preserve 100% byte-identical v0.2..v0.5 instruction sequence
+                func.instruction(&Instruction::GlobalGet(0));
+                func.instruction(&Instruction::LocalSet(rec_ptr_local));
+
+                func.instruction(&Instruction::GlobalGet(0));
+                func.instruction(&Instruction::I32Const(total_size_bytes));
+                func.instruction(&Instruction::I32Add);
+                func.instruction(&Instruction::GlobalSet(0));
+
+                for (f_idx, (f_name, _)) in rec_def.fields.iter().enumerate() {
+                    let f_expr = &fields_map[f_name];
+                    let byte_offset = (f_idx * 4) as u64;
+
+                    func.instruction(&Instruction::LocalGet(rec_ptr_local));
+                    emit_expr(f_expr, params, param_types, rec_ptr_local, ctx, func);
+                    func.instruction(&Instruction::I32Store(MemArg {
+                        offset: byte_offset,
+                        align: 2,
+                        memory_index: 0,
+                    }));
+                }
 
                 func.instruction(&Instruction::LocalGet(rec_ptr_local));
-                emit_expr(f_expr, params, rec_ptr_local, ctx, func);
-                func.instruction(&Instruction::I32Store(MemArg {
-                    offset: byte_offset,
-                    align: 2,
-                    memory_index: 0,
-                }));
             }
-
-            // 4. Leave rec_ptr_local on stack
-            func.instruction(&Instruction::LocalGet(rec_ptr_local));
         }
         "record.get" => {
             let target_expr = &obj["target"];
             let field_name = obj["field"].as_str().unwrap();
 
-            // Find target record type
-            let rec_type_name = match infer_expr_type(target_expr, params, ctx) {
+            let rec_type_name = match infer_expr_type(target_expr, param_types, ctx) {
                 Some(IrType::Record(n)) => n,
                 _ => panic!("Expected record target in record.get"),
             };
             let rec_def = &ctx.records[&rec_type_name];
-            let (f_idx, _) = rec_def
+            let (offsets, _) = record_field_offsets(rec_def);
+            let (f_idx, (_, f_ty)) = rec_def
                 .fields
                 .iter()
                 .enumerate()
                 .find(|(_, (n, _))| n == field_name)
                 .expect("field in record definition");
+            let byte_offset = offsets[f_idx];
 
-            emit_expr(target_expr, params, rec_ptr_local, ctx, func);
+            emit_expr(target_expr, params, param_types, rec_ptr_local, ctx, func);
+            if matches!(f_ty, IrType::String) {
+                if byte_offset > 0 {
+                    func.instruction(&Instruction::I32Const(byte_offset as i32));
+                    func.instruction(&Instruction::I32Add);
+                }
+            } else {
+                func.instruction(&Instruction::I32Load(MemArg {
+                    offset: byte_offset,
+                    align: 2,
+                    memory_index: 0,
+                }));
+            }
+        }
+        "string.len" => {
+            emit_expr(&obj["value"], params, param_types, rec_ptr_local, ctx, func);
             func.instruction(&Instruction::I32Load(MemArg {
-                offset: (f_idx * 4) as u64,
+                offset: 4,
                 align: 2,
                 memory_index: 0,
             }));
+        }
+        "string.concat" => {
+            emit_expr(&obj["left"], params, param_types, rec_ptr_local, ctx, func);
+            emit_expr(&obj["right"], params, param_types, rec_ptr_local, ctx, func);
+            func.instruction(&Instruction::LocalSet(s1)); // right_desc
+            func.instruction(&Instruction::LocalSet(s0)); // left_desc
+
+            // s2 = left_len + right_len
+            func.instruction(&Instruction::LocalGet(s0));
+            func.instruction(&Instruction::I32Load(MemArg {
+                offset: 4,
+                align: 2,
+                memory_index: 0,
+            }));
+            func.instruction(&Instruction::LocalGet(s1));
+            func.instruction(&Instruction::I32Load(MemArg {
+                offset: 4,
+                align: 2,
+                memory_index: 0,
+            }));
+            func.instruction(&Instruction::I32Add);
+            func.instruction(&Instruction::LocalSet(s2));
+
+            // Allocate (8 + ((s2 + 3) & !3)) at s3 (`new_desc`)
+            func.instruction(&Instruction::GlobalGet(0));
+            func.instruction(&Instruction::LocalTee(s3));
+            func.instruction(&Instruction::LocalGet(s2));
+            func.instruction(&Instruction::I32Const(11));
+            func.instruction(&Instruction::I32Add);
+            func.instruction(&Instruction::I32Const(-4));
+            func.instruction(&Instruction::I32And);
+            func.instruction(&Instruction::I32Add);
+            func.instruction(&Instruction::GlobalSet(0));
+
+            // [s3 + 0] = s3 + 8
+            func.instruction(&Instruction::LocalGet(s3));
+            func.instruction(&Instruction::LocalGet(s3));
+            func.instruction(&Instruction::I32Const(8));
+            func.instruction(&Instruction::I32Add);
+            func.instruction(&Instruction::I32Store(MemArg {
+                offset: 0,
+                align: 2,
+                memory_index: 0,
+            }));
+
+            // [s3 + 4] = s2 (total_len)
+            func.instruction(&Instruction::LocalGet(s3));
+            func.instruction(&Instruction::LocalGet(s2));
+            func.instruction(&Instruction::I32Store(MemArg {
+                offset: 4,
+                align: 2,
+                memory_index: 0,
+            }));
+
+            // memory.copy(dst = s3 + 8, src = [s0 + 0], len = [s0 + 4])
+            func.instruction(&Instruction::LocalGet(s3));
+            func.instruction(&Instruction::I32Const(8));
+            func.instruction(&Instruction::I32Add);
+            func.instruction(&Instruction::LocalGet(s0));
+            func.instruction(&Instruction::I32Load(MemArg {
+                offset: 0,
+                align: 2,
+                memory_index: 0,
+            }));
+            func.instruction(&Instruction::LocalGet(s0));
+            func.instruction(&Instruction::I32Load(MemArg {
+                offset: 4,
+                align: 2,
+                memory_index: 0,
+            }));
+            func.instruction(&Instruction::MemoryCopy {
+                src_mem: 0,
+                dst_mem: 0,
+            });
+
+            // memory.copy(dst = s3 + 8 + [s0 + 4], src = [s1 + 0], len = [s1 + 4])
+            func.instruction(&Instruction::LocalGet(s3));
+            func.instruction(&Instruction::I32Const(8));
+            func.instruction(&Instruction::I32Add);
+            func.instruction(&Instruction::LocalGet(s0));
+            func.instruction(&Instruction::I32Load(MemArg {
+                offset: 4,
+                align: 2,
+                memory_index: 0,
+            }));
+            func.instruction(&Instruction::I32Add);
+            func.instruction(&Instruction::LocalGet(s1));
+            func.instruction(&Instruction::I32Load(MemArg {
+                offset: 0,
+                align: 2,
+                memory_index: 0,
+            }));
+            func.instruction(&Instruction::LocalGet(s1));
+            func.instruction(&Instruction::I32Load(MemArg {
+                offset: 4,
+                align: 2,
+                memory_index: 0,
+            }));
+            func.instruction(&Instruction::MemoryCopy {
+                src_mem: 0,
+                dst_mem: 0,
+            });
+
+            func.instruction(&Instruction::LocalGet(s3));
+        }
+        "result.ok" | "result.err" => {
+            let known_recs: HashSet<String> = ctx.records.keys().cloned().collect();
+            let res_ty =
+                IrType::from_str_for_version(obj["type"].as_str().unwrap(), &known_recs, "0.6")
+                    .expect("verified result type");
+            let IrType::Result { ok, err, .. } = res_ty else {
+                unreachable!();
+            };
+            let pay_offset = result_payload_offset(&ok, &err);
+            let branch_ty = if op == "result.ok" { *ok } else { *err };
+            let discr = if op == "result.ok" { 0 } else { 1 };
+
+            emit_expr(&obj["value"], params, param_types, rec_ptr_local, ctx, func);
+            func.instruction(&Instruction::LocalSet(s0));
+
+            // Allocate 12 bytes at s1 (`res_ptr`)
+            func.instruction(&Instruction::GlobalGet(0));
+            func.instruction(&Instruction::LocalTee(s1));
+            func.instruction(&Instruction::I32Const(12));
+            func.instruction(&Instruction::I32Add);
+            func.instruction(&Instruction::GlobalSet(0));
+
+            // Store discriminant at [s1 + 0]
+            func.instruction(&Instruction::LocalGet(s1));
+            func.instruction(&Instruction::I32Const(discr));
+            if pay_offset == 1 {
+                func.instruction(&Instruction::I32Store8(MemArg {
+                    offset: 0,
+                    align: 0,
+                    memory_index: 0,
+                }));
+            } else {
+                func.instruction(&Instruction::I32Store(MemArg {
+                    offset: 0,
+                    align: 2,
+                    memory_index: 0,
+                }));
+            }
+
+            if matches!(branch_ty, IrType::String) {
+                func.instruction(&Instruction::LocalGet(s1));
+                func.instruction(&Instruction::LocalGet(s0));
+                func.instruction(&Instruction::I32Load(MemArg {
+                    offset: 0,
+                    align: 2,
+                    memory_index: 0,
+                }));
+                func.instruction(&Instruction::I32Store(MemArg {
+                    offset: pay_offset,
+                    align: 2,
+                    memory_index: 0,
+                }));
+
+                func.instruction(&Instruction::LocalGet(s1));
+                func.instruction(&Instruction::LocalGet(s0));
+                func.instruction(&Instruction::I32Load(MemArg {
+                    offset: 4,
+                    align: 2,
+                    memory_index: 0,
+                }));
+                func.instruction(&Instruction::I32Store(MemArg {
+                    offset: pay_offset + 4,
+                    align: 2,
+                    memory_index: 0,
+                }));
+            } else if pay_offset == 1 {
+                func.instruction(&Instruction::LocalGet(s1));
+                func.instruction(&Instruction::LocalGet(s0));
+                func.instruction(&Instruction::I32Store8(MemArg {
+                    offset: 1,
+                    align: 0,
+                    memory_index: 0,
+                }));
+            } else {
+                func.instruction(&Instruction::LocalGet(s1));
+                func.instruction(&Instruction::LocalGet(s0));
+                func.instruction(&Instruction::I32Store(MemArg {
+                    offset: pay_offset,
+                    align: 2,
+                    memory_index: 0,
+                }));
+            }
+
+            func.instruction(&Instruction::LocalGet(s1));
+        }
+        "result.is_ok" => {
+            emit_expr(&obj["value"], params, param_types, rec_ptr_local, ctx, func);
+            func.instruction(&Instruction::I32Load8U(MemArg {
+                offset: 0,
+                align: 0,
+                memory_index: 0,
+            }));
+            func.instruction(&Instruction::I32Eqz);
+        }
+        "result.unwrap_ok" | "result.unwrap_err" => {
+            let Some(IrType::Result { ok, err, .. }) =
+                infer_expr_type(&obj["value"], param_types, ctx)
+            else {
+                panic!("Expected result target in {op}");
+            };
+            let pay_offset = result_payload_offset(&ok, &err);
+            let branch_ty = if op == "result.unwrap_ok" { *ok } else { *err };
+
+            emit_expr(&obj["value"], params, param_types, rec_ptr_local, ctx, func);
+            func.instruction(&Instruction::LocalTee(s0));
+            func.instruction(&Instruction::I32Load8U(MemArg {
+                offset: 0,
+                align: 0,
+                memory_index: 0,
+            }));
+            if op == "result.unwrap_ok" {
+                func.instruction(&Instruction::I32Eqz);
+            }
+            func.instruction(&Instruction::If(BlockType::Result(ValType::I32)));
+            if matches!(branch_ty, IrType::String) {
+                func.instruction(&Instruction::LocalGet(s0));
+                func.instruction(&Instruction::I32Const(pay_offset as i32));
+                func.instruction(&Instruction::I32Add);
+            } else if pay_offset == 1 {
+                func.instruction(&Instruction::LocalGet(s0));
+                func.instruction(&Instruction::I32Load8U(MemArg {
+                    offset: 1,
+                    align: 0,
+                    memory_index: 0,
+                }));
+            } else {
+                func.instruction(&Instruction::LocalGet(s0));
+                func.instruction(&Instruction::I32Load(MemArg {
+                    offset: pay_offset,
+                    align: 2,
+                    memory_index: 0,
+                }));
+            }
+            func.instruction(&Instruction::Else);
+            emit_expr(
+                &obj["default"],
+                params,
+                param_types,
+                rec_ptr_local,
+                ctx,
+                func,
+            );
+            func.instruction(&Instruction::End);
         }
         _ => unreachable!(),
     }
 }
 
-fn infer_expr_type(expr: &Value, params: &HashMap<String, u32>, ctx: &Context) -> Option<IrType> {
+fn infer_expr_type(
+    expr: &Value,
+    param_types: &HashMap<String, IrType>,
+    ctx: &Context,
+) -> Option<IrType> {
     let obj = expr.as_object()?;
     let op = obj.get("op")?.as_str()?;
     match op {
+        "const" => match obj.get("type")?.as_str()? {
+            "i32" => Some(IrType::I32),
+            "bool" => Some(IrType::Bool),
+            "string" => Some(IrType::String),
+            _ => None,
+        },
         "record.construct" => {
             let rec_name = obj.get("type")?.as_str()?;
             Some(IrType::Record(rec_name.to_string()))
         }
+        "record.get" => {
+            let target_ty = infer_expr_type(obj.get("target")?, param_types, ctx)?;
+            let IrType::Record(rec_name) = target_ty else {
+                return None;
+            };
+            let field_name = obj.get("field")?.as_str()?;
+            let rec_def = ctx.records.get(&rec_name)?;
+            rec_def
+                .fields
+                .iter()
+                .find(|(n, _)| n == field_name)
+                .map(|(_, ty)| ty.clone())
+        }
         "param" => {
             let name = obj.get("name")?.as_str()?;
-            let _local_idx = params.get(name)?;
-            for sig in ctx.functions.values() {
-                if let Some((_, ty)) = sig.params.iter().find(|(n, _)| n == name) {
-                    return Some(ty.clone());
-                }
-            }
-            None
+            param_types.get(name).cloned()
         }
         "call" => {
             let func_name = obj.get("function")?.as_str()?;
@@ -756,7 +1557,22 @@ fn infer_expr_type(expr: &Value, params: &HashMap<String, u32>, ctx: &Context) -
             let sig = ctx.imports.get(import_name)?;
             Some(sig.returns.clone())
         }
-        "if" => infer_expr_type(obj.get("then")?, params, ctx),
+        "if" => infer_expr_type(obj.get("then")?, param_types, ctx),
+        "string.len" => Some(IrType::I32),
+        "string.concat" => Some(IrType::String),
+        "result.ok" | "result.err" => {
+            let known_recs: HashSet<String> = ctx.records.keys().cloned().collect();
+            IrType::from_str_for_version(obj.get("type")?.as_str()?, &known_recs, "0.6")
+        }
+        "result.is_ok" => Some(IrType::Bool),
+        "result.unwrap_ok" => match infer_expr_type(obj.get("value")?, param_types, ctx)? {
+            IrType::Result { ok, .. } => Some(*ok),
+            _ => None,
+        },
+        "result.unwrap_err" => match infer_expr_type(obj.get("value")?, param_types, ctx)? {
+            IrType::Result { err, .. } => Some(*err),
+            _ => None,
+        },
         _ => None,
     }
 }

@@ -6,7 +6,7 @@
 use serde::Serialize;
 use std::path::Path;
 
-use agent_native_ir::Diagnostic;
+use agent_native_ir::{Diagnostic, VerifyOptions, verify_ir_with_options};
 
 use crate::agent::{FixtureLlmProvider, HttpLlmProvider, LlmProvider, SynthesizerLlmProvider};
 use crate::output::{CliExitCode, OutputFormat, emit_error, emit_result};
@@ -25,14 +25,27 @@ pub struct BuildReport {
     pub summary: String,
 }
 
-/// Executes the `build` command.
-#[allow(clippy::too_many_lines)]
+/// Executes the `build` command (default stable IR v0.5 rules).
 #[must_use]
 pub fn execute_build(
     input: &Path,
     output: Option<&Path>,
     component: Option<&str>,
     mode: &str,
+    format: OutputFormat,
+) -> CliExitCode {
+    execute_build_with_options(input, output, component, mode, false, format)
+}
+
+/// Executes the `build` command with explicit `--experimental` support for IR v0.6.
+#[allow(clippy::too_many_lines)]
+#[must_use]
+pub fn execute_build_with_options(
+    input: &Path,
+    output: Option<&Path>,
+    component: Option<&str>,
+    mode: &str,
+    experimental: bool,
     format: OutputFormat,
 ) -> CliExitCode {
     if !input.exists() {
@@ -152,7 +165,10 @@ pub fn execute_build(
     };
 
     // Verify IR
-    let diagnostics = agent_native_ir::verify_ir(&ir_value);
+    let verify_opts = VerifyOptions {
+        allow_experimental: experimental,
+    };
+    let diagnostics = verify_ir_with_options(&ir_value, &verify_opts);
     if !diagnostics.is_empty() {
         let err_len = diagnostics.len();
         let report = BuildReport {
@@ -179,8 +195,9 @@ pub fn execute_build(
     }
 
     // Compile IR to WASM with targeted WIT fallback
-    let compile_res =
-        agent_native_compiler::compile_ir_to_wasm(&ir_value).or_else(|initial_diags| {
+    let base_ctx = agent_native_compiler::CompileContext::default().with_experimental(experimental);
+    let compile_res = agent_native_compiler::compile_ir_to_wasm_with_context(&ir_value, &base_ctx)
+        .or_else(|initial_diags| {
             // Activate fallback ONLY when compilation failure is specifically due to a missing WIT file
             let is_wit_missing = initial_diags.iter().any(|d| d.code == "E_WIT_NOT_FOUND");
             if is_wit_missing {
@@ -222,7 +239,8 @@ pub fn execute_build(
                         });
                         return Err(combined);
                     }
-                    let fallback_ctx = agent_native_compiler::CompileContext::new(&temp_dir);
+                    let fallback_ctx = agent_native_compiler::CompileContext::new(&temp_dir)
+                        .with_experimental(experimental);
                     let fallback_res = agent_native_compiler::compile_ir_to_wasm_with_context(
                         &ir_value,
                         &fallback_ctx,

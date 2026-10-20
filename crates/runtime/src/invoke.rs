@@ -720,6 +720,9 @@ pub(crate) fn component_val_matches_type(v: &Val, ty: &wasmtime::component::type
             | (Val::U32(_), Type::U32)
             | (Val::S64(_), Type::S64)
             | (Val::U64(_), Type::U64)
+            | (Val::String(_), Type::String)
+            | (Val::Result(_), Type::Result(_))
+            | (Val::Record(_), Type::Record(_))
     )
 }
 

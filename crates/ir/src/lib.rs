@@ -37,4 +37,4 @@ pub mod verifier;
 pub use context::Context;
 pub use diagnostic::Diagnostic;
 pub use model::{FuncSignature, ImportSignature, IrType, RecordDef, WitContractDef};
-pub use verifier::verify_ir;
+pub use verifier::{VerifyOptions, verify_ir, verify_ir_with_options};

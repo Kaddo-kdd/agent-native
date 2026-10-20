@@ -54,9 +54,36 @@ fn is_valid_identifier(s: &str) -> bool {
     chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-/// Validates a Semantic IR v0.1 or v0.2 JSON document and returns all diagnostics.
+/// Options controlling Semantic IR verification (INIT-07-02 / ADR-003).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct VerifyOptions {
+    /// Permits experimental `ir_version: "0.6"` features (`string`, `result<T, E>`).
+    /// Defaults to `false` so `v0.5` remains the strict default baseline.
+    pub allow_experimental: bool,
+}
+
+impl VerifyOptions {
+    /// Enables experimental IR v0.6 verification (`--experimental`).
+    #[must_use]
+    pub const fn experimental() -> Self {
+        Self {
+            allow_experimental: true,
+        }
+    }
+}
+
+/// Validates a Semantic IR v0.1..v0.5 JSON document and returns all diagnostics.
 /// An empty vector means the IR is both structurally and semantically valid.
+///
+/// Experimental `ir_version: "0.6"` documents are rejected with
+/// `E_EXPERIMENTAL_IR_VERSION` unless [`verify_ir_with_options`] is called with
+/// [`VerifyOptions::experimental`].
 pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
+    verify_ir_with_options(root, &VerifyOptions::default())
+}
+
+/// Validates a Semantic IR JSON document under explicit [`VerifyOptions`].
+pub fn verify_ir_with_options(root: &Value, options: &VerifyOptions) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
 
     let Some(obj) = root.as_object() else {
@@ -77,6 +104,22 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
         Some("0.3") => "0.3",
         Some("0.4") => "0.4",
         Some("0.5") => "0.5",
+        Some("0.6") => {
+            if !options.allow_experimental {
+                diags.push(Diagnostic {
+                    code: "E_EXPERIMENTAL_IR_VERSION".to_string(),
+                    function: None,
+                    path: "$.ir_version".to_string(),
+                    message:
+                        "Semantic IR v0.6 is experimental and requires explicit opt-in (--experimental)."
+                            .to_string(),
+                    expected: Some("\"0.5\" (stable) or \"0.6\" with --experimental".to_string()),
+                    found: Some("0.6".to_string()),
+                });
+                return diags;
+            }
+            "0.6"
+        }
         Some(other) => {
             diags.push(Diagnostic {
                 code: "E_SCHEMA_INVALID".to_string(),
@@ -113,7 +156,7 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
                 key.as_str(),
                 "ir_version" | "spec_version" | "capabilities" | "imports" | "types" | "functions"
             ),
-            "0.4" | "0.5" => matches!(
+            "0.4" | "0.5" | "0.6" => matches!(
                 key.as_str(),
                 "ir_version"
                     | "spec_version"
@@ -166,7 +209,7 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
     }
 
     let mut wit_contract_def = None;
-    if ir_version == "0.4" || ir_version == "0.5" {
+    if ir_version == "0.4" || ir_version == "0.5" || ir_version == "0.6" {
         if let Some(wit_val) = obj.get("wit_contract") {
             if let Some(wit_obj) = wit_val.as_object() {
                 let pkg = wit_obj
@@ -227,7 +270,7 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
                     found: Some(value_kind(wit_val).to_string()),
                 });
             }
-        } else {
+        } else if ir_version == "0.4" || ir_version == "0.5" {
             diags.push(Diagnostic {
                 code: "E_SCHEMA_INVALID".to_string(),
                 function: None,
@@ -374,13 +417,18 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
                     let f_type = match f_type_str {
                         Some("i32") => IrType::I32,
                         Some("bool") => IrType::Bool,
+                        Some("string") if ir_version == "0.6" => IrType::String,
                         Some(other) => {
                             diags.push(Diagnostic {
                                 code: "E_UNKNOWN_TYPE".to_string(),
                                 function: None,
                                 path: format!("{f_path}.type"),
                                 message: format!("Unsupported or unknown field type '{other}'."),
-                                expected: Some("i32 | bool".to_string()),
+                                expected: Some(if ir_version == "0.6" {
+                                    "i32 | bool | string".to_string()
+                                } else {
+                                    "i32 | bool".to_string()
+                                }),
                                 found: Some(other.to_string()),
                             });
                             IrType::I32
@@ -509,7 +557,7 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
             .unwrap_or(true);
 
         let returns_ty = match func_obj.get("returns").and_then(|v| v.as_str()) {
-            Some(s) => match IrType::from_str(s, &known_record_names) {
+            Some(s) => match IrType::from_str_for_version(s, &known_record_names, ir_version) {
                 Some(ty) => ty,
                 None => {
                     diags.push(Diagnostic {
@@ -517,7 +565,11 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
                         function: Some(name.clone()),
                         path: format!("{f_path}.returns"),
                         message: format!("Unknown return type '{s}' in function '{name}'."),
-                        expected: Some("i32 | bool | declared record type".to_string()),
+                        expected: Some(if ir_version == "0.6" {
+                            "i32 | bool | string | result<T, E> | declared record type".to_string()
+                        } else {
+                            "i32 | bool | declared record type".to_string()
+                        }),
                         found: Some(s.to_string()),
                     });
                     IrType::I32
@@ -562,7 +614,29 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
                 param_names.insert(p_name.clone());
 
                 let p_type = match p_obj.get("type").and_then(|v| v.as_str()) {
-                    Some(s) => IrType::from_str(s, &known_record_names).unwrap_or(IrType::I32),
+                    Some(s) => {
+                        match IrType::from_str_for_version(s, &known_record_names, ir_version) {
+                            Some(ty) => ty,
+                            None => {
+                                diags.push(Diagnostic {
+                                code: "E_UNKNOWN_TYPE".to_string(),
+                                function: Some(name.clone()),
+                                path: format!("{p_path}.type"),
+                                message: format!(
+                                    "Unknown parameter type '{s}' for parameter '{p_name}' in function '{name}'."
+                                ),
+                                expected: Some(if ir_version == "0.6" {
+                                    "i32 | bool | string | result<T, E> | declared record type"
+                                        .to_string()
+                                } else {
+                                    "i32 | bool | declared record type".to_string()
+                                }),
+                                found: Some(s.to_string()),
+                            });
+                                IrType::I32
+                            }
+                        }
+                    }
                     None => IrType::I32,
                 };
                 parsed_params.push((p_name, p_type));
@@ -573,7 +647,7 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
             .get("wit_interface")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
-        if (ir_version == "0.4" || ir_version == "0.5") && is_export {
+        if (ir_version == "0.4" || ir_version == "0.5" || ir_version == "0.6") && is_export {
             if let Some(ref wit_c) = wit_contract_def {
                 match &wit_interface {
                     Some(iface) if iface == &wit_c.export_interface => {}
@@ -685,7 +759,11 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
                         if let Some(p_obj) = p_val.as_object() {
                             let p_name = p_obj.get("name").and_then(|v| v.as_str()).unwrap_or("");
                             let p_ty_str = p_obj.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                            let p_type = match IrType::from_str(p_ty_str, &known_record_names) {
+                            let p_type = match IrType::from_str_for_version(
+                                p_ty_str,
+                                &known_record_names,
+                                ir_version,
+                            ) {
                                 Some(t) => t,
                                 None => {
                                     diags.push(Diagnostic {
@@ -710,22 +788,23 @@ pub fn verify_ir(root: &Value) -> Vec<Diagnostic> {
                     .get("returns")
                     .and_then(|v| v.as_str())
                     .unwrap_or("i32");
-                let ret_type = match IrType::from_str(ret_str, &known_record_names) {
-                    Some(t) => t,
-                    None => {
-                        diags.push(Diagnostic {
-                            code: "E_UNKNOWN_TYPE".to_string(),
-                            function: None,
-                            path: format!("{path}.returns"),
-                            message: format!(
-                                "Unknown return type '{ret_str}' for import '{name}'."
-                            ),
-                            expected: Some("valid type".to_string()),
-                            found: Some(ret_str.to_string()),
-                        });
-                        IrType::I32
-                    }
-                };
+                let ret_type =
+                    match IrType::from_str_for_version(ret_str, &known_record_names, ir_version) {
+                        Some(t) => t,
+                        None => {
+                            diags.push(Diagnostic {
+                                code: "E_UNKNOWN_TYPE".to_string(),
+                                function: None,
+                                path: format!("{path}.returns"),
+                                message: format!(
+                                    "Unknown return type '{ret_str}' for import '{name}'."
+                                ),
+                                expected: Some("valid type".to_string()),
+                                found: Some(ret_str.to_string()),
+                            });
+                            IrType::I32
+                        }
+                    };
 
                 let wit_interface = imp_obj
                     .get("wit_interface")
@@ -870,13 +949,23 @@ fn check_expr(
             let ir_ty = match type_str {
                 Some("i32") => IrType::I32,
                 Some("bool") => IrType::Bool,
+                Some("string") if ctx.ir_version == "0.6" => IrType::String,
                 _ => {
                     diags.push(Diagnostic {
                         code: "E_CONST_TYPE".to_string(),
                         function: func_name.map(ToOwned::to_owned),
                         path: format!("{path}.type"),
-                        message: "Const expression 'type' must be 'i32' or 'bool'.".to_string(),
-                        expected: Some("i32 | bool".to_string()),
+                        message: if ctx.ir_version == "0.6" {
+                            "Const expression 'type' must be 'i32', 'bool', or 'string'."
+                                .to_string()
+                        } else {
+                            "Const expression 'type' must be 'i32' or 'bool'.".to_string()
+                        },
+                        expected: Some(if ctx.ir_version == "0.6" {
+                            "i32 | bool | string".to_string()
+                        } else {
+                            "i32 | bool".to_string()
+                        }),
                         found: obj.get("type").map(ToString::to_string),
                     });
                     return None;
@@ -925,6 +1014,7 @@ fn check_expr(
                     }
                 }
                 (IrType::Bool, Value::Bool(_)) => Some(IrType::Bool),
+                (IrType::String, Value::String(_)) => Some(IrType::String),
                 (expected_ty, other_val) => {
                     diags.push(Diagnostic {
                         code: "E_CONST_TYPE".to_string(),
@@ -1099,6 +1189,7 @@ fn check_expr(
                 "eq" => {
                     if (lt == IrType::I32 && rt == IrType::I32)
                         || (lt == IrType::Bool && rt == IrType::Bool)
+                        || (ctx.ir_version == "0.6" && lt == IrType::String && rt == IrType::String)
                     {
                         Some(IrType::Bool)
                     } else {
@@ -1601,6 +1692,275 @@ fn check_expr(
                     None
                 }
             }
+        }
+        "string.len" if ctx.ir_version == "0.6" => {
+            let Some(inner) = obj.get("value") else {
+                diags.push(Diagnostic {
+                    code: "E_SCHEMA_INVALID".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.value"),
+                    message: "'string.len' expression requires 'value'.".to_string(),
+                    expected: Some("string expression".to_string()),
+                    found: None,
+                });
+                return None;
+            };
+            let inner_ty = check_expr(
+                inner,
+                &format!("{path}.value"),
+                func_name,
+                params,
+                ctx,
+                diags,
+            )?;
+            if inner_ty != IrType::String {
+                diags.push(Diagnostic {
+                    code: "E_TYPE_MISMATCH".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.value"),
+                    message: format!(
+                        "'string.len' requires operand of type 'string', found '{}'.",
+                        inner_ty.as_str()
+                    ),
+                    expected: Some("string".to_string()),
+                    found: Some(inner_ty.as_str().to_string()),
+                });
+                return None;
+            }
+            Some(IrType::I32)
+        }
+        "string.concat" if ctx.ir_version == "0.6" => {
+            let left_val = obj.get("left");
+            let right_val = obj.get("right");
+            if left_val.is_none() || right_val.is_none() {
+                diags.push(Diagnostic {
+                    code: "E_SCHEMA_INVALID".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: path.to_string(),
+                    message: "'string.concat' requires both 'left' and 'right'.".to_string(),
+                    expected: Some("left and right string expressions".to_string()),
+                    found: None,
+                });
+                return None;
+            }
+            let lt = check_expr(
+                left_val.unwrap(),
+                &format!("{path}.left"),
+                func_name,
+                params,
+                ctx,
+                diags,
+            );
+            let rt = check_expr(
+                right_val.unwrap(),
+                &format!("{path}.right"),
+                func_name,
+                params,
+                ctx,
+                diags,
+            );
+            let (Some(lt), Some(rt)) = (lt, rt) else {
+                return None;
+            };
+            if lt != IrType::String || rt != IrType::String {
+                diags.push(Diagnostic {
+                    code: "E_TYPE_MISMATCH".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: path.to_string(),
+                    message: format!(
+                        "'string.concat' requires (string, string), found ({}, {}).",
+                        lt.as_str(),
+                        rt.as_str()
+                    ),
+                    expected: Some("(string, string)".to_string()),
+                    found: Some(format!("({}, {})", lt.as_str(), rt.as_str())),
+                });
+                return None;
+            }
+            Some(IrType::String)
+        }
+        "result.ok" | "result.err" if ctx.ir_version == "0.6" => {
+            let Some(ty_str) = obj.get("type").and_then(|v| v.as_str()) else {
+                diags.push(Diagnostic {
+                    code: "E_SCHEMA_INVALID".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.type"),
+                    message: format!(
+                        "'{op}' requires a 'type' property (e.g. 'result<i32, string>')."
+                    ),
+                    expected: Some("result<T, E>".to_string()),
+                    found: None,
+                });
+                return None;
+            };
+            let known_recs: HashSet<String> = ctx.records.keys().cloned().collect();
+            let Some(res_ty) = IrType::from_str_for_version(ty_str, &known_recs, "0.6") else {
+                diags.push(Diagnostic {
+                    code: "E_UNKNOWN_TYPE".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.type"),
+                    message: format!("Unknown or invalid result type '{ty_str}' in '{op}'."),
+                    expected: Some("result<T, E>".to_string()),
+                    found: Some(ty_str.to_string()),
+                });
+                return None;
+            };
+            let IrType::Result {
+                ref ok, ref err, ..
+            } = res_ty
+            else {
+                diags.push(Diagnostic {
+                    code: "E_TYPE_MISMATCH".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.type"),
+                    message: format!("'{op}' requires a 'result<T, E>' type, found '{ty_str}'."),
+                    expected: Some("result<T, E>".to_string()),
+                    found: Some(ty_str.to_string()),
+                });
+                return None;
+            };
+            let Some(val_expr) = obj.get("value") else {
+                diags.push(Diagnostic {
+                    code: "E_SCHEMA_INVALID".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.value"),
+                    message: format!("'{op}' requires a 'value' expression."),
+                    expected: Some("expression".to_string()),
+                    found: None,
+                });
+                return None;
+            };
+            let val_ty = check_expr(
+                val_expr,
+                &format!("{path}.value"),
+                func_name,
+                params,
+                ctx,
+                diags,
+            )?;
+            let expected_branch_ty = if op == "result.ok" {
+                ok.as_ref()
+            } else {
+                err.as_ref()
+            };
+            if &val_ty != expected_branch_ty {
+                diags.push(Diagnostic {
+                    code: "E_TYPE_MISMATCH".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.value"),
+                    message: format!(
+                        "'{op}' for '{}' expects payload of type '{}', found '{}'.",
+                        res_ty.as_str(),
+                        expected_branch_ty.as_str(),
+                        val_ty.as_str()
+                    ),
+                    expected: Some(expected_branch_ty.as_str().to_string()),
+                    found: Some(val_ty.as_str().to_string()),
+                });
+                return None;
+            }
+            Some(res_ty)
+        }
+        "result.is_ok" if ctx.ir_version == "0.6" => {
+            let Some(val_expr) = obj.get("value") else {
+                diags.push(Diagnostic {
+                    code: "E_SCHEMA_INVALID".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.value"),
+                    message: "'result.is_ok' requires a 'value' expression.".to_string(),
+                    expected: Some("result<T, E> expression".to_string()),
+                    found: None,
+                });
+                return None;
+            };
+            let val_ty = check_expr(
+                val_expr,
+                &format!("{path}.value"),
+                func_name,
+                params,
+                ctx,
+                diags,
+            )?;
+            if !matches!(val_ty, IrType::Result { .. }) {
+                diags.push(Diagnostic {
+                    code: "E_TYPE_MISMATCH".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.value"),
+                    message: format!(
+                        "'result.is_ok' requires a 'result<T, E>' operand, found '{}'.",
+                        val_ty.as_str()
+                    ),
+                    expected: Some("result<T, E>".to_string()),
+                    found: Some(val_ty.as_str().to_string()),
+                });
+                return None;
+            }
+            Some(IrType::Bool)
+        }
+        "result.unwrap_ok" | "result.unwrap_err" if ctx.ir_version == "0.6" => {
+            let val_expr = obj.get("value");
+            let def_expr = obj.get("default");
+            if val_expr.is_none() || def_expr.is_none() {
+                diags.push(Diagnostic {
+                    code: "E_SCHEMA_INVALID".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: path.to_string(),
+                    message: format!("'{op}' requires both 'value' and 'default' expressions."),
+                    expected: Some("value and default expressions".to_string()),
+                    found: None,
+                });
+                return None;
+            }
+            let val_ty = check_expr(
+                val_expr.unwrap(),
+                &format!("{path}.value"),
+                func_name,
+                params,
+                ctx,
+                diags,
+            );
+            let def_ty = check_expr(
+                def_expr.unwrap(),
+                &format!("{path}.default"),
+                func_name,
+                params,
+                ctx,
+                diags,
+            );
+            let (Some(vt), Some(dt)) = (val_ty, def_ty) else {
+                return None;
+            };
+            let IrType::Result { ok, err, .. } = vt else {
+                diags.push(Diagnostic {
+                    code: "E_TYPE_MISMATCH".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.value"),
+                    message: format!(
+                        "'{op}' requires 'value' of type 'result<T, E>', found '{}'.",
+                        vt.as_str()
+                    ),
+                    expected: Some("result<T, E>".to_string()),
+                    found: Some(vt.as_str().to_string()),
+                });
+                return None;
+            };
+            let target_ty = if op == "result.unwrap_ok" { *ok } else { *err };
+            if dt != target_ty {
+                diags.push(Diagnostic {
+                    code: "E_TYPE_MISMATCH".to_string(),
+                    function: func_name.map(ToOwned::to_owned),
+                    path: format!("{path}.default"),
+                    message: format!(
+                        "'{op}' default expression must have type '{}', found '{}'.",
+                        target_ty.as_str(),
+                        dt.as_str()
+                    ),
+                    expected: Some(target_ty.as_str().to_string()),
+                    found: Some(dt.as_str().to_string()),
+                });
+                return None;
+            }
+            Some(target_ty)
         }
         other => {
             diags.push(Diagnostic {

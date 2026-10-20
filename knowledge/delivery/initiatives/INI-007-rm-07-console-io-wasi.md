@@ -25,10 +25,11 @@ candidates:
     materialized_as: AN-044 (completed), AN-045 (completed)
   - id: INIT-07-02
     title: Extensión IR para `string` y errores
-    status: in-progress
+    status: completed
+    materialized_as: AN-048 (completed)
   - id: INIT-07-03
     title: Stubs deterministas de I/O para pruebas
-    status: candidate
+    status: in-progress
 ---
 
 # RM-07 — Console I/O & WASI
@@ -75,6 +76,7 @@ Convierte el producto de "núcleo técnico de cálculo" a "ejecuta programas int
 Ver `candidates:`.
 - `AN-044`: Adaptador WASI Preview 2 para I/O determinista en memoria (`feature`, completed).
 - `AN-045`: Autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`, completed).
+- `AN-048`: Extensión Semantic IR v0.6 para `string`, `result<T, E>` y política `--experimental` (`feature`, completed).
 
 ## Precisiones Arquitectónicas (INIT-07-01 / 2026-10-20)
 

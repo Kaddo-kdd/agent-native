@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaddo.local/schemas/agent-native-ir-0.6.json",
+  "title": "Kaddo Agent-Native Semantic IR 0.6 (Experimental)",
+  "description": "Experimental Semantic IR v0.6 schema extending v0.5 with UTF-8 string and result<T, E> error-handling operations behind --experimental.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ir_version",
+    "spec_version",
+    "functions"
+  ],
+  "properties": {
+    "ir_version": {
+      "const": "0.6"
+    },
+    "spec_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "types": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/typeDecl"
+      }
+    },
+    "imports": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/importDecl"
+      }
+    },
+    "functions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/function"
+      }
+    }
+  },
+  "$defs": {
+    "valueType": {
+      "type": "string",
+      "description": "Primitive ('i32', 'bool', 'string'), result ('result<T, E>'), or declared record name."
+    },
+    "typeDecl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "kind",
+        "fields"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "kind": {
+          "const": "record"
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/param"
+          }
+        }
+      }
+    },
+    "importDecl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interface",
+        "function",
+        "params",
+        "returns"
+      ],
+      "properties": {
+        "interface": {
+          "type": "string"
+        },
+        "function": {
+          "type": "string"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/param"
+          }
+        },
+        "returns": {
+          "$ref": "#/$defs/valueType"
+        }
+      }
+    },
+    "param": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "type": {
+          "$ref": "#/$defs/valueType"
+        }
+      }
+    },
+    "function": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "export",
+        "params",
+        "returns",
+        "requirements",
+        "body"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "export": {
+          "type": "boolean"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/param"
+          }
+        },
+        "returns": {
+          "$ref": "#/$defs/valueType"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "body": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

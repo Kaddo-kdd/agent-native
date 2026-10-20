@@ -14,10 +14,11 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 /// A compilation context carrying the roots the compiler needs to resolve
-/// external references (currently only WIT files).
+/// external references (currently only WIT files) and experimental version flags.
 #[derive(Debug, Clone)]
 pub struct CompileContext {
     wit_root: PathBuf,
+    allow_experimental: bool,
 }
 
 impl CompileContext {
@@ -29,7 +30,21 @@ impl CompileContext {
     pub fn new(wit_root: impl Into<PathBuf>) -> Self {
         Self {
             wit_root: wit_root.into(),
+            allow_experimental: false,
         }
+    }
+
+    /// Enables or disables experimental Semantic IR v0.6 compilation (`--experimental`).
+    #[must_use]
+    pub fn with_experimental(mut self, allow_experimental: bool) -> Self {
+        self.allow_experimental = allow_experimental;
+        self
+    }
+
+    /// Returns `true` if experimental IR v0.6 compilation is enabled.
+    #[must_use]
+    pub const fn allow_experimental(&self) -> bool {
+        self.allow_experimental
     }
 
     /// Builds a context anchored at the current working directory.
@@ -44,6 +59,7 @@ impl CompileContext {
     pub fn cwd() -> io::Result<Self> {
         Ok(Self {
             wit_root: std::env::current_dir()?,
+            allow_experimental: false,
         })
     }
 
@@ -95,6 +111,7 @@ impl Default for CompileContext {
     fn default() -> Self {
         Self::cwd().unwrap_or_else(|_| Self {
             wit_root: PathBuf::new(),
+            allow_experimental: false,
         })
     }
 }

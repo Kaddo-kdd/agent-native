@@ -6,7 +6,7 @@
 use serde::Serialize;
 use std::path::Path;
 
-use agent_native_ir::Diagnostic;
+use agent_native_ir::{Diagnostic, VerifyOptions, verify_ir_with_options};
 
 use crate::output::{CliExitCode, OutputFormat, emit_error, emit_result};
 use crate::spec::{MarkdownRequirementsInterpreter, RequirementsInterpreter};
@@ -23,10 +23,20 @@ pub struct VerifyReport {
     pub summary: Option<String>,
 }
 
-/// Executes the `verify` command.
-#[allow(clippy::too_many_lines)]
+/// Executes the `verify` command (default stable IR v0.5 rules).
 #[must_use]
 pub fn execute_verify(input: &Path, format: OutputFormat) -> CliExitCode {
+    execute_verify_with_options(input, false, format)
+}
+
+/// Executes the `verify` command with explicit `--experimental` support for IR v0.6.
+#[allow(clippy::too_many_lines)]
+#[must_use]
+pub fn execute_verify_with_options(
+    input: &Path,
+    experimental: bool,
+    format: OutputFormat,
+) -> CliExitCode {
     if !input.exists() {
         return emit_error(
             format,
@@ -87,7 +97,10 @@ pub fn execute_verify(input: &Path, format: OutputFormat) -> CliExitCode {
             }
         };
 
-        let diagnostics = agent_native_ir::verify_ir(&root);
+        let verify_opts = VerifyOptions {
+            allow_experimental: experimental,
+        };
+        let diagnostics = verify_ir_with_options(&root, &verify_opts);
         let error_count = diagnostics.len();
         let valid = error_count == 0;
 

@@ -9,8 +9,8 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use crate::commands::{
-    RunExecutionLimits, RunVerificationOptions, execute_build, execute_publish, execute_run,
-    execute_test, execute_verify,
+    RunExecutionLimits, RunVerificationOptions, execute_build_with_options, execute_publish,
+    execute_run, execute_test, execute_verify_with_options,
 };
 use crate::output::{CliExitCode, OutputFormat};
 
@@ -79,6 +79,13 @@ pub struct BuildArgs {
         help = "Generation mode: 'synthesizer', 'fixtures', or 'real'"
     )]
     pub mode: String,
+
+    /// Enable experimental Semantic IR v0.6 features (`string`, `result<T, E>`).
+    #[arg(
+        long,
+        help = "Enable experimental Semantic IR v0.6 features (string, result<T, E>)"
+    )]
+    pub experimental: bool,
 }
 
 /// Arguments for `verify` subcommand.
@@ -87,6 +94,13 @@ pub struct VerifyArgs {
     /// Path to Semantic IR (.json) or specification (.md) to verify.
     #[arg(help = "Path to Semantic IR (.json) or specification (.md) to verify")]
     pub input: PathBuf,
+
+    /// Enable experimental Semantic IR v0.6 features (`string`, `result<T, E>`).
+    #[arg(
+        long,
+        help = "Enable experimental Semantic IR v0.6 features (string, result<T, E>)"
+    )]
+    pub experimental: bool,
 }
 
 /// Arguments for `test` subcommand.
@@ -195,14 +209,17 @@ pub struct PublishArgs {
 #[must_use]
 pub fn dispatch(cli: Cli) -> CliExitCode {
     match cli.command {
-        Commands::Build(args) => execute_build(
+        Commands::Build(args) => execute_build_with_options(
             &args.input,
             args.output.as_deref(),
             args.component.as_deref(),
             &args.mode,
+            args.experimental,
             cli.format,
         ),
-        Commands::Verify(args) => execute_verify(&args.input, cli.format),
+        Commands::Verify(args) => {
+            execute_verify_with_options(&args.input, args.experimental, cli.format)
+        }
         Commands::Test(args) => execute_test(&args.suite, &args.component, cli.format),
         Commands::Run(args) => {
             let verify_opts = RunVerificationOptions {

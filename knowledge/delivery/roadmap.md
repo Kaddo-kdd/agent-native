@@ -86,7 +86,7 @@ Fuentes:
 | INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | completed (AN-043) |
 | **RM-07** | **Console I/O & WASI** | — | — | Programas con I/O autorizada | in-progress |
 | INIT-07-01 | Baseline WASI preview2 + stdio autorizado | medium | INIT-06-01 | Programa con I/O autorizada y aislamiento | completed (AN-044, AN-045) |
-| INIT-07-02 | Extensión IR para `string` y errores | medium | INIT-02-01, INIT-04-05 | IR v0.6 bajo flag `--experimental`, sin romper v0.5 | nuevo |
+| INIT-07-02 | Extensión IR para `string` y errores | medium | INIT-02-01, INIT-04-05 | IR v0.6 bajo flag `--experimental`, sin romper v0.5 | completed (AN-048) |
 | INIT-07-03 | Stubs deterministas de I/O para pruebas | low | INIT-07-01, INIT-03-03 | Suite YAML con `stdin` simulado | nuevo |
 | **RM-08** | **Performance & Concurrency** | — | — | Runtime caracterizado por benchmarks | — |
 | INIT-08-01 | Harness de benchmarks reproducible | medium | INIT-03-06, INIT-05-01 | Varianza acotada entre corridas; cross-OS | nuevo |
@@ -851,7 +851,7 @@ Habilita programas reales útiles sobre la base segura. No se adelanta a RM-06.
 
 #### INIT-07-02: Extensión IR para `string` y errores
 
-**Status:** candidate · **Priority:** medium · **K4**
+**Status:** completed · **Priority:** medium · **K4**
 
 **Source signals:** OQ L144; "equivalencia funcional primero" — se activa solo tras M3.
 
@@ -861,10 +861,8 @@ Habilita programas reales útiles sobre la base segura. No se adelanta a RM-06.
 
 **Notes:** una excepción al principio "no incorporar nuevas características antes de equivalencia POC"; esta extensión se justifica porque WASI preview2 requiere `string`. Permanece **experimental**.
 
-**Suggested Work Items:**
-- WI-CANDIDATE-07-02-01: IR v0.6 — tipo `string` (`feature`)
-- WI-CANDIDATE-07-02-02: IR v0.6 — errores (`feature`)
-- WI-CANDIDATE-07-02-03: política de versionamiento IR (`chore`)
+**Work Items:**
+- AN-048: extensión Semantic IR v0.6 para `string`, `result<T, E>` y política de versionamiento `--experimental` (`feature`) (completed)
 
 ---
 
