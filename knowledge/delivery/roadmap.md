@@ -846,6 +846,7 @@ Habilita programas reales útiles sobre la base segura. No se adelanta a RM-06.
 **Work Items:**
 - AN-044: adaptador WASI preview2 para I/O determinista en memoria (`feature`) (completed)
 - AN-045: autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`) (completed)
+- AN-050: soporte de binarios reales `wasm32-wasip2` bajo deny-by-default (`feature`) (ready; ampliación posterior, no bloquea RM-08)
 
 ---
 

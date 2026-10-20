@@ -79,6 +79,7 @@ Ver `candidates:`.
 - `AN-045`: Autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`, completed).
 - `AN-048`: Extensión Semantic IR v0.6 para `string`, `result<T, E>` y política `--experimental` (`feature`, completed).
 - `AN-049`: Stubs deterministas de I/O (`stdin`/`expected_stdout`/`expected_stderr`) y tipos v0.6 en el executor YAML (`feature`, completed).
+- `AN-050`: Soporte de binarios reales `wasm32-wasip2` bajo deny-by-default (`feature`, ready; ampliación posterior de INIT-07-01, no bloquea RM-08).
 
 ## Precisiones Arquitectónicas (INIT-07-01 / 2026-10-20)
 
