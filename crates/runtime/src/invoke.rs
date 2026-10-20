@@ -13,10 +13,27 @@ use wasmtime::component::{Linker as ComponentLinker, Val};
 
 use crate::engine::{Component, Payload};
 use crate::error::RuntimeError;
+use crate::limits::{ExecutionLimits, InvocationReport};
 use crate::policy::HostPolicy;
 
+pub(crate) const UNMETERED_FUEL_BUDGET: u64 = u64::MAX;
+
+fn map_execution_error(err: &wasmtime::Error, fuel_budget: Option<u64>) -> RuntimeError {
+    for cause in err.chain() {
+        if let Some(trap) = cause.downcast_ref::<wasmtime::Trap>() {
+            if matches!(trap, wasmtime::Trap::OutOfFuel) {
+                return RuntimeError::FuelExhausted {
+                    limit: fuel_budget.unwrap_or(0),
+                };
+            }
+        }
+    }
+    RuntimeError::ExecutionFailed(err.to_string())
+}
+
 impl Component {
-    /// Invokes an exported function by name with the supplied arguments.
+    /// Invokes an exported function by name with the supplied arguments under
+    /// unmetered execution limits.
     ///
     /// # Errors
     ///
@@ -25,18 +42,40 @@ impl Component {
     /// a component with declared imports fails pre-instantiate with
     /// [`RuntimeError::UnauthorizedImport`].
     pub fn invoke(&self, func_name: &str, args: &[Val]) -> Result<Vec<Val>, RuntimeError> {
+        self.invoke_with_limits(func_name, args, &ExecutionLimits::unmetered())
+            .map(|report| report.values)
+    }
+
+    /// Invokes an exported function with explicit execution limits (fuel budget).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RuntimeError::FuelExhausted`] if execution exceeds the configured
+    /// fuel budget. Returns other [`RuntimeError`] variants on load/instantiation/execution
+    /// failures.
+    pub fn invoke_with_limits(
+        &self,
+        func_name: &str,
+        args: &[Val],
+        limits: &ExecutionLimits,
+    ) -> Result<InvocationReport, RuntimeError> {
         match &self.payload {
-            Payload::Component(component) => {
-                invoke_component(&self.engine, component, &self.policy, func_name, args)
-            }
+            Payload::Component(component) => invoke_component(
+                &self.engine,
+                component,
+                &self.policy,
+                func_name,
+                args,
+                limits,
+            ),
             Payload::Module(module) => {
-                invoke_core(&self.engine, module, &self.policy, func_name, args)
+                invoke_core(&self.engine, module, &self.policy, func_name, args, limits)
             }
         }
     }
 
     /// Invokes an exported Core WASM function with a caller-provided host
-    /// context and `wasmtime::Linker<T>` builder.
+    /// context and `wasmtime::Linker<T>` builder under unmetered execution limits.
     ///
     /// The policy pre-check and function-resolution logic are shared with
     /// [`Component::invoke`]; the caller only owns the `Linker` population,
@@ -78,7 +117,7 @@ impl Component {
     }
 
     /// Invokes an exported Component-Model function with a caller-provided
-    /// host context and `wasmtime::component::Linker<T>` builder.
+    /// host context and `wasmtime::component::Linker<T>` builder under unmetered execution limits.
     ///
     /// # Errors
     ///
@@ -181,11 +220,15 @@ fn invoke_component(
     policy: &HostPolicy,
     func_name: &str,
     args: &[Val],
-) -> Result<Vec<Val>, RuntimeError> {
+    limits: &ExecutionLimits,
+) -> Result<InvocationReport, RuntimeError> {
     precheck_component_imports(engine, component, policy)?;
 
     let linker: ComponentLinker<()> = ComponentLinker::new(engine);
     let mut store = Store::new(engine, ());
+
+    let initial_budget = limits.fuel_budget.unwrap_or(UNMETERED_FUEL_BUDGET);
+    let _ = store.set_fuel(initial_budget);
 
     let instance = linker
         .instantiate(&mut store, component)
@@ -226,11 +269,17 @@ fn invoke_component(
 
     let mut results = vec![Val::Bool(false); func.results(&store).len()];
     func.call(&mut store, args, &mut results)
-        .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
+        .map_err(|e| map_execution_error(&e, limits.fuel_budget))?;
     func.post_return(&mut store)
-        .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
+        .map_err(|e| map_execution_error(&e, limits.fuel_budget))?;
 
-    Ok(results)
+    let remaining_fuel = store.get_fuel().unwrap_or(0);
+    let fuel_consumed = limits.fuel_budget.map(|b| b.saturating_sub(remaining_fuel));
+
+    Ok(InvocationReport {
+        values: results,
+        fuel_consumed,
+    })
 }
 
 fn invoke_core(
@@ -239,11 +288,15 @@ fn invoke_core(
     policy: &HostPolicy,
     func_name: &str,
     args: &[Val],
-) -> Result<Vec<Val>, RuntimeError> {
+    limits: &ExecutionLimits,
+) -> Result<InvocationReport, RuntimeError> {
     precheck_core_imports(module, policy)?;
 
     let linker: wasmtime::Linker<()> = wasmtime::Linker::new(engine);
     let mut store = Store::new(engine, ());
+
+    let initial_budget = limits.fuel_budget.unwrap_or(UNMETERED_FUEL_BUDGET);
+    let _ = store.set_fuel(initial_budget);
 
     let instance = linker
         .instantiate(&mut store, module)
@@ -277,9 +330,16 @@ fn invoke_core(
     let core_args = component_vals_to_core(args, func_name)?;
     let mut core_results = vec![wasmtime::Val::I32(0); func_ty.results().len()];
     func.call(&mut store, &core_args, &mut core_results)
-        .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
+        .map_err(|e| map_execution_error(&e, limits.fuel_budget))?;
 
-    core_results_to_component(&core_results)
+    let lifted = core_results_to_component(&core_results)?;
+    let remaining_fuel = store.get_fuel().unwrap_or(0);
+    let fuel_consumed = limits.fuel_budget.map(|b| b.saturating_sub(remaining_fuel));
+
+    Ok(InvocationReport {
+        values: lifted,
+        fuel_consumed,
+    })
 }
 
 /// Resolves an exported function. Supports top-level exports and functions
@@ -319,6 +379,7 @@ fn invoke_core_with_host_ctx_impl<T: Send + 'static>(
     build_linker(engine, &mut linker)
         .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
     let mut store = Store::new(engine, host_ctx);
+    let _ = store.set_fuel(UNMETERED_FUEL_BUDGET);
 
     let instance = linker
         .instantiate(&mut store, module)
@@ -352,7 +413,7 @@ fn invoke_core_with_host_ctx_impl<T: Send + 'static>(
     let core_args = component_vals_to_core(args, func_name)?;
     let mut core_results = vec![wasmtime::Val::I32(0); func_ty.results().len()];
     func.call(&mut store, &core_args, &mut core_results)
-        .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
+        .map_err(|e| map_execution_error(&e, None))?;
 
     let lifted = core_results_to_component(&core_results)?;
     Ok((lifted, store.into_data()))
@@ -374,6 +435,7 @@ fn invoke_component_with_host_ctx_impl<T: Send + 'static>(
     build_linker(engine, &mut linker)
         .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
     let mut store = Store::new(engine, host_ctx);
+    let _ = store.set_fuel(UNMETERED_FUEL_BUDGET);
 
     let instance = linker
         .instantiate(&mut store, component)
@@ -405,9 +467,9 @@ fn invoke_component_with_host_ctx_impl<T: Send + 'static>(
 
     let mut results = vec![Val::Bool(false); func.results(&store).len()];
     func.call(&mut store, args, &mut results)
-        .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
+        .map_err(|e| map_execution_error(&e, None))?;
     func.post_return(&mut store)
-        .map_err(|e| RuntimeError::ExecutionFailed(e.to_string()))?;
+        .map_err(|e| map_execution_error(&e, None))?;
 
     Ok((results, store.into_data()))
 }

@@ -27,7 +27,8 @@ candidates:
     materialized_as: AN-033, AN-034
   - id: INIT-06-02
     title: Límites CPU/memoria (fuel + instance limits)
-    status: candidate
+    status: in-progress
+    materialized_as: AN-035, AN-036, AN-037
   - id: INIT-06-03
     title: Ciclo de vida de instancias y aislamiento multi-tenant
     status: candidate

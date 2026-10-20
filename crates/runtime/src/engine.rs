@@ -38,6 +38,8 @@ impl Engine {
     pub fn new() -> Result<Self, RuntimeError> {
         let mut config = Config::new();
         config.wasm_component_model(true);
+        config.consume_fuel(true);
+        config.native_unwind_info(true);
         let inner =
             wasmtime::Engine::new(&config).map_err(|e| RuntimeError::LoadFailed(e.to_string()))?;
         Ok(Self { inner })

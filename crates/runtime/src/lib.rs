@@ -43,6 +43,7 @@
 pub mod engine;
 pub mod error;
 pub mod invoke;
+pub mod limits;
 pub mod manifest;
 pub mod policy;
 pub mod resolver;
@@ -50,6 +51,7 @@ pub mod testing;
 
 pub use engine::{Component, Engine};
 pub use error::{PolicyError, RuntimeError};
+pub use limits::{ExecutionLimits, InvocationReport};
 pub use manifest::{
     CURRENT_MANIFEST_VERSION, ComponentManifest, CoreImport, ManifestCapabilities, WitOperation,
 };

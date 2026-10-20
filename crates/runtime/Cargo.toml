@@ -21,6 +21,7 @@ wasmtime = { version = "27.0", default-features = false, features = [
     "cranelift",
     "runtime",
     "component-model",
+    "std",
 ] }
 
 [dev-dependencies]

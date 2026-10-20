@@ -61,6 +61,10 @@ pub enum RuntimeError {
     #[error("execution failed: {0}")]
     ExecutionFailed(String),
 
+    /// Execution ran out of allocated computational fuel.
+    #[error("execution ran out of fuel (budget: {limit})")]
+    FuelExhausted { limit: u64 },
+
     /// The component declares a host import that the runtime did not
     /// provide. Detected pre-instantiate per ADR-004 (fail-explicit).
     #[error("unauthorized or missing host import: {module}::{name}")]
