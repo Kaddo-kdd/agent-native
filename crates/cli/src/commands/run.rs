@@ -2,13 +2,14 @@
 //!
 //! Executes an exported function on a loaded WASM component using the standalone runtime,
 //! with support for offline SHA-256 integrity and Minisign (Ed25519) cryptographic signature
-//! verification before component instantiation (INIT-06-04, AN-041, AN-042).
+//! verification before component instantiation (INIT-06-04, AN-041, AN-042),
+//! as well as configurable computational fuel and memory execution limits (AN-047).
 
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
-use agent_native_runtime::{Engine, RuntimeError, Val};
+use agent_native_runtime::{Engine, ExecutionLimits, RuntimeError, Val};
 
 use crate::output::{CliExitCode, OutputFormat, emit_error, emit_result};
 
@@ -20,6 +21,8 @@ pub struct RunCommandOutput {
     pub function_name: String,
     pub results: Vec<serde_json::Value>,
     pub results_formatted: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fuel_consumed: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verification: Option<VerificationSummary>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -46,6 +49,14 @@ pub struct RunVerificationOptions<'a> {
     pub manifest_path: Option<&'a Path>,
     pub signature_path: Option<&'a Path>,
     pub public_key: Option<&'a str>,
+}
+
+/// Options configuring execution resource quotas and limits for `run`.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct RunExecutionLimits {
+    pub fuel: Option<u64>,
+    pub max_memory_bytes: Option<usize>,
+    pub max_table_elements: Option<u32>,
 }
 
 /// Computes the canonical lowercase SHA-256 hex digest for arbitrary bytes.
@@ -135,6 +146,7 @@ pub fn resolve_expected_sha256(
                 .split_whitespace()
                 .next()
                 .unwrap_or("")
+                .trim()
                 .to_lowercase();
             if !hash.is_empty() {
                 return Ok(Some(hash));
@@ -191,41 +203,68 @@ pub fn resolve_expected_sha256(
             .to_string_lossy();
         for line in content.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if (parts.len() >= 2 && parts[1].ends_with(comp_name.as_ref()))
-                || (parts.len() == 1 && parts[0].len() == 64)
-            {
-                return Ok(Some(parts[0].trim().to_lowercase()));
+            if parts.len() >= 2 {
+                let hash = parts[0];
+                let file = parts[1].trim_start_matches('*');
+                if file == comp_name.as_ref() || file.ends_with(comp_name.as_ref()) {
+                    return Ok(Some(hash.trim().to_lowercase()));
+                }
             }
         }
-
-        return Err(format!(
-            "Could not locate SHA-256 for component {} in manifest {}",
-            component_path.display(),
-            m_file.display()
-        ));
     }
 
     Ok(None)
 }
 
-/// Helper to convert a CLI argument string into a Component Model `Val`.
+/// Resolves the signature file path from explicit args or adjacent convention.
 #[must_use]
-pub fn parse_arg_to_val(s: &str) -> Val {
+pub fn resolve_signature_path(
+    component_path: &Path,
+    explicit_sig_path: Option<&Path>,
+    auto_discover: bool,
+) -> Option<PathBuf> {
+    if let Some(explicit) = explicit_sig_path {
+        return Some(explicit.to_path_buf());
+    }
+
+    if auto_discover {
+        let adjacent_sig = PathBuf::from(format!("{}.minisig", component_path.display()));
+        if adjacent_sig.exists() {
+            return Some(adjacent_sig);
+        }
+    }
+
+    None
+}
+
+/// Parses CLI string argument into typed WebAssembly Component Model [`Val`].
+fn parse_arg_to_val(s: &str) -> Val {
     if let Ok(b) = s.parse::<bool>() {
         return Val::Bool(b);
     }
     if let Ok(n) = s.parse::<i32>() {
         return Val::S32(n);
     }
+    if let Ok(n) = s.parse::<u32>() {
+        return Val::U32(n);
+    }
     if let Ok(n) = s.parse::<i64>() {
         return Val::S64(n);
+    }
+    if let Ok(n) = s.parse::<u64>() {
+        return Val::U64(n);
+    }
+    if let Ok(f) = s.parse::<f32>() {
+        return Val::Float32(f);
+    }
+    if let Ok(f) = s.parse::<f64>() {
+        return Val::Float64(f);
     }
     Val::String(s.to_string())
 }
 
-/// Helper to serialize a Component Model `Val` to JSON.
-#[must_use]
-pub fn val_to_json(val: &Val) -> serde_json::Value {
+/// Converts a [`Val`] to a JSON-compatible [`serde_json::Value`].
+fn val_to_json(val: &Val) -> serde_json::Value {
     match val {
         Val::Bool(b) => serde_json::Value::Bool(*b),
         Val::S8(n) => serde_json::json!(*n),
@@ -267,7 +306,7 @@ pub fn val_to_json(val: &Val) -> serde_json::Value {
     }
 }
 
-/// Executes the `run` command with optional integrity and signature verification.
+/// Executes the `run` command with optional verification and execution limits.
 #[allow(clippy::too_many_lines)]
 #[must_use]
 pub fn execute_run(
@@ -275,6 +314,7 @@ pub fn execute_run(
     function_name: &str,
     args: &[String],
     verify_opts: &RunVerificationOptions<'_>,
+    limits_opts: &RunExecutionLimits,
     format: OutputFormat,
 ) -> CliExitCode {
     if !component_path.exists() {
@@ -286,6 +326,37 @@ pub fn execute_run(
             ),
             CliExitCode::UsageOrIoError,
         );
+    }
+
+    // Pre-execution validation of limit options (AN-047)
+    if let Some(fuel) = limits_opts.fuel {
+        if fuel == 0 {
+            return emit_error(
+                format,
+                "Validation error: --fuel must be greater than zero",
+                CliExitCode::UsageOrIoError,
+            );
+        }
+    }
+
+    if let Some(mem) = limits_opts.max_memory_bytes {
+        if mem == 0 {
+            return emit_error(
+                format,
+                "Validation error: --max-memory-bytes must be greater than zero",
+                CliExitCode::UsageOrIoError,
+            );
+        }
+    }
+
+    if let Some(tables) = limits_opts.max_table_elements {
+        if tables == 0 {
+            return emit_error(
+                format,
+                "Validation error: --max-table-elements must be greater than zero",
+                CliExitCode::UsageOrIoError,
+            );
+        }
     }
 
     let component_bytes = match std::fs::read(component_path) {
@@ -315,17 +386,19 @@ pub fn execute_run(
         let computed_sha = compute_sha256_hex(&component_bytes);
 
         // Resolve expected SHA-256
-        let expected_sha_res = resolve_expected_sha256(
+        let expected_sha = match resolve_expected_sha256(
             component_path,
             verify_opts.expected_sha256,
             verify_opts.manifest_path,
             verify_opts.verify,
-        );
-
-        let expected_sha = match expected_sha_res {
-            Ok(sha) => sha,
+        ) {
+            Ok(s) => s,
             Err(err) => {
-                return emit_error(format, &err, CliExitCode::DomainFailure);
+                return emit_error(
+                    format,
+                    &format!("Integrity verification error: {err}"),
+                    CliExitCode::DomainFailure,
+                );
             }
         };
 
@@ -335,7 +408,7 @@ pub fn execute_run(
                 return emit_error(
                     format,
                     &format!(
-                        "Integrity verification FAILED for component {}: expected SHA-256 {expected}, computed {computed_sha}",
+                        "Integrity verification FAILED for component {}: computed SHA-256 ({computed_sha}) does not match expected ({expected})",
                         component_path.display()
                     ),
                     CliExitCode::DomainFailure,
@@ -344,20 +417,12 @@ pub fn execute_run(
             integrity_ok = true;
         }
 
-        // Resolve and verify cryptographic signature (Minisign)
+        // Cryptographic signature check (AN-042)
         let mut signature_ok = false;
-        let mut resolved_sig_path: Option<String> = None;
+        let mut resolved_sig_path = None;
 
-        if verify_opts.public_key.is_some() || verify_opts.signature_path.is_some() {
-            let Some(pk_arg) = verify_opts.public_key else {
-                return emit_error(
-                    format,
-                    "Signature verification FAILED: --public-key is required when verifying signatures",
-                    CliExitCode::UsageOrIoError,
-                );
-            };
-
-            let public_key = match load_minisign_public_key(pk_arg) {
+        if let Some(key_str) = verify_opts.public_key {
+            let public_key = match load_minisign_public_key(key_str) {
                 Ok(pk) => pk,
                 Err(err) => {
                     return emit_error(
@@ -368,10 +433,19 @@ pub fn execute_run(
                 }
             };
 
-            let sig_file_path = if let Some(sig_p) = verify_opts.signature_path {
-                sig_p.to_path_buf()
-            } else {
-                PathBuf::from(format!("{}.minisig", component_path.display()))
+            let Some(sig_file_path) = resolve_signature_path(
+                component_path,
+                verify_opts.signature_path,
+                verify_opts.verify,
+            ) else {
+                return emit_error(
+                    format,
+                    &format!(
+                        "Signature file not found: expected Minisign signature for {}",
+                        component_path.display()
+                    ),
+                    CliExitCode::DomainFailure,
+                );
             };
 
             if !sig_file_path.exists() {
@@ -410,7 +484,6 @@ pub fn execute_run(
             signature_ok = true;
             resolved_sig_path = Some(sig_file_path.display().to_string());
         } else if expected_sha.is_none() && verify_opts.verify {
-            // --verify was passed alone, but neither hash nor signature was discoverable
             return emit_error(
                 format,
                 &format!(
@@ -452,10 +525,24 @@ pub fn execute_run(
         }
     };
 
+    // Construct execution limits (AN-047)
+    let mut limits = ExecutionLimits::unmetered();
+    if let Some(fuel) = limits_opts.fuel {
+        limits = limits.with_fuel(fuel);
+    }
+    if let Some(mem) = limits_opts.max_memory_bytes {
+        limits = limits.with_max_memory_bytes(mem);
+    }
+    if let Some(tables) = limits_opts.max_table_elements {
+        let mut il = limits.instance_limits.unwrap_or_default();
+        il.max_table_elements = tables;
+        limits = limits.with_instance_limits(il);
+    }
+
     let parsed_args: Vec<Val> = args.iter().map(|s| parse_arg_to_val(s)).collect();
 
     // Try direct invocation first, then common Component Model qualifier candidates if bare function name passed
-    let mut invoke_result = component.invoke(function_name, &parsed_args);
+    let mut invoke_result = component.invoke_with_limits(function_name, &parsed_args, &limits);
     if let Err(RuntimeError::FunctionNotFound(_)) = &invoke_result {
         let candidates = vec![
             format!("ops#{function_name}"),
@@ -467,7 +554,7 @@ pub fn execute_run(
             ),
         ];
         for candidate in candidates {
-            let candidate_res = component.invoke(&candidate, &parsed_args);
+            let candidate_res = component.invoke_with_limits(&candidate, &parsed_args, &limits);
             if !matches!(candidate_res, Err(RuntimeError::FunctionNotFound(_))) {
                 invoke_result = candidate_res;
                 break;
@@ -476,9 +563,11 @@ pub fn execute_run(
     }
 
     match invoke_result {
-        Ok(vals) => {
-            let results_json: Vec<serde_json::Value> = vals.iter().map(val_to_json).collect();
-            let results_formatted: Vec<String> = vals.iter().map(|v| format!("{v:?}")).collect();
+        Ok(report) => {
+            let results_json: Vec<serde_json::Value> =
+                report.values.iter().map(val_to_json).collect();
+            let results_formatted: Vec<String> =
+                report.values.iter().map(|v| format!("{v:?}")).collect();
 
             let out = RunCommandOutput {
                 success: true,
@@ -486,6 +575,7 @@ pub fn execute_run(
                 function_name: function_name.to_string(),
                 results: results_json,
                 results_formatted,
+                fuel_consumed: report.fuel_consumed,
                 verification: verification_summary,
                 error: None,
             };
@@ -524,20 +614,41 @@ pub fn execute_run(
                             s.push_str(&format!("  [{i}]: {res}\n"));
                         }
                     }
+                    if let Some(fuel) = o.fuel_consumed {
+                        s.push_str(&format!("\nFuel consumed: {fuel} units"));
+                    }
                     s.trim_end().to_string()
                 },
                 CliExitCode::Success,
             )
         }
         Err(err) => {
+            let err_msg = match &err {
+                RuntimeError::FuelExhausted { limit } => {
+                    format!(
+                        "Execution failed: Computational fuel exhausted (budget: {limit} units)"
+                    )
+                }
+                RuntimeError::MemoryLimitExceeded {
+                    requested_bytes,
+                    max_bytes,
+                } => {
+                    format!(
+                        "Execution failed: Memory limit exceeded (requested: {requested_bytes} bytes, limit: {max_bytes} bytes)"
+                    )
+                }
+                _ => err.to_string(),
+            };
+
             let out = RunCommandOutput {
                 success: false,
                 component_path: component_path.display().to_string(),
                 function_name: function_name.to_string(),
                 results: Vec::new(),
                 results_formatted: Vec::new(),
+                fuel_consumed: None,
                 verification: verification_summary,
-                error: Some(err.to_string()),
+                error: Some(err_msg),
             };
 
             emit_result(

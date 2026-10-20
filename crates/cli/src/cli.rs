@@ -9,8 +9,8 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use crate::commands::{
-    RunVerificationOptions, execute_build, execute_publish, execute_run, execute_test,
-    execute_verify,
+    RunExecutionLimits, RunVerificationOptions, execute_build, execute_publish, execute_run,
+    execute_test, execute_verify,
 };
 use crate::output::{CliExitCode, OutputFormat};
 
@@ -148,6 +148,18 @@ pub struct RunArgs {
         help = "Minisign Ed25519 public key (inline base64 string or path to .pub file)"
     )]
     pub public_key: Option<String>,
+
+    /// Computational fuel budget limit.
+    #[arg(long, help = "Computational fuel budget limit")]
+    pub fuel: Option<u64>,
+
+    /// Maximum linear memory limit in bytes.
+    #[arg(long, help = "Maximum linear memory limit in bytes")]
+    pub max_memory_bytes: Option<usize>,
+
+    /// Maximum table elements allowed.
+    #[arg(long, help = "Maximum table elements allowed")]
+    pub max_table_elements: Option<u32>,
 }
 
 /// Arguments for `publish` subcommand.
@@ -200,11 +212,17 @@ pub fn dispatch(cli: Cli) -> CliExitCode {
                 signature_path: args.signature.as_deref(),
                 public_key: args.public_key.as_deref(),
             };
+            let limits_opts = RunExecutionLimits {
+                fuel: args.fuel,
+                max_memory_bytes: args.max_memory_bytes,
+                max_table_elements: args.max_table_elements,
+            };
             execute_run(
                 &args.component,
                 &args.function,
                 &args.args,
                 &verify_opts,
+                &limits_opts,
                 cli.format,
             )
         }
