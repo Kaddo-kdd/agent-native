@@ -66,20 +66,28 @@ preservada en la lámina original; no se necesita en las superficies actuales.
 Rust. No despliega ni modifica workflows existentes. Un artefacto descargable contiene
 `dist`. Evidencia y límites en `validation/README.md`.
 
-## Despliegue propuesto: Netlify (pendiente de elección)
+## Despliegue en Netlify
 
 Netlify admite el build estático de Astro sin adaptador cuando no hay funciones de
 servidor. Fuente: [Astro en Netlify](https://docs.netlify.com/build/frameworks/framework-setup-guides/astro/).
-No se creó cuenta, sitio, integración ni despliegue. No se necesita token para build local.
+La configuración está en `netlify.toml`, en la raíz del repositorio. Define base
+`website`, salida `dist`, Node 24.13.0 e instalación con lockfile congelado. Netlify
+selecciona pnpm 12.9.1 desde `packageManager` en `website/package.json`.
+El comando comprueba tipos, genera el sitio y valida enlaces y contenido antes de
+publicar. Los assets con hash de `/_astro/` tienen caché inmutable de un año.
 
-Tras aprobación del proveedor y del responsable de dominio:
+El build se ejecuta en cada cambio del repositorio (`ignore = "exit 1"`) para incluir
+las iniciativas de `knowledge/`, fuera de la base `website`. No requiere Rust ni
+variables secretas. Las rutas estáticas y `404.html` se sirven directamente.
+
+Para importar y desplegar:
 
 1. Importar el repositorio completo, no solo `website/`: el build lee `knowledge/`.
-2. Configurar base `website`, comando `pnpm build`, publish `dist`, Node 24.13.0,
-   pnpm 12.9.1. Instalación `pnpm install --frozen-lockfile`. Seleccionar la rama
-   de producción aprobada; conservar los checks de CI antes de publicar.
-3. Habilitar Deploy Previews para PR aprobadas. Netlify proporciona `CONTEXT=deploy-preview`;
-   las páginas emiten `noindex,nofollow`. No publicar previews sin autorización.
+2. Seleccionar `main` como rama de producción. Netlify lee `netlify.toml` de la raíz;
+   conservar la base `website` y publish `dist` relativos a esa base. Si el asistente
+   solicita Package directory, usar `website`. No duplicar `website` en publish.
+3. Si se habilitan Deploy Previews, Netlify proporciona `CONTEXT=deploy-preview`;
+   las páginas emiten `noindex,nofollow` y conservan los canonical de producción.
 4. Añadir `wasma.org` y `www.wasma.org` como dominios; elegir apex como principal.
    Consultar y conservar primero los registros existentes. Aplicar únicamente los
    registros indicados por el panel para este sitio, con autorización del titular.
@@ -90,8 +98,11 @@ Tras aprobación del proveedor y del responsable de dominio:
 6. Hacer smoke de páginas, 404, assets y búsqueda; guardar ID de deploy y SHA.
    Ante regresión, restaurar el deploy anterior desde el historial y registrar el motivo.
 
-Puede usarse otro hosting estático con esas mismas rutas, 404 y redirección. La elección
-operativa y el control del dominio siguen pendientes; esta guía no autoriza DNS ni merge.
+La cuenta, la importación del proyecto y el dominio se configuran en el panel de
+Netlify. El commit de configuración no crea por sí solo un proyecto ni modifica DNS.
+
+Referencias de configuración: [netlify.toml](https://docs.netlify.com/build/configure-builds/file-based-configuration/),
+[dependencias y pnpm](https://docs.netlify.com/build/configure-builds/manage-dependencies/).
 
 Referencias de framework: [Starlight manual](https://starlight.astro.build/manual-setup/),
 [Astro Content Collections](https://docs.astro.build/en/guides/content-collections/).

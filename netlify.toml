@@ -1,0 +1,20 @@
+# Keep the complete repository checkout: the roadmap reads ../knowledge/.
+[build]
+  base = "website"
+  command = "pnpm check && pnpm build && pnpm check:links && pnpm check:content"
+  publish = "dist"
+  # Rebuild for changes outside the base directory, including roadmap initiatives.
+  # Netlify's ignore command uses exit 1 to continue with the build.
+  ignore = "exit 1"
+
+[build.environment]
+  NODE_VERSION = "24.13.0"
+  # pnpm 12.9.1 is selected by website/package.json's packageManager field.
+  PNPM_FLAGS = "--frozen-lockfile"
+
+# Astro writes each route and 404.html to dist; Netlify serves them directly.
+# Fingerprinted Astro assets can be cached across deployments.
+[[headers]]
+  for = "/_astro/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
