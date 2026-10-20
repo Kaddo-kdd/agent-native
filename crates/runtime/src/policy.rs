@@ -45,11 +45,14 @@
 
 use std::collections::HashSet;
 
+use crate::error::PolicyError;
+use crate::manifest::ComponentManifest;
+
 /// A declarative policy over host imports.
 ///
 /// Consulted pre-instantiate for every declared import of a loaded artifact.
 /// An import is allowed when it matches any of the configured allow-lists.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HostPolicy {
     allow_core_pairs: HashSet<(String, String)>,
     allow_modules: HashSet<String>,
@@ -64,6 +67,43 @@ impl HostPolicy {
     #[must_use]
     pub fn deny_all() -> Self {
         Self::default()
+    }
+
+    /// Constructs an authoritative [`HostPolicy`] from a parsed [`ComponentManifest`].
+    #[must_use]
+    pub fn from_manifest(manifest: &ComponentManifest) -> Self {
+        let mut policy = Self::deny_all();
+        for iface in &manifest.capabilities.wit_interfaces {
+            policy.allow_wit_interface(iface);
+        }
+        for op in &manifest.capabilities.wit_operations {
+            policy.allow_wit_operation(&op.interface, &op.operation);
+        }
+        for core in &manifest.capabilities.core_imports {
+            policy.allow_core(&core.module, &core.name);
+        }
+        policy
+    }
+
+    /// Parses a YAML manifest string and constructs an authoritative [`HostPolicy`].
+    pub fn from_manifest_yaml(yaml_str: &str) -> Result<Self, PolicyError> {
+        let manifest = ComponentManifest::from_yaml_str(yaml_str)?;
+        Ok(Self::from_manifest(&manifest))
+    }
+
+    /// Parses a JSON manifest string and constructs an authoritative [`HostPolicy`].
+    pub fn from_manifest_json(json_str: &str) -> Result<Self, PolicyError> {
+        let manifest = ComponentManifest::from_json_str(json_str)?;
+        Ok(Self::from_manifest(&manifest))
+    }
+
+    /// Computes the effective [`HostPolicy`] from an untrusted requested manifest
+    /// and an authoritative granted policy:
+    ///
+    /// \[ \text{Effective} = \text{Requested} \cap \text{Granted} \]
+    #[must_use]
+    pub fn effective(requested: &ComponentManifest, granted: &HostPolicy) -> Self {
+        requested.effective_policy(granted)
     }
 
     /// Allows a Core WASM `(module, name)` import. Chainable.

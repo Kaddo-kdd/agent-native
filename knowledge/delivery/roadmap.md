@@ -79,7 +79,7 @@ Fuentes:
 | INIT-05-02 | API pública reutilizable del runtime | medium | INIT-03-01 | SDK Rust embebible fuera del bin | completed (AN-029, AN-030) |
 | INIT-05-03 | Pipeline de release para 3 triples objetivo | medium | INIT-05-01 | Artefactos distribuibles; firma/empaquetado via ADR dedicada | completed (AN-031, AN-032) |
 | **RM-06** | **Runtime Security & Memory** | — | — | Runtime controlado por políticas | — |
-| INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | nuevo |
+| INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | completed (AN-033, AN-034) |
 | INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | nuevo |
 | INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | nuevo |
 | INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | nuevo |

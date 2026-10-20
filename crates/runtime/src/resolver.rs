@@ -18,6 +18,7 @@ use wasmtime::component::Component as WtComponent;
 
 use crate::engine::{Component, Engine, Payload};
 use crate::error::RuntimeError;
+use crate::manifest::ComponentManifest;
 use crate::policy::HostPolicy;
 
 /// A reusable resolver with a content-addressed cache of parsed artifacts.
@@ -99,6 +100,42 @@ impl Resolver {
             engine: self.engine.inner().clone(),
             policy: policy.clone(),
         })
+    }
+
+    /// Loads a component under an explicit policy and validates all declared
+    /// imports immediately at load time. Reuses the cached parse when available.
+    ///
+    /// # Errors
+    ///
+    /// - Returns [`RuntimeError::LoadFailed`] on invalid WASM.
+    /// - Returns [`RuntimeError::UnauthorizedImport`] if any declared import is not permitted.
+    pub fn load_enforcing_policy(
+        &mut self,
+        bytes: &[u8],
+        policy: &HostPolicy,
+    ) -> Result<Component, RuntimeError> {
+        let component = self.load_with_policy(bytes, policy)?;
+        component.validate_imports()?;
+        Ok(component)
+    }
+
+    /// Loads a component with an untrusted [`ComponentManifest`] and an authoritative
+    /// granted [`HostPolicy`] with load-time import enforcement. Reuses the cached
+    /// parse when available.
+    ///
+    /// # Errors
+    ///
+    /// - Returns [`RuntimeError::LoadFailed`] on invalid WASM.
+    /// - Returns [`RuntimeError::UnauthorizedImport`] if any declared import fails
+    ///   the effective policy check.
+    pub fn load_with_manifest(
+        &mut self,
+        bytes: &[u8],
+        manifest: &ComponentManifest,
+        granted_policy: &HostPolicy,
+    ) -> Result<Component, RuntimeError> {
+        let effective = manifest.effective_policy(granted_policy);
+        self.load_enforcing_policy(bytes, &effective)
     }
 
     /// Clears the cache. Intended for tenant isolation per ADR-005.

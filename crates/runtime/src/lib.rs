@@ -43,12 +43,16 @@
 pub mod engine;
 pub mod error;
 pub mod invoke;
+pub mod manifest;
 pub mod policy;
 pub mod resolver;
 pub mod testing;
 
 pub use engine::{Component, Engine};
-pub use error::RuntimeError;
+pub use error::{PolicyError, RuntimeError};
+pub use manifest::{
+    CURRENT_MANIFEST_VERSION, ComponentManifest, CoreImport, ManifestCapabilities, WitOperation,
+};
 pub use policy::HostPolicy;
 pub use resolver::Resolver;
 pub use wasmtime::component::Val;

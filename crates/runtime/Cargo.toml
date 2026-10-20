@@ -13,6 +13,7 @@ workspace = true
 [dependencies]
 agent-native-ir = { path = "../ir" }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 serde_yaml2 = "0.1"
 sha2 = "0.10"
 thiserror = "2.0"
@@ -28,7 +29,6 @@ wasmtime = { version = "27.0", default-features = false, features = [
 # downstream consumers of agent-native-runtime.
 agent-native-compiler = { path = "../compiler" }
 criterion = "0.5"
-serde_json = "1.0"
 
 [[bench]]
 name = "baseline"

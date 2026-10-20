@@ -23,7 +23,8 @@ external_links:
 candidates:
   - id: INIT-06-01
     title: Policy loader de capabilities (manifest-driven)
-    status: candidate
+    status: completed
+    materialized_as: AN-033, AN-034
   - id: INIT-06-02
     title: Límites CPU/memoria (fuel + instance limits)
     status: candidate

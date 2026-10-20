@@ -6,9 +6,37 @@
 
 use thiserror::Error;
 
+/// Specific failure modes for capability manifest parsing, validation, and policy checks.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum PolicyError {
+    /// Deserialization failed due to syntax or schema mismatch.
+    #[error("failed to parse capability manifest: {0}")]
+    ParseError(String),
+
+    /// The manifest specifies an unsupported schema version.
+    #[error("unsupported manifest version '{0}' (expected '0.1')")]
+    UnsupportedVersion(String),
+
+    /// A declared capability identifier is malformed or invalid.
+    #[error("invalid capability identifier: {0}")]
+    InvalidIdentifier(String),
+
+    /// A capability was declared multiple times in the manifest.
+    #[error("duplicate capability declaration: {0}")]
+    DuplicateDeclaration(String),
+
+    /// Wildcard capabilities are strictly forbidden in declarative manifests.
+    #[error("wildcard capabilities are forbidden in declarative manifests: '{0}'")]
+    WildcardForbidden(String),
+}
+
 /// All failure modes exposed by the Agent-Native runtime.
 #[derive(Debug, Error)]
 pub enum RuntimeError {
+    /// A capability manifest or policy rule failed validation or parsing.
+    #[error("policy error: {0}")]
+    Policy(#[from] PolicyError),
+
     /// The WASM payload could not be loaded as a Component Model artifact.
     #[error("failed to load component: {0}")]
     LoadFailed(String),

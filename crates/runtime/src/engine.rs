@@ -12,6 +12,7 @@ use wasmtime::Config;
 use wasmtime::component::Component as WtComponent;
 
 use crate::error::RuntimeError;
+use crate::manifest::ComponentManifest;
 use crate::policy::HostPolicy;
 
 /// A reusable Wasmtime engine configured for Component Model execution and
@@ -84,6 +85,46 @@ impl Engine {
         })
     }
 
+    /// Loads a WASM artifact under an explicit policy AND validates all declared
+    /// imports immediately at load time.
+    ///
+    /// Unlike [`Engine::load_component_with_policy`], which defers import checks
+    /// until invocation/instantiation, this entry point guarantees that an artifact
+    /// with unauthorized imports is rejected before returning a [`Component`].
+    ///
+    /// # Errors
+    ///
+    /// - Returns [`RuntimeError::LoadFailed`] if the payload is invalid WASM.
+    /// - Returns [`RuntimeError::UnauthorizedImport`] if any declared import is not permitted.
+    pub fn load_component_enforcing_policy(
+        &self,
+        bytes: &[u8],
+        policy: &HostPolicy,
+    ) -> Result<Component, RuntimeError> {
+        let component = self.load_component_with_policy(bytes, policy)?;
+        component.validate_imports()?;
+        Ok(component)
+    }
+
+    /// Loads a WASM artifact with an untrusted [`ComponentManifest`] and an authoritative
+    /// granted [`HostPolicy`]. Computes the effective policy (`Requested ∩ Granted`) and
+    /// enforces all import validations immediately at load time.
+    ///
+    /// # Errors
+    ///
+    /// - Returns [`RuntimeError::LoadFailed`] if the payload is invalid WASM.
+    /// - Returns [`RuntimeError::UnauthorizedImport`] if any declared import fails
+    ///   the effective policy check.
+    pub fn load_component_with_manifest(
+        &self,
+        bytes: &[u8],
+        manifest: &ComponentManifest,
+        granted_policy: &HostPolicy,
+    ) -> Result<Component, RuntimeError> {
+        let effective = manifest.effective_policy(granted_policy);
+        self.load_component_enforcing_policy(bytes, &effective)
+    }
+
     /// Access to the inner Wasmtime engine. Used by `Resolver` to parse
     /// bytes directly into a cached payload.
     pub(crate) fn inner(&self) -> &wasmtime::Engine {
@@ -128,6 +169,22 @@ impl Component {
     #[must_use]
     pub fn policy(&self) -> &HostPolicy {
         &self.policy
+    }
+
+    /// Validates all declared imports against the component's governing policy
+    /// immediately, without instantiating or executing any code.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RuntimeError::UnauthorizedImport`] if any declared import in the
+    /// artifact is not permitted under its governing policy.
+    pub fn validate_imports(&self) -> Result<(), RuntimeError> {
+        match &self.payload {
+            Payload::Component(c) => {
+                crate::invoke::precheck_component_imports(&self.engine, c, &self.policy)
+            }
+            Payload::Module(m) => crate::invoke::precheck_core_imports(m, &self.policy),
+        }
     }
 }
 
