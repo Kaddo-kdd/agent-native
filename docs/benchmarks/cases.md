@@ -25,6 +25,7 @@ Comparar estos escenarios muestra costes de operaciones distintas; no aísla la 
 
 Cold-run: Engine nuevo + carga del artefacto + una invocación. No es arranque de proceso ni cold start de Lambda.
 Warm-run: Engine y artefacto precargados; Store nuevo por invocación. Cache-hit: lookup Resolver + invocación, también con Store nuevo.
+Preparación de caché según las fuentes fijadas: Criterion prima un Resolver distinto con un artefacto por benchmark; el recolector individual comparte un Resolver primado con identity y point_sum (dos artefactos). No tratar ambos costes de lookup como controles de idéntica cardinalidad.
 Criterion mide el closure completo, incluida preparación dentro de él y destrucción del resultado. La compilación IR→WASM queda fuera.
 El recolector individual prepara argumentos y buffers WASI antes del reloj y destruye resultados después. Esos límites no son intercambiables con Criterion.
 El control identity vía invoke devuelve valores; los controles invoke_with_limits devuelven InvocationReport. El segundo control sin fuel conserva la misma API y forma de retorno que el caso fuel.

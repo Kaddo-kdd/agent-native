@@ -32,6 +32,11 @@
         3,
         4
       ],
+      "cache_preparation_from_pinned_source": {
+        "cache_count_observed_by_collector": false,
+        "criterion_primed_artifacts": 1,
+        "individual_primed_artifacts": 2
+      },
       "criterion_api": "Resolver::load + invoke",
       "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
       "expected_outputs_contract": {
@@ -50,6 +55,11 @@
       "arguments": [
         42
       ],
+      "cache_preparation_from_pinned_source": {
+        "cache_count_observed_by_collector": false,
+        "criterion_primed_artifacts": 1,
+        "individual_primed_artifacts": 2
+      },
       "criterion_api": "Resolver::load + invoke",
       "criterion_timed_scope": "Cuerpo completo del benchmark y destrucción de sus resultados; excluye la compilación IR a WASM. Incluye preparación de entradas dentro del closure, cuando existe.",
       "expected_outputs_contract": [

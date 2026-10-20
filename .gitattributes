@@ -1,0 +1,3 @@
+# Keep generated measurement data collapsed in GitHub reviews; tables remain visible.
+docs/benchmarks/publication.json linguist-generated=true
+docs/benchmarks/evidence/**/*.json.gz binary
