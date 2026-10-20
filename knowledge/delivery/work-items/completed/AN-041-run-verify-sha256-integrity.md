@@ -1,7 +1,8 @@
 ---
 id: AN-041
 type: feature
-status: in-progress
+status: completed
+completed_at: 2026-10-19
 created_at: 2026-10-19T00:00:00.000Z
 title: Verificación de integridad SHA-256 en carga (run --verify)
 knowledge_level: K3
@@ -56,7 +57,7 @@ related_decisions:
 ## Actor y Resultado
 Un operador de CLI o sistema automatizado invoca `agent-native run --verify` suministrando un componente WASM y un hash SHA-256 esperado (vía `--expected-sha256` o vía manifiesto). El CLI calcula el digest SHA-256 de los bytes del componente antes de instanciarlo; si coincide, procede con la ejecución; si el componente ha sido alterado o el hash no coincide, el comando aborta inmediatamente con código de salida `1` (`DomainFailure`), garantizando que ningún byte no verificado llegue a ejecutarse.
 
-## Acceptance Criteria
+## Acceptance Criteria Verificados
 - **AC-01 (Flag `--verify` y `--expected-sha256`):** `agent-native run` soporta `--verify` y `--expected-sha256 <HEX>`. Si el hash calculado sobre los bytes coincide con el esperado, la invocación procede normalmente.
 - **AC-02 (Fail-explicit ante mismatch):** Si el hash esperado no coincide con el digest real de los bytes del archivo, el comando falla inmediatamente con `CliExitCode::DomainFailure` (código 1), emitiendo un mensaje claro con el hash esperado vs el computado, sin llamar a `Engine::load_component`.
 - **AC-03 (Verificación vía Manifiesto):** Si se provee `--manifest <PATH>` (o se detecta un `manifest.json` adyacente con la entrada del componente y no se pasa `--expected-sha256`), el hash esperado se extrae del manifiesto y se valida.

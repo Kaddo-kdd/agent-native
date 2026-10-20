@@ -35,8 +35,8 @@ candidates:
     materialized_as: AN-039 (completed), AN-040 (completed)
   - id: INIT-06-04
     title: Verificación de integridad y procedencia en carga
-    status: in-progress
-    materialized_as: AN-041 (draft), AN-042 (draft)
+    status: completed
+    materialized_as: AN-041 (completed), AN-042 (completed)
   - id: INIT-06-05
     title: Fixtures de ejecución extrema
     status: candidate
@@ -72,7 +72,7 @@ Prerrequisito para habilitar I/O real (RM-07) y para presentar el runtime en esc
 2. Fuel overflow produce trap determinista tipado (`RuntimeError::FuelExhausted`); memory limit excedido produce trap tipado (`RuntimeError::MemoryLimitExceeded`).
    - *Estado actual:* Límites de memoria y tablas verificados cross-OS (AN-036). Agotamiento de fuel verificado y contenido de forma limpia en Linux, macOS y Windows MSVC sin terminar el proceso anfitrión tras la promoción técnica a Wasmtime 29.0.1 (Bytecode Alliance PR #9710) en AN-038. Suite de tests 100% pasando en CI con 0 exclusiones `#[ignore]` (Completado: AN-035, AN-036, AN-038). Se registra deuda de mantenimiento para evaluar Wasmtime 49+/50+ en RM-08.
 3. Test de contaminación cruzada entre tenants pasa con aislamiento, falla sin él. (Completado: AN-039, AN-040; validado empíricamente en `multi_tenant_isolation.rs` para los 5 escenarios E1-E5 de blast radius bajo Store efímero de ADR-005).
-4. `run --verify` falla con componente alterado; pasa con firma válida.
+4. `run --verify` falla con componente alterado; pasa con firma válida. (Completado: AN-041, AN-042; validado determinísticamente con SHA-256 y Minisign Ed25519 offline en crates/cli/tests/run_verify.rs).
 5. Fixtures de ejecución extrema disponibles y cubiertos en CI (Completado: AN-037).
 
 ## Dependencies

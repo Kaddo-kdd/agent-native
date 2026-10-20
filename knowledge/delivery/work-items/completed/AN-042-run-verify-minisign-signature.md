@@ -1,7 +1,8 @@
 ---
 id: AN-042
 type: feature
-status: in-progress
+status: completed
+completed_at: 2026-10-19
 created_at: 2026-10-19T00:00:00.000Z
 title: Verificación de procedencia y firma criptográfica Minisign en carga (run --verify)
 knowledge_level: K3
@@ -56,7 +57,7 @@ related_decisions:
 ## Actor y Resultado
 Un operador de CLI o entorno de producción invoca `agent-native run --verify` suministrando una clave pública (`--public-key`) y opcionalmente una ruta de firma (`--signature`). El CLI valida la firma criptográfica Ed25519 en formato Minisign sobre los bytes del componente WASM usando `minisign-verify` de manera puramente local y offline. Si la firma es válida y coincide con la clave pública, la ejecución continúa; ante cualquier firma ausente requerida, clave inválida o contenido alterado, el proceso finaliza con código de error `1` (`DomainFailure`) sin cargar el código en el motor.
 
-## Acceptance Criteria
+## Acceptance Criteria Verificados
 - **AC-01 (Argumentos `--signature` y `--public-key`):** `RunArgs` incorpora `--signature <PATH>` y `--public-key <KEY_OR_PATH>`. La clave pública puede especificarse como ruta a archivo (`.pub`) o cadena base64 directa.
 - **AC-02 (Resolución por convención):** Si se suministra `--public-key` (o `--verify`) y no se especifica `--signature`, el CLI busca automáticamente un archivo de firma adyacente `<component>.minisig`. Si no existe cuando se exige firma, falla explícitamente con mensaje de firma faltante.
 - **AC-03 (Verificación criptográfica offline con `minisign-verify`):** La verificación de firma se realiza de forma estrictamente local mediante la crate `minisign-verify` sin conexiones a red ni dependencias de OIDC/Rekor.
