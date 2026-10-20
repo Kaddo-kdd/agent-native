@@ -12,9 +12,7 @@
 //!    by host policy yields an empty effective policy and fails.
 
 use agent_native_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{
-    ComponentManifest, Engine, HostPolicy, Resolver, RuntimeError, Val,
-};
+use agent_native_runtime::{ComponentManifest, Engine, HostPolicy, Resolver, RuntimeError, Val};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 

@@ -69,9 +69,22 @@ impl HostPolicy {
         Self::default()
     }
 
-    /// Constructs an authoritative [`HostPolicy`] from a parsed [`ComponentManifest`].
-    #[must_use]
-    pub fn from_manifest(manifest: &ComponentManifest) -> Self {
+    /// Constructs an authoritative [`HostPolicy`] from an authoritative capability manifest.
+    ///
+    /// # Security Warning
+    ///
+    /// This method grants all capabilities declared in the manifest as an authoritative
+    /// host policy. It **MUST ONLY** be called with manifests supplied by an authoritative
+    /// host operator / configuration. It **MUST NEVER** be invoked directly on an untrusted
+    /// [`ComponentManifest`] supplied by a guest component, as doing so would allow
+    /// self-granting of privileges.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PolicyError`] if the manifest fails validation (unsupported version,
+    /// malformed identifiers, wildcards, or duplicates).
+    pub fn from_manifest(manifest: &ComponentManifest) -> Result<Self, PolicyError> {
+        manifest.validate()?;
         let mut policy = Self::deny_all();
         for iface in &manifest.capabilities.wit_interfaces {
             policy.allow_wit_interface(iface);
@@ -82,19 +95,23 @@ impl HostPolicy {
         for core in &manifest.capabilities.core_imports {
             policy.allow_core(&core.module, &core.name);
         }
-        policy
+        Ok(policy)
     }
 
     /// Parses a YAML manifest string and constructs an authoritative [`HostPolicy`].
+    ///
+    /// See [`HostPolicy::from_manifest`] for security warnings regarding authoritative data sources.
     pub fn from_manifest_yaml(yaml_str: &str) -> Result<Self, PolicyError> {
         let manifest = ComponentManifest::from_yaml_str(yaml_str)?;
-        Ok(Self::from_manifest(&manifest))
+        Self::from_manifest(&manifest)
     }
 
     /// Parses a JSON manifest string and constructs an authoritative [`HostPolicy`].
+    ///
+    /// See [`HostPolicy::from_manifest`] for security warnings regarding authoritative data sources.
     pub fn from_manifest_json(json_str: &str) -> Result<Self, PolicyError> {
         let manifest = ComponentManifest::from_json_str(json_str)?;
-        Ok(Self::from_manifest(&manifest))
+        Self::from_manifest(&manifest)
     }
 
     /// Computes the effective [`HostPolicy`] from an untrusted requested manifest
@@ -104,6 +121,23 @@ impl HostPolicy {
     #[must_use]
     pub fn effective(requested: &ComponentManifest, granted: &HostPolicy) -> Self {
         requested.effective_policy(granted)
+    }
+
+    /// Returns an iterator over all granular WIT operations explicitly allowed for
+    /// the given interface identifier.
+    pub fn allowed_wit_operations_for_interface<'a>(
+        &'a self,
+        interface_id: &'a str,
+    ) -> impl Iterator<Item = &'a str> {
+        self.allow_wit_operations
+            .iter()
+            .filter_map(move |(iface, op)| {
+                if iface == interface_id {
+                    Some(op.as_str())
+                } else {
+                    None
+                }
+            })
     }
 
     /// Allows a Core WASM `(module, name)` import. Chainable.

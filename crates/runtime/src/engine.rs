@@ -121,6 +121,7 @@ impl Engine {
         manifest: &ComponentManifest,
         granted_policy: &HostPolicy,
     ) -> Result<Component, RuntimeError> {
+        manifest.validate()?;
         let effective = manifest.effective_policy(granted_policy);
         self.load_component_enforcing_policy(bytes, &effective)
     }

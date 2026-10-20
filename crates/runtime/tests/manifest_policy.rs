@@ -1,9 +1,7 @@
 //! AN-033: Declarative capability manifests and intersection policy tests.
 
 use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{
-    ComponentManifest, Engine, HostPolicy, PolicyError, RuntimeError, Val,
-};
+use agent_native_runtime::{ComponentManifest, Engine, HostPolicy, PolicyError, RuntimeError, Val};
 use std::path::PathBuf;
 
 fn compiler_crate_ctx() -> CompileContext {
@@ -221,4 +219,73 @@ capabilities:
         panic!("expected record");
     };
     assert_eq!(fields.len(), 2);
+}
+
+#[test]
+fn test_cross_granularity_wit_intersection_interface_requested_operation_granted() {
+    let iface = "an:service/api@0.1.0";
+    let manifest_yaml = format!(
+        r#"
+version: "0.1"
+capabilities:
+  wit_interfaces:
+    - "{iface}"
+"#
+    );
+    let requested = ComponentManifest::from_yaml_str(&manifest_yaml).unwrap();
+
+    // Host policy does NOT grant the entire interface, only a specific operation
+    let mut granted = HostPolicy::deny_all();
+    granted.allow_wit_operation(iface, "allowed_op");
+
+    let effective = requested.effective_policy(&granted);
+
+    // Cross-granularity: The intersection retains the granted operation
+    assert!(effective.is_wit_operation_allowed(iface, "allowed_op"));
+
+    // But operations that the host did not grant are denied
+    assert!(!effective.is_wit_operation_allowed(iface, "unauthorized_op"));
+
+    // And the interface as a whole is not unconditionally allowed
+    assert!(!effective.is_wit_interface_allowed(iface));
+}
+
+#[test]
+fn test_programmatic_manifest_validation_enforced_at_runtime_entry_points() {
+    use agent_native_runtime::ManifestCapabilities;
+
+    let wasm = probe_wasm();
+    let engine = Engine::new().expect("engine");
+
+    // Construct an invalid manifest directly in Rust memory (bypassing parser)
+    let bad_manifest = ComponentManifest {
+        version: "99.0".to_string(), // Invalid version
+        name: Some("in-memory-bad".to_string()),
+        capabilities: ManifestCapabilities::default(),
+    };
+
+    let policy = HostPolicy::deny_all();
+
+    // 1. Engine load-time entry point must validate in-memory manifest
+    let err_engine = engine
+        .load_component_with_manifest(&wasm, &bad_manifest, &policy)
+        .expect_err("must validate programmatic manifest");
+    assert!(
+        matches!(
+            err_engine,
+            RuntimeError::Policy(PolicyError::UnsupportedVersion(ref v)) if v == "99.0"
+        ),
+        "expected UnsupportedVersion, got {err_engine:?}"
+    );
+
+    // 2. HostPolicy::from_manifest must validate in-memory manifest
+    let err_policy =
+        HostPolicy::from_manifest(&bad_manifest).expect_err("must validate in-memory manifest");
+    assert!(
+        matches!(
+            err_policy,
+            PolicyError::UnsupportedVersion(ref v) if v == "99.0"
+        ),
+        "expected UnsupportedVersion, got {err_policy:?}"
+    );
 }

@@ -18,8 +18,8 @@
 //! If any declared import of the WASM binary fails to satisfy both conditions,
 //! execution is rejected pre-instantiate with [`crate::RuntimeError::UnauthorizedImport`].
 
-use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 use crate::error::PolicyError;
 use crate::policy::HostPolicy;
@@ -82,16 +82,16 @@ pub struct CoreImport {
 impl ComponentManifest {
     /// Parses a manifest from a YAML string, enforcing strict schema validation.
     pub fn from_yaml_str(yaml_str: &str) -> Result<Self, PolicyError> {
-        let manifest: Self = serde_yaml2::from_str(yaml_str)
-            .map_err(|e| PolicyError::ParseError(e.to_string()))?;
+        let manifest: Self =
+            serde_yaml2::from_str(yaml_str).map_err(|e| PolicyError::ParseError(e.to_string()))?;
         manifest.validate()?;
         Ok(manifest)
     }
 
     /// Parses a manifest from a JSON string, enforcing strict schema validation.
     pub fn from_json_str(json_str: &str) -> Result<Self, PolicyError> {
-        let manifest: Self = serde_json::from_str(json_str)
-            .map_err(|e| PolicyError::ParseError(e.to_string()))?;
+        let manifest: Self =
+            serde_json::from_str(json_str).map_err(|e| PolicyError::ParseError(e.to_string()))?;
         manifest.validate()?;
         Ok(manifest)
     }
@@ -151,6 +151,14 @@ impl ComponentManifest {
         for iface in &self.capabilities.wit_interfaces {
             if granted.is_wit_interface_allowed(iface) {
                 effective.allow_wit_interface(iface);
+            } else {
+                // Cross-granularity intersection:
+                // When the component requests an entire interface and the host
+                // only grants specific operations within that interface, the
+                // intersection retains those granted operations.
+                for op in granted.allowed_wit_operations_for_interface(iface) {
+                    effective.allow_wit_operation(iface, op);
+                }
             }
         }
 
