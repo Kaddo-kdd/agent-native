@@ -288,4 +288,72 @@ fn test_programmatic_manifest_validation_enforced_at_runtime_entry_points() {
         ),
         "expected UnsupportedVersion, got {err_policy:?}"
     );
+
+    // 3. Resolver entry point must validate in-memory manifest
+    let mut resolver = agent_native_runtime::Resolver::new().expect("resolver");
+    let err_resolver = resolver
+        .load_with_manifest(&wasm, &bad_manifest, &policy)
+        .expect_err("resolver must validate programmatic manifest");
+    assert!(
+        matches!(
+            err_resolver,
+            RuntimeError::Policy(PolicyError::UnsupportedVersion(ref v)) if v == "99.0"
+        ),
+        "expected UnsupportedVersion, got {err_resolver:?}"
+    );
+}
+
+#[test]
+fn test_cross_granularity_wit_execution_end_to_end() {
+    let wasm = probe_wasm();
+    let engine = Engine::new().expect("engine");
+
+    // Component declares request for entire interface
+    let manifest = ComponentManifest::from_yaml_str(&format!(
+        r#"
+version: "0.1"
+capabilities:
+  wit_interfaces:
+    - "{PROBE_TYPES_IFACE}"
+"#
+    ))
+    .unwrap();
+
+    // 1. Host grants only the exact required operation inside the interface
+    let mut granted = HostPolicy::deny_all();
+    granted.allow_wit_operation(PROBE_TYPES_IFACE, "pt");
+
+    let component = engine
+        .load_component_with_manifest(&wasm, &manifest, &granted)
+        .expect("cross-granularity load must succeed when required op is granted");
+
+    // Execute end-to-end through the full authorization pipeline
+    let results = component
+        .invoke(
+            &format!("{EXPORTED_OPS_IFACE}#make-pt"),
+            &[Val::S32(100), Val::S32(200)],
+        )
+        .expect("execution must succeed with cross-granularity granted operation");
+
+    let Val::Record(fields) = &results[0] else {
+        panic!("expected record");
+    };
+    assert_eq!(fields.len(), 2);
+
+    // 2. Host grants a different operation inside the requested interface -> Rejection
+    let mut granted_different_op = HostPolicy::deny_all();
+    granted_different_op.allow_wit_operation(PROBE_TYPES_IFACE, "different_op");
+
+    let err = engine
+        .load_component_with_manifest(&wasm, &manifest, &granted_different_op)
+        .expect_err("must reject because required operation 'pt' was not authorized");
+
+    assert!(
+        matches!(
+            err,
+            RuntimeError::UnauthorizedImport { ref module, ref name }
+                if module == PROBE_TYPES_IFACE && name == "pt"
+        ),
+        "expected UnauthorizedImport for pt, got {err:?}"
+    );
 }
