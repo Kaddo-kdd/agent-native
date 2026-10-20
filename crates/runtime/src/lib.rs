@@ -57,7 +57,10 @@ pub use limits::{ExecutionLimits, InstanceLimits, InvocationReport};
 pub use manifest::{
     CURRENT_MANIFEST_VERSION, ComponentManifest, CoreImport, ManifestCapabilities, WitOperation,
 };
-pub use policy::HostPolicy;
+pub use policy::{
+    HostPolicy, WASI_CLI_STDERR_0_2_0, WASI_CLI_STDIN_0_2_0, WASI_CLI_STDOUT_0_2_0,
+    WASI_IO_ERROR_0_2_0, WASI_IO_POLL_0_2_0, WASI_IO_STREAMS_0_2_0,
+};
 pub use resolver::Resolver;
 pub use tenant::{Tenant, TenantConfig, TenantId};
 pub use wasi::{DEFAULT_MAX_OUTPUT_BYTES, WasiInvocationReport, WasiIoConfig, WasiIoOutput};

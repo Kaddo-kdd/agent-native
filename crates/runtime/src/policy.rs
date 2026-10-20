@@ -48,6 +48,25 @@ use std::collections::HashSet;
 use crate::error::PolicyError;
 use crate::manifest::ComponentManifest;
 
+/// Canonical WASI 0.2.0 `stdin` interface identifier.
+pub const WASI_CLI_STDIN_0_2_0: &str = "wasi:cli/stdin@0.2.0";
+/// Canonical WASI 0.2.0 `stdout` interface identifier.
+pub const WASI_CLI_STDOUT_0_2_0: &str = "wasi:cli/stdout@0.2.0";
+/// Canonical WASI 0.2.0 `stderr` interface identifier.
+pub const WASI_CLI_STDERR_0_2_0: &str = "wasi:cli/stderr@0.2.0";
+/// Canonical WASI 0.2.0 `io/streams` auxiliary interface identifier.
+pub const WASI_IO_STREAMS_0_2_0: &str = "wasi:io/streams@0.2.0";
+/// Canonical WASI 0.2.0 `io/error` auxiliary interface identifier.
+pub const WASI_IO_ERROR_0_2_0: &str = "wasi:io/error@0.2.0";
+/// Canonical WASI 0.2.0 `io/poll` auxiliary interface identifier.
+pub const WASI_IO_POLL_0_2_0: &str = "wasi:io/poll@0.2.0";
+
+const WASI_IO_SUPPORT_0_2_0: [&str; 3] = [
+    WASI_IO_STREAMS_0_2_0,
+    WASI_IO_ERROR_0_2_0,
+    WASI_IO_POLL_0_2_0,
+];
+
 /// A declarative policy over host imports.
 ///
 /// Consulted pre-instantiate for every declared import of a loaded artifact.
@@ -162,6 +181,57 @@ impl HostPolicy {
         self.allow_wit_operations
             .insert((interface_id.into(), operation.into()));
         self
+    }
+
+    /// Grants WASI 0.2.0 `stdout` (`wasi:cli/stdout@0.2.0`) and its required
+    /// `wasi:io/*@0.2.0` support interfaces (`streams`, `error`, `poll`).
+    ///
+    /// Does **not** grant `stdin`, `stderr`, `filesystem`, `sockets`, `clocks`,
+    /// `random`, `environment`, or `exit` (AN-045).
+    pub fn allow_wasi_stdout(&mut self) -> &mut Self {
+        self.allow_wit_interface(WASI_CLI_STDOUT_0_2_0);
+        for support in WASI_IO_SUPPORT_0_2_0 {
+            self.allow_wit_interface(support);
+        }
+        self
+    }
+
+    /// Grants WASI 0.2.0 `stderr` (`wasi:cli/stderr@0.2.0`) and its required
+    /// `wasi:io/*@0.2.0` support interfaces (`streams`, `error`, `poll`).
+    ///
+    /// Does **not** grant `stdin`, `stdout`, `filesystem`, `sockets`, `clocks`,
+    /// `random`, `environment`, or `exit` (AN-045).
+    pub fn allow_wasi_stderr(&mut self) -> &mut Self {
+        self.allow_wit_interface(WASI_CLI_STDERR_0_2_0);
+        for support in WASI_IO_SUPPORT_0_2_0 {
+            self.allow_wit_interface(support);
+        }
+        self
+    }
+
+    /// Grants WASI 0.2.0 `stdin` (`wasi:cli/stdin@0.2.0`) and its required
+    /// `wasi:io/*@0.2.0` support interfaces (`streams`, `error`, `poll`).
+    ///
+    /// Does **not** grant `stdout`, `stderr`, `filesystem`, `sockets`, `clocks`,
+    /// `random`, `environment`, or `exit` (AN-045).
+    pub fn allow_wasi_stdin(&mut self) -> &mut Self {
+        self.allow_wit_interface(WASI_CLI_STDIN_0_2_0);
+        for support in WASI_IO_SUPPORT_0_2_0 {
+            self.allow_wit_interface(support);
+        }
+        self
+    }
+
+    /// Explicit host convenience helper that grants all three WASI 0.2.0 console
+    /// streams (`stdin`, `stdout`, `stderr`) and their `wasi:io/*@0.2.0` support
+    /// interfaces.
+    ///
+    /// Does **not** grant `filesystem`, `sockets`, `clocks`, `random`,
+    /// `environment`, or `exit` (AN-045).
+    pub fn allow_wasi_stdio(&mut self) -> &mut Self {
+        self.allow_wasi_stdin()
+            .allow_wasi_stdout()
+            .allow_wasi_stderr()
     }
 
     /// Legacy compatibility shim preserved for AN-010/011 call sites.

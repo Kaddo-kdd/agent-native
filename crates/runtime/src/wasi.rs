@@ -392,25 +392,43 @@ fn invoke_component_wasi(
         .map_err(|e| RuntimeError::InstantiationFailed(e.to_string()))?;
 
     // 3. Fresh, isolated I/O state for this invocation.
+    // Only attach stream handles for interfaces the component actually imports (and that
+    // already passed the `HostPolicy` precheck). Auxiliary `wasi:io/*` interfaces alone
+    // never populate stdin/stdout/stderr handles in `WasiCtx` (AN-045 AC-06).
+    let has_stdin = imported
+        .iter()
+        .any(|name| interface_base(name) == "wasi:cli/stdin");
+    let has_stdout = imported
+        .iter()
+        .any(|name| interface_base(name) == "wasi:cli/stdout");
+    let has_stderr = imported
+        .iter()
+        .any(|name| interface_base(name) == "wasi:cli/stderr");
+
     let overflow: OverflowSlot = Arc::default();
     let stdout = BoundedOutput::new(
         IoStream::Stdout,
-        io.capture_stdout,
+        io.capture_stdout && has_stdout,
         io.max_stdout_bytes,
         Arc::clone(&overflow),
     );
     let stderr = BoundedOutput::new(
         IoStream::Stderr,
-        io.capture_stderr,
+        io.capture_stderr && has_stderr,
         io.max_stderr_bytes,
         Arc::clone(&overflow),
     );
     let mut builder = WasiCtxBuilder::new();
-    match io.stdin {
+    match io.stdin.filter(|_| has_stdin) {
         Some(bytes) => builder.stdin(MemoryInputPipe::new(Bytes::from(bytes))),
         None => builder.stdin(ClosedInputStream),
     };
-    builder.stdout(stdout.clone()).stderr(stderr.clone());
+    if has_stdout {
+        builder.stdout(stdout.clone());
+    }
+    if has_stderr {
+        builder.stderr(stderr.clone());
+    }
 
     let data = WasiStoreData {
         ctx: builder.build(),
