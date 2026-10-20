@@ -81,7 +81,7 @@ Fuentes:
 | **RM-06** | **Runtime Security & Memory** | — | — | Runtime controlado por políticas | — |
 | INIT-06-01 | Policy loader de capabilities (manifest-driven) | high | INIT-03-05 | Allow-list por componente; deny por defecto | completed (AN-033, AN-034) |
 | INIT-06-02 | Límites CPU/memoria (fuel + instance limits) | high | INIT-03-01, INIT-02-05 | Trap verificable al exceder presupuesto | completed (AN-035, AN-036, AN-037, AN-038) |
-| INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | in-progress (AN-039 completed, AN-040 draft) |
+| INIT-06-03 | Ciclo de vida de instancias y aislamiento multi-tenant | medium | INIT-06-02, INIT-02-05 | Garantías de aislamiento antes de reutilizar instancias | completed (AN-039, AN-040) |
 | INIT-06-04 | Verificación de integridad y procedencia en carga | medium | INIT-04-05, INIT-05-03 | `run --verify`: componente alterado falla | nuevo |
 | INIT-06-05 | Fixtures de ejecución extrema | medium | INIT-06-02 | Recursión controlada, allocación masiva, errores inducidos | nuevo |
 | **RM-07** | **Console I/O & WASI** | — | — | Programas con I/O autorizada | — |
@@ -782,9 +782,9 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 #### INIT-06-03: Ciclo de vida de instancias y aislamiento multi-tenant
 
-**Status:** in-progress · **Priority:** medium · **K4**
+**Status:** **completed 2026-10-19** · **Priority:** medium · **K4**
 
-**Materialized as:** AN-039 (completed), AN-040 (draft)
+**Materialized as:** AN-039, AN-040 (completed)
 
 **Source signals:** Risk R-11; OQ L146.
 
@@ -796,7 +796,7 @@ Profundiza seguridad y memoria sobre los controles mínimos ya existentes. **No*
 
 **Suggested Work Items:**
 - WI-CANDIDATE-06-03-01: API `Tenant` y ciclo de vida de invocación (`feature`, AN-039 — completed)
-- WI-CANDIDATE-06-03-02: tests de contaminación cruzada y contención de blast radius (`chore`/`test`, AN-040 — draft)
+- WI-CANDIDATE-06-03-02: tests de contaminación cruzada y contención de blast radius (`chore`/`test`, AN-040 — completed)
 
 ---
 

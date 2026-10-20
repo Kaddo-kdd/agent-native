@@ -1,8 +1,9 @@
 ---
 id: AN-040
 type: test
-status: in-progress
+status: completed
 created_at: 2026-10-19T00:00:00.000Z
+completed_at: 2026-10-19T00:00:00.000Z
 title: Suite de pruebas de aislamiento multi-tenant y contención de blast radius
 knowledge_level: K3
 suggested_knowledge_level: K3
@@ -54,9 +55,9 @@ template_version: 1
 
 # AN-040 — Suite de pruebas de aislamiento multi-tenant y contención de blast radius
 
-## Estado del Work Item: `in-progress`
+## Estado del Work Item: `completed`
 
-Este borrador define la matriz experimental y la suite de pruebas automatizadas destinadas a verificar el aislamiento estricto y la contención de radio de impacto (*blast radius*) entre tenants en el runtime de Agent Native.
+La suite de pruebas automatizadas de aislamiento multi-tenant y contención de radio de impacto (*blast radius*) se encuentra completamente implementada, verificada y fusionada en `main` (PR #3, commit `1550db3`).
 
 ---
 
@@ -92,3 +93,26 @@ La suite `crates/runtime/tests/multi_tenant_isolation.rs` cubrirá los siguiente
 2. **Aislamiento de Capabilities:** Las políticas aplicadas a un tenant se evalúan de forma estrictamente ortogonal e independiente a las del resto.
 3. **Cero Fugas entre Stores:** Validación explícita de que ningún dato de retorno ni memoria residual sobrevive a la destrucción del Store de la invocación.
 4. **Ejecución Multiplataforma:** La suite completa se integra al CI de GitHub Actions y pasa exitosamente en Linux, macOS y Windows MSVC.
+
+
+---
+
+## Verificación y Cierre Técnico
+
+La suite [`crates/runtime/tests/multi_tenant_isolation.rs`](file:///crates/runtime/tests/multi_tenant_isolation.rs) implementa y valida de forma automatizada los 5 escenarios de contención de radio de impacto:
+
+1. **E1 (CPU Blast Radius):** `test_scenario_e1_cpu_blast_radius_containment`:
+   - Tenant A (bucle infinito con cuota de 5,000 unidades) agota su presupuesto y aborta con `RuntimeError::FuelExhausted { limit: 5000 }`.
+   - Tenant B ejecuta inmediatamente después en su propio Store efímero con cálculo matemático exacto (`(10 * 2) + 5 = 25`) y reporte limpio de fuel consumido.
+2. **E2 (Memory Blast Radius):** `test_scenario_e2_memory_blast_radius_containment`:
+   - Tenant A solicita crecer 500 páginas (32 MiB) bajo un límite de 128 KiB. El `ResourceLimiter` deniega la solicitud y el guest entra en trap `unreachable`, mapeado deterministamente a `RuntimeError::MemoryLimitExceeded`.
+   - Tenant B ejecuta después con cuota estándar, aloca 2 páginas, escribe y lee datos, demostrando que la memoria del host no retiene asignaciones residuales ni fugas de Tenant A.
+3. **E3 (Capability & Policy Isolation):** `test_scenario_e3_capability_policy_isolation`:
+   - Tenant A sin autorización para el namespace de `storage` es rechazado pre-instantiation con `RuntimeError::UnauthorizedImport`.
+   - Tenant B con autorización para `storage:get` ejecuta sobre su propio `MockStorageContext` aislado sin fugas de credenciales ni interferencias.
+4. **E4 (Rapid Blast Interleaving):** `test_scenario_e4_rapid_blast_interleaving`:
+   - 100 iteraciones consecutivas alternando llamadas con fallo inducido (Tenant A) y llamadas exitosas (Tenant B).
+   - 100% de reproducibilidad: 0 fallos inesperados en Tenant B, 0 filtraciones de estado y 0 variación en resultados.
+5. **E5 (Multi-threaded Concurrency):** `test_scenario_e5_multithreaded_concurrency`:
+   - Ejecución concurrente mediante hilos paralelos (`std::thread::spawn`), donde 2 hilos ejecutan saturación y traps de Tenant A mientras 2 hilos ejecutan cálculos continuos de Tenant B.
+   - Demuestra ausencia total de data races, contención global destructiva o panics en el runtime compartido.
