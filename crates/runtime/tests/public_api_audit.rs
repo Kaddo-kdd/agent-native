@@ -7,7 +7,9 @@
 //! - Invariants: Deny-by-default, fail-explicit on missing exports, deterministic caching.
 
 use agent_native_compiler::compile_ir_to_wasm;
-use agent_native_runtime::{Component, Engine, HostPolicy, Resolver, RuntimeError, Val};
+use agent_native_runtime::{
+    Component, Engine, HostPolicy, Resolver, RuntimeError, Tenant, TenantConfig, TenantId, Val,
+};
 use serde_json::json;
 
 fn sample_math_wasm() -> Vec<u8> {
@@ -164,4 +166,23 @@ fn test_public_api_resolver_caching_and_session_reset() {
     // Reset clears cache for tenant/session isolation
     resolver.reset();
     assert_eq!(resolver.cached_count(), 0);
+}
+
+#[test]
+fn test_public_api_tenant_abstractions() {
+    let engine = Engine::new().expect("Engine");
+    let wasm_bytes = sample_math_wasm();
+    let component = engine.load_component(&wasm_bytes).expect("load");
+
+    let tenant_id = TenantId::new("audited-tenant");
+    let config = TenantConfig::new(tenant_id.clone()).with_fuel_budget(10_000);
+    let tenant: Tenant = engine.create_tenant(config);
+
+    assert_eq!(tenant.id(), &tenant_id);
+
+    let report = tenant
+        .invoke(&component, "identity", &[Val::S32(99)])
+        .expect("tenant invoke");
+    assert_eq!(report.values, vec![Val::S32(99)]);
+    assert!(report.fuel_consumed.is_some());
 }

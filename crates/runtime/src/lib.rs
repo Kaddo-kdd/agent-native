@@ -47,6 +47,7 @@ pub mod limits;
 pub mod manifest;
 pub mod policy;
 pub mod resolver;
+pub mod tenant;
 pub mod testing;
 
 pub use engine::{Component, Engine};
@@ -57,4 +58,5 @@ pub use manifest::{
 };
 pub use policy::HostPolicy;
 pub use resolver::Resolver;
+pub use tenant::{Tenant, TenantConfig, TenantId};
 pub use wasmtime::component::Val;

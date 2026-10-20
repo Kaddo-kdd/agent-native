@@ -133,6 +133,11 @@ impl Engine {
     pub(crate) fn inner(&self) -> &wasmtime::Engine {
         &self.inner
     }
+
+    /// Creates a new tenant execution context configured with the specified options.
+    pub fn create_tenant(&self, config: crate::tenant::TenantConfig) -> crate::tenant::Tenant {
+        crate::tenant::Tenant::new(config)
+    }
 }
 
 /// A loaded WASM artifact (Component Model or Core module), ready for
@@ -182,11 +187,17 @@ impl Component {
     /// Returns [`RuntimeError::UnauthorizedImport`] if any declared import in the
     /// artifact is not permitted under its governing policy.
     pub fn validate_imports(&self) -> Result<(), RuntimeError> {
+        self.validate_imports_against_policy(&self.policy)
+    }
+
+    /// Validates all declared imports against an explicit policy without
+    /// instantiating or executing any code.
+    pub fn validate_imports_against_policy(&self, policy: &HostPolicy) -> Result<(), RuntimeError> {
         match &self.payload {
             Payload::Component(c) => {
-                crate::invoke::precheck_component_imports(&self.engine, c, &self.policy)
+                crate::invoke::precheck_component_imports(&self.engine, c, policy)
             }
-            Payload::Module(m) => crate::invoke::precheck_core_imports(m, &self.policy),
+            Payload::Module(m) => crate::invoke::precheck_core_imports(m, policy),
         }
     }
 }
