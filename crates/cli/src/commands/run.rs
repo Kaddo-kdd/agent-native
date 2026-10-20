@@ -1,9 +1,12 @@
 //! `run` subcommand implementation.
 //!
-//! Executes an exported function on a loaded WASM component using the standalone runtime.
+//! Executes an exported function on a loaded WASM component using the standalone runtime,
+//! with support for offline SHA-256 integrity and Minisign (Ed25519) cryptographic signature
+//! verification before component instantiation (INIT-06-04, AN-041, AN-042).
 
 use serde::Serialize;
-use std::path::Path;
+use sha2::{Digest, Sha256};
+use std::path::{Path, PathBuf};
 
 use agent_native_runtime::{Engine, RuntimeError, Val};
 
@@ -18,7 +21,191 @@ pub struct RunCommandOutput {
     pub results: Vec<serde_json::Value>,
     pub results_formatted: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification: Option<VerificationSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+}
+
+/// Verification details included in the run command output.
+#[derive(Debug, Serialize, Clone)]
+pub struct VerificationSummary {
+    pub integrity_verified: bool,
+    pub computed_sha256: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_sha256: Option<String>,
+    pub signature_verified: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature_path: Option<String>,
+}
+
+/// Options configuring load-time verification for `run`.
+#[derive(Debug, Default, Clone)]
+pub struct RunVerificationOptions<'a> {
+    pub verify: bool,
+    pub expected_sha256: Option<&'a str>,
+    pub manifest_path: Option<&'a Path>,
+    pub signature_path: Option<&'a Path>,
+    pub public_key: Option<&'a str>,
+}
+
+/// Computes the canonical lowercase SHA-256 hex digest for arbitrary bytes.
+#[must_use]
+pub fn compute_sha256_hex(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
+}
+
+/// Loads a Minisign Ed25519 public key from a file path or direct base64 string.
+pub fn load_minisign_public_key(
+    key_str_or_path: &str,
+) -> Result<minisign_verify::PublicKey, String> {
+    let trimmed = key_str_or_path.trim();
+    let path = Path::new(trimmed);
+    let key_data = if path.exists() {
+        std::fs::read_to_string(path)
+            .map_err(|e| format!("Failed to read public key file {}: {e}", path.display()))?
+    } else {
+        trimmed.to_string()
+    };
+
+    // If key format contains comments (standard Minisign format), parse base64 line
+    let base64_str = key_data
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with("untrusted comment:"))
+        .last()
+        .unwrap_or(trimmed);
+
+    minisign_verify::PublicKey::from_base64(base64_str)
+        .map_err(|e| format!("Failed to decode Minisign public key: {e}"))
+}
+
+/// Loads a Minisign signature from a `.minisig` file.
+pub fn load_minisign_signature(sig_path: &Path) -> Result<minisign_verify::Signature, String> {
+    if !sig_path.exists() {
+        return Err(format!(
+            "Signature file does not exist: {}",
+            sig_path.display()
+        ));
+    }
+    minisign_verify::Signature::from_file(sig_path).map_err(|e| {
+        format!(
+            "Failed to parse Minisign signature from {}: {e}",
+            sig_path.display()
+        )
+    })
+}
+
+/// Resolves the expected SHA-256 digest from explicit args, manifest, or adjacent files.
+pub fn resolve_expected_sha256(
+    component_path: &Path,
+    explicit_expected: Option<&str>,
+    manifest_path: Option<&Path>,
+    auto_discover: bool,
+) -> Result<Option<String>, String> {
+    if let Some(explicit) = explicit_expected {
+        return Ok(Some(explicit.trim().to_lowercase()));
+    }
+
+    let manifest_file_to_check = if let Some(m_path) = manifest_path {
+        if !m_path.exists() {
+            return Err(format!(
+                "Manifest file does not exist: {}",
+                m_path.display()
+            ));
+        }
+        Some(m_path.to_path_buf())
+    } else if auto_discover {
+        let parent = component_path.parent().unwrap_or_else(|| Path::new("."));
+        let candidate_manifest = parent.join("manifest.json");
+        let candidate_sha = parent.join(format!(
+            "{}.sha256",
+            component_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+        ));
+        if candidate_manifest.exists() {
+            Some(candidate_manifest)
+        } else if candidate_sha.exists() {
+            let content = std::fs::read_to_string(&candidate_sha)
+                .map_err(|e| format!("Failed to read {}: {e}", candidate_sha.display()))?;
+            let hash = content
+                .split_whitespace()
+                .next()
+                .unwrap_or("")
+                .to_lowercase();
+            if !hash.is_empty() {
+                return Ok(Some(hash));
+            }
+            None
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    if let Some(m_file) = manifest_file_to_check {
+        let content = std::fs::read_to_string(&m_file)
+            .map_err(|e| format!("Failed to read manifest {}: {e}", m_file.display()))?;
+
+        // Attempt JSON parsing
+        if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&content) {
+            let comp_name = component_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy();
+            let comp_stem = component_path
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy();
+
+            if let Some(artifacts) = json_val.get("artifacts").and_then(|a| a.as_array()) {
+                for art in artifacts {
+                    let wasm_file = art.get("wasm_file").and_then(|v| v.as_str()).unwrap_or("");
+                    let comp_id = art
+                        .get("component_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    if wasm_file == comp_name.as_ref()
+                        || comp_id == comp_stem.as_ref()
+                        || artifacts.len() == 1
+                    {
+                        if let Some(sha) = art.get("sha256").and_then(|v| v.as_str()) {
+                            return Ok(Some(sha.trim().to_lowercase()));
+                        }
+                    }
+                }
+            }
+            if let Some(sha) = json_val.get("sha256").and_then(|v| v.as_str()) {
+                return Ok(Some(sha.trim().to_lowercase()));
+            }
+        }
+
+        // Attempt SHA256SUMS line parsing: "<hash>  <filename>"
+        let comp_name = component_path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy();
+        for line in content.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if (parts.len() >= 2 && parts[1].ends_with(comp_name.as_ref()))
+                || (parts.len() == 1 && parts[0].len() == 64)
+            {
+                return Ok(Some(parts[0].trim().to_lowercase()));
+            }
+        }
+
+        return Err(format!(
+            "Could not locate SHA-256 for component {} in manifest {}",
+            component_path.display(),
+            m_file.display()
+        ));
+    }
+
+    Ok(None)
 }
 
 /// Helper to convert a CLI argument string into a Component Model `Val`.
@@ -80,13 +267,14 @@ pub fn val_to_json(val: &Val) -> serde_json::Value {
     }
 }
 
-/// Executes the `run` command.
+/// Executes the `run` command with optional integrity and signature verification.
 #[allow(clippy::too_many_lines)]
 #[must_use]
 pub fn execute_run(
     component_path: &Path,
     function_name: &str,
     args: &[String],
+    verify_opts: &RunVerificationOptions<'_>,
     format: OutputFormat,
 ) -> CliExitCode {
     if !component_path.exists() {
@@ -113,6 +301,134 @@ pub fn execute_run(
             );
         }
     };
+
+    // Pre-execution verification (AN-041 & AN-042)
+    let is_verifying = verify_opts.verify
+        || verify_opts.expected_sha256.is_some()
+        || verify_opts.manifest_path.is_some()
+        || verify_opts.signature_path.is_some()
+        || verify_opts.public_key.is_some();
+
+    let mut verification_summary: Option<VerificationSummary> = None;
+
+    if is_verifying {
+        let computed_sha = compute_sha256_hex(&component_bytes);
+
+        // Resolve expected SHA-256
+        let expected_sha_res = resolve_expected_sha256(
+            component_path,
+            verify_opts.expected_sha256,
+            verify_opts.manifest_path,
+            verify_opts.verify,
+        );
+
+        let expected_sha = match expected_sha_res {
+            Ok(sha) => sha,
+            Err(err) => {
+                return emit_error(format, &err, CliExitCode::DomainFailure);
+            }
+        };
+
+        let mut integrity_ok = false;
+        if let Some(ref expected) = expected_sha {
+            if computed_sha != *expected {
+                return emit_error(
+                    format,
+                    &format!(
+                        "Integrity verification FAILED for component {}: expected SHA-256 {expected}, computed {computed_sha}",
+                        component_path.display()
+                    ),
+                    CliExitCode::DomainFailure,
+                );
+            }
+            integrity_ok = true;
+        }
+
+        // Resolve and verify cryptographic signature (Minisign)
+        let mut signature_ok = false;
+        let mut resolved_sig_path: Option<String> = None;
+
+        if verify_opts.public_key.is_some() || verify_opts.signature_path.is_some() {
+            let Some(pk_arg) = verify_opts.public_key else {
+                return emit_error(
+                    format,
+                    "Signature verification FAILED: --public-key is required when verifying signatures",
+                    CliExitCode::UsageOrIoError,
+                );
+            };
+
+            let public_key = match load_minisign_public_key(pk_arg) {
+                Ok(pk) => pk,
+                Err(err) => {
+                    return emit_error(
+                        format,
+                        &format!("Public key error: {err}"),
+                        CliExitCode::DomainFailure,
+                    );
+                }
+            };
+
+            let sig_file_path = if let Some(sig_p) = verify_opts.signature_path {
+                sig_p.to_path_buf()
+            } else {
+                PathBuf::from(format!("{}.minisig", component_path.display()))
+            };
+
+            if !sig_file_path.exists() {
+                return emit_error(
+                    format,
+                    &format!(
+                        "Signature file not found: expected Minisign signature at {}",
+                        sig_file_path.display()
+                    ),
+                    CliExitCode::DomainFailure,
+                );
+            }
+
+            let signature = match load_minisign_signature(&sig_file_path) {
+                Ok(s) => s,
+                Err(err) => {
+                    return emit_error(
+                        format,
+                        &format!("Signature read error: {err}"),
+                        CliExitCode::DomainFailure,
+                    );
+                }
+            };
+
+            if let Err(err) = public_key.verify(&component_bytes, &signature, false) {
+                return emit_error(
+                    format,
+                    &format!(
+                        "Cryptographic signature verification FAILED for component {}: {err}",
+                        component_path.display()
+                    ),
+                    CliExitCode::DomainFailure,
+                );
+            }
+
+            signature_ok = true;
+            resolved_sig_path = Some(sig_file_path.display().to_string());
+        } else if expected_sha.is_none() && verify_opts.verify {
+            // --verify was passed alone, but neither hash nor signature was discoverable
+            return emit_error(
+                format,
+                &format!(
+                    "Verification FAILED: --verify was requested, but no expected hash (--expected-sha256/--manifest), signature (--signature), or public key (--public-key) was provided, and no adjacent manifest or signature file could be found for {}",
+                    component_path.display()
+                ),
+                CliExitCode::DomainFailure,
+            );
+        }
+
+        verification_summary = Some(VerificationSummary {
+            integrity_verified: integrity_ok,
+            computed_sha256: computed_sha,
+            expected_sha256: expected_sha,
+            signature_verified: signature_ok,
+            signature_path: resolved_sig_path,
+        });
+    }
 
     let engine = match Engine::new() {
         Ok(e) => e,
@@ -170,6 +486,7 @@ pub fn execute_run(
                 function_name: function_name.to_string(),
                 results: results_json,
                 results_formatted,
+                verification: verification_summary,
                 error: None,
             };
 
@@ -177,22 +494,37 @@ pub fn execute_run(
                 format,
                 &out,
                 |o| {
+                    let mut s = String::new();
+                    if let Some(ref v) = o.verification {
+                        if v.integrity_verified {
+                            s.push_str(&format!(
+                                "[VERIFIED] SHA-256 integrity check passed ({})\n",
+                                v.computed_sha256
+                            ));
+                        }
+                        if v.signature_verified {
+                            s.push_str(&format!(
+                                "[VERIFIED] Cryptographic signature check passed ({})\n",
+                                v.signature_path.as_deref().unwrap_or("signature")
+                            ));
+                        }
+                    }
                     if o.results_formatted.is_empty() {
-                        format!(
+                        s.push_str(&format!(
                             "Function '{}' executed successfully (no return value)",
                             o.function_name
-                        )
+                        ));
                     } else {
-                        let mut s = format!(
+                        s.push_str(&format!(
                             "Function '{}' returned {} value(s):\n",
                             o.function_name,
                             o.results_formatted.len()
-                        );
+                        ));
                         for (i, res) in o.results_formatted.iter().enumerate() {
                             s.push_str(&format!("  [{i}]: {res}\n"));
                         }
-                        s
                     }
+                    s.trim_end().to_string()
                 },
                 CliExitCode::Success,
             )
@@ -204,6 +536,7 @@ pub fn execute_run(
                 function_name: function_name.to_string(),
                 results: Vec::new(),
                 results_formatted: Vec::new(),
+                verification: verification_summary,
                 error: Some(err.to_string()),
             };
 

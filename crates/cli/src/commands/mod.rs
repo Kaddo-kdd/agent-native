@@ -8,6 +8,6 @@ pub mod verify;
 
 pub use build::execute_build;
 pub use publish::execute_publish;
-pub use run::execute_run;
+pub use run::{RunVerificationOptions, execute_run};
 pub use test::execute_test;
 pub use verify::execute_verify;

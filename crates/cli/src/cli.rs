@@ -8,7 +8,10 @@ use clap::{Args, Parser, Subcommand};
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use crate::commands::{execute_build, execute_publish, execute_run, execute_test, execute_verify};
+use crate::commands::{
+    RunVerificationOptions, execute_build, execute_publish, execute_run, execute_test,
+    execute_verify,
+};
 use crate::output::{CliExitCode, OutputFormat};
 
 /// Agent-Native CLI primary interface.
@@ -112,6 +115,39 @@ pub struct RunArgs {
     /// Arguments to pass to the function.
     #[arg(help = "Positional arguments to pass to the function")]
     pub args: Vec<String>,
+
+    /// Verify component integrity and/or signature before execution.
+    #[arg(
+        long,
+        help = "Verify component integrity and/or signature before execution"
+    )]
+    pub verify: bool,
+
+    /// Expected SHA-256 hex digest for component integrity verification.
+    #[arg(
+        long,
+        help = "Expected SHA-256 hex digest for component integrity verification"
+    )]
+    pub expected_sha256: Option<String>,
+
+    /// Optional path to manifest (.json) declaring component hash.
+    #[arg(
+        short,
+        long,
+        help = "Optional path to manifest (.json) declaring component hash"
+    )]
+    pub manifest: Option<PathBuf>,
+
+    /// Path to Minisign signature (.minisig) file.
+    #[arg(long, help = "Path to Minisign signature (.minisig) file")]
+    pub signature: Option<PathBuf>,
+
+    /// Minisign Ed25519 public key (inline base64 string or path to .pub file).
+    #[arg(
+        long,
+        help = "Minisign Ed25519 public key (inline base64 string or path to .pub file)"
+    )]
+    pub public_key: Option<String>,
 }
 
 /// Arguments for `publish` subcommand.
@@ -156,7 +192,22 @@ pub fn dispatch(cli: Cli) -> CliExitCode {
         ),
         Commands::Verify(args) => execute_verify(&args.input, cli.format),
         Commands::Test(args) => execute_test(&args.suite, &args.component, cli.format),
-        Commands::Run(args) => execute_run(&args.component, &args.function, &args.args, cli.format),
+        Commands::Run(args) => {
+            let verify_opts = RunVerificationOptions {
+                verify: args.verify,
+                expected_sha256: args.expected_sha256.as_deref(),
+                manifest_path: args.manifest.as_deref(),
+                signature_path: args.signature.as_deref(),
+                public_key: args.public_key.as_deref(),
+            };
+            execute_run(
+                &args.component,
+                &args.function,
+                &args.args,
+                &verify_opts,
+                cli.format,
+            )
+        }
         Commands::Publish(args) => execute_publish(
             &args.spec,
             &args.dist_dir,

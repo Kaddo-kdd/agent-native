@@ -1,7 +1,7 @@
 ---
 id: AN-042
 type: feature
-status: draft
+status: in-progress
 created_at: 2026-10-19T00:00:00.000Z
 title: Verificación de procedencia y firma criptográfica Minisign en carga (run --verify)
 knowledge_level: K3
