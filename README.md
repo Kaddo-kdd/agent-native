@@ -12,31 +12,35 @@
 
 ## Estado del proyecto
 
-🟢 **M3 alcanzado (2026-10-19) — En desarrollo activo.** Hitos publicados:
+🟢 **M6 alcanzado (2026-10-20) — En desarrollo activo hacia M7.** Hitos publicados:
 
+- [`v0.0.6-m6`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.6-m6) — **M6 Runtime Security & Memory** (RM-06 completo). Límites de fuel deterministas y memoria (`ResourceLimiter`), contención en Windows MSVC (Wasmtime 29.0.1), aislamiento multi-tenant con Store efímero (ADR-005), verificación de procedencia (SHA-256) y firmas criptográficas Minisign Ed25519 100% offline, y suite de fixtures extremos.
 - [`v0.0.4-m3`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.4-m3) — **M3 Runtime autónomo con cobertura regresiva + línea base** (RM-03 completo). Cierre de INI-003 bajo los 7 criterios reformulados por decisión humana (D1/D2/D3).
 - [`v0.0.3-hardening`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.3-hardening) — **Hardening pass** post Technical Review (AN-014 end-to-end v0.5 Component Model + AN-015 políticas WIT granulares + AN-016 `CompileContext` sin dependencia del cwd).
 - [`v0.0.2-m1`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.2-m1) — **M1 Baseline arquitectónico** (RM-01 completo).
 
 Lo que ya funciona:
 
-- Workspace Rust (4 crates) + CI matrix en Linux/Windows/macOS (**75 tests** verdes).
-- Modelo Semantic IR v0.5 + verifier (6 tests en `crates/ir/tests/verifier.rs`).
-- Compilador IR → WASM Component Model determinista con hash SHA-256 (13 tests: 3 `compile_context` + 2 `determinism` + 8 pruebas de regresión POC en `crates/compiler/tests/poc_regression.rs`).
-- Runtime autónomo: carga + invocación tipada (Core WASM y Component Model dentro del alcance documentado, lookup WIT `interface#operation`), `HostPolicy` deny-by-default pre-instantiate a 3 niveles (core, WIT interface, WIT operation), propagación tipada de errores (`RuntimeError`), `Resolver` content-addressed con método `reset()` para limpieza de caché (56 tests runtime).
-- Executor YAML declarativo de aceptación: 32 tests (`crates/runtime/tests/executor_yaml.rs`), contrato normativo ([`knowledge/tech/poc-yaml-contract.md`](knowledge/tech/poc-yaml-contract.md)), 3 kinds de stub (`StateReader`, `StateWriter`, `Noop`), supresión de efectos de stubs posteriores tras miss en `StateReader` y reporte final estructurado con `CaseStatus::Error`.
-- Matriz de equivalencia POC formalizada: 0 equivalencias exactas, 6 coberturas parciales y 4 aplazadas ([`knowledge/tech/poc-equivalence-matrix.md`](knowledge/tech/poc-equivalence-matrix.md)).
-- Línea base técnica publicada en [`knowledge/tech/baselines/runtime-baseline.md`](knowledge/tech/baselines/runtime-baseline.md): tabla segregada por path (Core WASM / Component Model) × etapa (Engine / Load / Cold-run / Warm-run / Cache-hit-run) sobre fixtures `identity` y `point_sum`.
+- **Workspace Rust robusto (4 crates)** + CI matrix en Linux/Windows/macOS (**140 tests** verdes).
+- **CLI Unificado `agent-native` (RM-05):** Subcomandos funcionales `spec`, `build`, `verify`, `test`, `run`, `publish`.
+- **Integración LLM en tiempo de construcción (RM-04 / AN-046):** Generación asistida con modos `fixtures`, `synthesizer` y `real` (adaptador HTTP síncrono para Anthropic y OpenAI con validación estricta de Semantic IR v0.5 y sanitización de credenciales).
+- **Control de Recursos y Límites en CLI (RM-06 / AN-047):** Invocación con `--fuel`, `--max-memory-bytes` y `--max-table-elements`, con reporte de `fuel_consumed` en JSON/texto y captura limpia de errores tipados.
+- **Verificación Criptográfica y Procedencia (RM-06 / AN-041, AN-042):** Validación de integridad mediante hashes SHA-256 (`--manifest`, `--expected-sha256`) y verificación de firmas Minisign Ed25519 offline (`--signature`, `--public-key`).
+- **Runtime Autónomo y Seguro (Wasmtime 29.0.1):** Aislamiento multi-tenant estricto con ciclo de vida de Store efímero (ADR-005), `HostPolicy` deny-by-default manifest-driven y contención probada frente a traps de CPU y desbordamiento de memoria.
+- **Semantic IR v0.5 + Verifier:** Validación formal de tipos, signaturas WIT, imports de interfaces y operaciones.
+- **Compilador Determinista IR → WASM:** Generación reproducible de Component Model con hash SHA-256 idéntico bit a bit cross-platform.
+- **Executor YAML declarativo:** Batería de pruebas de aceptación y contratos de stubs (`StateReader`, `StateWriter`, `Noop`).
 
-Próximos bloques del roadmap:
+Bloques del roadmap:
 
-- **RM-04 (Specification, Agents & Build Pipeline):** Intérprete narrativa Markdown → `SystemSpec` (INIT-04-01), Adaptador LLM (INIT-04-02), evolución incremental y validación esclusas v1→v2 (INIT-04-03), pipeline de publicación atómica con rollback y store local de artefactos (INIT-04-05), trazabilidad Work Items (INIT-04-04).
-- **RM-05 (Standalone CLI & Runtime API):** Subcomandos funcionales en `cli` (`spec`, `build`, `verify`, `test`, `run`, `publish`) (INIT-05-01), SDK Rust público reutilizable del runtime (INIT-05-02).
-- **RM-06 (Runtime Security & Memory):** Policy loader manifest-driven con check al cargar (INIT-06-01, diferida por D2), límites de CPU/fuel y medición de memoria por instancia (INIT-06-02, diferida por D3), ciclo de vida multi-tenant (INIT-06-03).
-- **RM-07 (Console I/O & WASI):** Baseline WASI preview2 (INIT-07-01), IR v0.6 (INIT-07-02), stubs funcionales Component Model y composición multi-componente (INIT-07-03).
-- **RM-08 (Performance & Concurrency):** Harness y benchmarks formales cross-OS (INIT-08-01..02), warm pool (INIT-08-03), concurrencia host-side (INIT-08-04). Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
+- ✅ **RM-01 a RM-06 Completados:** Baseline arquitectónico, compilador determinista, runtime autónomo, pipeline generativo con LLMs, CLI unificada y seguridad de recursos.
+- 🟡 **RM-07 (Console I/O & WASI) — EN CURSO:**
+  - **INIT-07-01:** Adaptador WASI Preview 2 e I/O determinista en memoria (AN-044) y autorización granular de interfaces WIT `wasi:cli/*` e `io/streams` bajo Requested ∩ Granted (AN-045).
+  - **INIT-07-02:** Semantic IR v0.6 para programas de consola (echo, cat).
+  - **INIT-07-03:** Composición multi-componente y stubs funcionales en Component Model.
+- ⚪ **RM-08 (Performance & Concurrency):** Harness formal de benchmarks, warm pool y concurrencia host-side. Ver el [roadmap](knowledge/delivery/roadmap.md) para la ruta completa.
 
-> La POC histórica vive en [`Trycatch-tv/poc-agent-native`](https://github.com/Trycatch-tv/poc-agent-native) (commit `26b6a18`) y, en una clonación local, bajo `_reference/`. Es **sólo lectura** — ver [`knowledge/tech/reference-policy.md`](knowledge/tech/reference-policy.md).
+> La POC histórica vive en [`Trycatch-tv/poc-agent-native`](https://github.com/Trycatch-tv/poc-agent-native) (commit `26b6a18`) y bajo `_reference/`. Es **sólo lectura** — ver [`knowledge/tech/reference-policy.md`](knowledge/tech/reference-policy.md).
 
 ## Qué resuelve Agent-Native
 
@@ -44,12 +48,13 @@ Un LLM puede escribir código, pero esa salida no es un **contrato ejecutable** 
 
 1. **Especificación** — una narrativa Markdown + requisitos se interpretan como `SystemSpec`.
 2. **Construcción (con IA)** — un agente LLM propone Semantic IR; el **verifier** la valida; el **compilador** la convierte a WASM Component Model con WIT y hash SHA-256.
-3. **Ejecución (sin IA)** — un runtime autónomo carga el componente publicado y lo ejecuta de forma determinista, con fallos explícitos ante dependencias faltantes o permisos no autorizados.
+3. **Ejecución (sin IA)** — un runtime autónomo carga el componente publicado y lo ejecuta de forma determinista, con cuotas de fuel, límites de memoria y permisos explícitos.
 
 **Invariantes de diseño** (ADRs vinculantes):
 
 - El runtime **no depende** del compilador ni del LLM ([ADR-002](knowledge/tech/decisions/ADR-002-runtime-independiente.md)).
 - Los imports no autorizados fallan explícitamente — nunca con un valor por defecto ([ADR-004](knowledge/tech/decisions/ADR-004-seguridad-minima-transversal.md)).
+- Toda invocación se ejecuta sobre un **Store efímero** descartado incondicionalmente tras cada llamada ([ADR-005](knowledge/tech/decisions/ADR-005-store-efimero-invariantes-aislamiento.md)).
 - Toda compilación produce bytes determinísticos y un hash SHA-256 reproducible cross-OS.
 - Interoperabilidad con componentes WIT-compatibles independientes del origen ([ADR-001](knowledge/tech/decisions/ADR-001-arquitectura-inicial.md)).
 
@@ -62,11 +67,33 @@ git clone https://github.com/Kaddo-kdd/agent-native
 cd agent-native
 
 cargo build --workspace
-cargo test --workspace     # 75 tests (6 ir + 13 compiler + 56 runtime)
-cargo bench -p agent-native-runtime --bench baseline -- --quick   # opcional
+cargo test --workspace     # 140 tests verdes (18 ir + 14 compiler + 54 runtime + 54 cli)
 ```
 
-El binario `agent-native` existe como scaffolding de empaquetado; los subcomandos funcionales están planificados para RM-05 (ver INIT-05-01 en el roadmap).
+### Uso de la CLI
+
+Construir un componente desde una especificación:
+
+```bash
+agent-native build --spec spec.md --mode synthesizer --out ./dist/calculator.wasm
+```
+
+Verificar integridad y firmas criptográficas:
+
+```bash
+agent-native verify --component ./dist/calculator.wasm --manifest ./dist/manifest.json
+```
+
+Ejecutar con cuotas deterministas de fuel y límites de memoria:
+
+```bash
+agent-native run \
+  --component ./dist/calculator.wasm \
+  --function calculate \
+  --fuel 100000 \
+  --max-memory-bytes 16777216 \
+  10 20
+```
 
 ## Estructura del repositorio
 
@@ -74,16 +101,16 @@ El binario `agent-native` existe como scaffolding de empaquetado; los subcomando
 agent-native/
 ├── assets/           # Imágenes y recursos estáticos del proyecto
 ├── crates/
-│   ├── ir/           # Semantic IR v0.5: modelo + verifier + schemas
-│   ├── compiler/     # IR → WASM Component Model + hash SHA-256
-│   ├── runtime/      # carga + ejecución Wasmtime, HostPolicy, Resolver (sin LLM)
-│   └── cli/          # bin agent-native (scaffold: subcomandos planeados en INIT-05-01)
+│   ├── ir/           # Semantic IR v0.5: modelo AST + verifier + schemas
+│   ├── compiler/     # IR → WASM Component Model determinista + hash SHA-256
+│   ├── runtime/      # Runtime Wasmtime 29, Tenant, HostPolicy deny-by-default, límites de recursos
+│   └── cli/          # CLI unificada (spec, build, verify, test, run, publish) y agentes LLM
 ├── knowledge/        # Conocimiento del proyecto gestionado por Kaddo
 │   ├── business/     # Problema, usuarios, objetivos de negocio
 │   ├── product/      # Visión, journeys, capacidades
-│   ├── tech/         # Arquitectura, decisiones (ADRs), matriz de extracción
-│   └── delivery/     # Roadmap, iniciativas, Work Items
-├── .github/workflows/ # CI matrix (Linux/Windows/macOS)
+│   ├── tech/         # Arquitectura, decisiones (ADRs), línea base, guías CLI
+│   └── delivery/     # Roadmap, iniciativas, Work Items (completed y draft)
+├── .github/workflows/ # CI matrix (Linux/Windows/macOS) y release packaging
 └── _reference/       # POC histórica (ignorada por .gitignore; solo lectura)
 ```
 
@@ -94,8 +121,8 @@ Comandos del día a día:
 ```bash
 cargo fmt --all                                        # formato
 cargo clippy --workspace --all-targets -- -D warnings  # lint
-cargo test --workspace                                 # tests
-cargo build --workspace --release                      # release
+cargo test --workspace                                 # 140 tests
+cargo build --workspace --release                      # binario optimizado
 ```
 
 La CI corre estos cuatro comandos en Linux, Windows y macOS en cada push y PR. Un paso adicional del workflow verifica mecánicamente las invariantes de ADR-001/002 vía `cargo tree`.
@@ -122,6 +149,7 @@ Kaddo no es dependencia del producto — gestiona el **desarrollo** de Agent-Nat
 - [Visión del producto](knowledge/product/product.md)
 - [Capacidades planeadas](knowledge/product/capabilities.md)
 - [Estado técnico actual](knowledge/tech/current-state.md)
+- [Guía y referencia de la CLI](knowledge/tech/cli-guide.md)
 - [Mapa del codebase](knowledge/tech/codebase.md)
 - [Matriz de extracción POC → productos](knowledge/tech/extraction-matrix.md)
 - [Decisiones arquitectónicas (ADRs)](knowledge/tech/decisions/)
@@ -139,7 +167,7 @@ Explícitamente diferidos ([Not Now del roadmap](knowledge/delivery/roadmap.md#n
 - Dependencia obligatoria de Kaddo en runtime, compiler o CLI.
 - Soporte arbitrario para cualquier módulo WASM Core.
 
-Esto **no** significa "nunca": significa "no antes de alcanzar los hitos M2..M8 con evidencia".
+Esto **no** significa "nunca": significa "no antes de alcanzar los hitos correspondientes con evidencia".
 
 ## Contribuir
 
