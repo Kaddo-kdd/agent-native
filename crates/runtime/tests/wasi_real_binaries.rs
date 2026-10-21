@@ -34,6 +34,17 @@ fn sha256(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
+/// The manifests pin UTF-8 source content with LF line endings. Git may check
+/// those source files out with CRLF on Windows, which must not change their
+/// content identity.
+fn source_sha256(bytes: &[u8]) -> String {
+    sha256(
+        String::from_utf8_lossy(bytes)
+            .replace("\r\n", "\n")
+            .as_bytes(),
+    )
+}
+
 fn command_policy_without_stdout() -> HostPolicy {
     let mut policy = HostPolicy::deny_all();
     for interface in [
@@ -55,7 +66,7 @@ fn command_policy_without_stdout() -> HostPolicy {
 #[test]
 fn real_wasip2_hello_has_the_reviewed_import_inventory() {
     let manifest: FixtureManifest = serde_json::from_str(MANIFEST).expect("valid fixture manifest");
-    assert_eq!(sha256(SOURCE), manifest.source_sha256);
+    assert_eq!(source_sha256(SOURCE), manifest.source_sha256);
     assert_eq!(sha256(HELLO), manifest.artifact_sha256);
     assert_eq!(HELLO.len(), manifest.artifact_bytes);
 
@@ -155,7 +166,7 @@ fn real_wasip2_command_discards_every_calls_io_state() {
 fn real_wasip2_command_maps_a_nonzero_exit_to_a_typed_error() {
     let manifest: FixtureManifest =
         serde_json::from_str(EXIT_MANIFEST).expect("valid nonzero-exit fixture manifest");
-    assert_eq!(sha256(EXIT_SOURCE), manifest.source_sha256);
+    assert_eq!(source_sha256(EXIT_SOURCE), manifest.source_sha256);
     assert_eq!(sha256(EXIT_SEVEN), manifest.artifact_sha256);
     assert_eq!(EXIT_SEVEN.len(), manifest.artifact_bytes);
 
