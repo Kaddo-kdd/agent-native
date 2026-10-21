@@ -132,7 +132,10 @@ No incorpora workers, WASI pooling, una API estable, una meta Z ni una
 certificación de WASI o percentiles. No modifica INIT-08-02 ni el umbral del
 10 %.
 
-## Entrega posterior
+## Seguimiento arquitectónico propuesto
 
-AN-065 ejecutará las sesiones A/A y baseline/tratamiento en Linux controlado,
-conservará las evidencias separadas y propondrá adoptar o descartar la variante.
+El cierre de AN-064 no materializa AN-065. La propuesta
+`docs/benchmarks/init-08-03-08-04-architecture-proposal.md` separa una futura
+interfaz de guest reseteable, la evaluación independiente del pooling allocator
+de Wasmtime y los workers host-side con instancia fresca. Todos requieren nuevas
+decisiones humanas antes de iniciar implementación.

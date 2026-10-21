@@ -191,6 +191,15 @@ partir de la dispersión A/A, no de cifras cross-OS o históricas. Ver
 `docs/benchmarks/init-08-03-experimental-design.md`.
 
 
+### Propuesta pendiente — ajuste INIT-08-03/08-04 (2026-10-21)
+
+Pendiente de decisión humana: cerrar INIT-08-03 por no adopción de warm pool
+genérico; tratar guests reseteables y pooling allocator de Wasmtime como
+alternativas futuras independientes; y permitir INIT-08-04 con workers host-side
+de capacidad acotada y Store/instancia fresca, dependiente de INIT-06-03,
+INIT-08-01 y AN-055. Ver
+`docs/benchmarks/init-08-03-08-04-architecture-proposal.md`.
+
 ### Resultado de AN-064 (2026-10-21)
 
 AN-064 concluyó sin adoptar un warm pool genérico. La prueba ejecutable muestra

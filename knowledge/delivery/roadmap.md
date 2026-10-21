@@ -939,11 +939,16 @@ seguro verificables.
 
 **Status:** candidate · **Priority:** low · **K4**
 
-**Dependencies:** INIT-08-03.
+**Dependencies propuestas (pendientes de aprobación):** INIT-06-03,
+INIT-08-01 y AN-055. INIT-08-03 queda como antecedente de seguridad de no
+reutilización, no como bloqueo: los workers conservan Store/instancia fresca.
 
-**Suggested Work Items:**
-- WI-CANDIDATE-08-04-01: worker pool (`feature`)
-- WI-CANDIDATE-08-04-02: soak test (`chore`)
+**Propuesta:** `docs/benchmarks/init-08-03-08-04-architecture-proposal.md`.
+
+**Suggested Work Items propuestos:**
+- AN-065: contrato y prototipo experimental de workers acotados (`feature`).
+- AN-066: aislamiento concurrente, backpressure y fallos (`chore`).
+- AN-067: saturación, throughput y soak controlados (`chore`).
 
 ---
 
