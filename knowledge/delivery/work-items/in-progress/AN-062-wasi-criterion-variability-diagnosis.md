@@ -72,8 +72,14 @@ cierra AN-055, INIT-08-02 o AN-061 sin una decisión humana explícita.
 
 ## Estado
 
-Instrumento integrado en `main` y pendiente de CI. No se ha ejecutado todavía
-el diagnóstico ni el A/A. El banco `wasi_diagnostic` registra tres etapas
-separadas, conserva `extended.rs` sin cambios y guarda
-`host_telemetry_before` y `host_telemetry_after` en `collection.json`.
-El archivo `criterion-wasi-diagnostic` conserva solamente esas tres etapas.
+Instrumento integrado y validado por CI. Las sesiones A/A
+`39561303285` y `39563138519` finalizaron correctamente con el mismo SHA
+`e7ff5a9`; sus seis evidencias se archivaron por separado en
+`docs/benchmarks/evidence/` y el dictamen está en
+`docs/benchmarks/wasi-diagnostic-aa.md`.
+
+La carga con política fue estable dentro de las seis sesiones; Engine y la
+invocación WASI no lo fueron de forma uniforme por OS. El análisis no atribuye
+causalidad a WASI, Wasmtime, Criterion ni al runner, y no certifica WASI.
+AN-062 permanece abierto hasta la revisión humana de esta interpretación y de
+un siguiente experimento que controle mejor el host o las señales disponibles.
