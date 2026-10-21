@@ -21,149 +21,172 @@ fn command_output(program: &str, args: &[&str]) -> String {
     optional_command(program, args).unwrap_or_else(|| "unknown".to_string())
 }
 
+#[cfg(target_os = "linux")]
 fn cpu_model() -> String {
-    #[cfg(target_os = "linux")]
-    {
-        if let Ok(info) = std::fs::read_to_string("/proc/cpuinfo") {
-            for line in info.lines() {
-                if let Some((key, value)) = line.split_once(':') {
-                    if matches!(key.trim(), "model name" | "Hardware") && !value.trim().is_empty() {
-                        return value.trim().to_string();
-                    }
+    if let Ok(info) = std::fs::read_to_string("/proc/cpuinfo") {
+        for line in info.lines() {
+            if let Some((key, value)) = line.split_once(':') {
+                if matches!(key.trim(), "model name" | "Hardware") && !value.trim().is_empty() {
+                    return value.trim().to_string();
                 }
             }
         }
     }
-    #[cfg(target_os = "macos")]
-    {
-        return command_output("sysctl", &["-n", "machdep.cpu.brand_string"]);
-    }
-    #[cfg(target_os = "windows")]
-    {
-        return command_output(
-            "powershell.exe",
-            &[
-                "-NoProfile",
-                "-NonInteractive",
-                "-Command",
-                "(Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name -Unique) -join '; '",
-            ],
-        );
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     "unknown".to_string()
 }
 
+#[cfg(target_os = "macos")]
+fn cpu_model() -> String {
+    command_output("sysctl", &["-n", "machdep.cpu.brand_string"])
+}
+
+#[cfg(target_os = "windows")]
+fn cpu_model() -> String {
+    command_output(
+        "powershell.exe",
+        &[
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "(Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name -Unique) -join '; '",
+        ],
+    )
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+fn cpu_model() -> String {
+    "unknown".to_string()
+}
+
+#[cfg(target_os = "linux")]
 fn load_average_1m() -> Option<f64> {
-    #[cfg(target_os = "linux")]
-    {
-        return std::fs::read_to_string("/proc/loadavg")
+    std::fs::read_to_string("/proc/loadavg")
+        .ok()
+        .and_then(|value| value.split_whitespace().next()?.parse().ok())
+}
+
+#[cfg(target_os = "macos")]
+fn load_average_1m() -> Option<f64> {
+    optional_command("sysctl", &["-n", "vm.loadavg"]).and_then(|value| {
+        value
+            .trim_matches(|character| character == '{' || character == '}')
+            .split_whitespace()
+            .next()?
+            .parse()
             .ok()
-            .and_then(|value| value.split_whitespace().next()?.parse().ok());
-    }
-    #[cfg(target_os = "macos")]
-    {
-        return optional_command("sysctl", &["-n", "vm.loadavg"]).and_then(|value| {
-            value
-                .trim_matches(|character| character == '{' || character == '}')
-                .split_whitespace()
-                .next()?
-                .parse()
-                .ok()
-        });
-    }
-    #[cfg(target_os = "windows")]
-    {
-        return optional_command(
-            "powershell.exe",
-            &["-NoProfile", "-NonInteractive", "-Command",
-              "(Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average"],
-        ).and_then(|value| value.parse().ok());
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    })
+}
+
+#[cfg(target_os = "windows")]
+fn load_average_1m() -> Option<f64> {
+    optional_command(
+        "powershell.exe",
+        &[
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "(Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average",
+        ],
+    )
+    .and_then(|value| value.parse().ok())
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+fn load_average_1m() -> Option<f64> {
     None
 }
 
+#[cfg(target_os = "linux")]
 fn reported_cpu_frequency_mhz() -> Option<u64> {
-    #[cfg(target_os = "linux")]
-    {
-        let cpus = std::fs::read_dir("/sys/devices/system/cpu").ok()?;
-        for cpu in cpus.flatten() {
-            let name = cpu.file_name();
-            if !name.to_string_lossy().starts_with("cpu") {
-                continue;
-            }
-            let path = cpu.path().join("cpufreq/scaling_cur_freq");
-            if let Ok(value) = std::fs::read_to_string(path) {
-                if let Ok(khz) = value.trim().parse::<u64>() {
-                    return Some(khz / 1_000);
-                }
+    let cpus = std::fs::read_dir("/sys/devices/system/cpu").ok()?;
+    for cpu in cpus.flatten() {
+        let name = cpu.file_name();
+        if !name.to_string_lossy().starts_with("cpu") {
+            continue;
+        }
+        let path = cpu.path().join("cpufreq/scaling_cur_freq");
+        if let Ok(value) = std::fs::read_to_string(path) {
+            if let Ok(khz) = value.trim().parse::<u64>() {
+                return Some(khz / 1_000);
             }
         }
-        return None;
     }
-    #[cfg(target_os = "macos")]
-    {
-        return optional_command("sysctl", &["-n", "hw.cpufrequency"])
-            .and_then(|value| value.parse::<u64>().ok())
-            .map(|hertz| hertz / 1_000_000);
-    }
-    #[cfg(target_os = "windows")]
-    {
-        return optional_command(
-            "powershell.exe",
-            &["-NoProfile", "-NonInteractive", "-Command",
-              "(Get-CimInstance Win32_Processor | Measure-Object -Property CurrentClockSpeed -Average).Average"],
-        ).and_then(|value| value.parse().ok());
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     None
 }
 
-fn frequency_source() -> &'static str {
-    #[cfg(target_os = "linux")]
-    {
-        "sysfs scaling_cur_freq snapshot (first available CPU)"
-    }
-    #[cfg(target_os = "macos")]
-    {
-        "sysctl hw.cpufrequency"
-    }
-    #[cfg(target_os = "windows")]
-    {
-        "Win32_Processor CurrentClockSpeed average"
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    {
-        "unavailable"
-    }
+#[cfg(target_os = "macos")]
+fn reported_cpu_frequency_mhz() -> Option<u64> {
+    optional_command("sysctl", &["-n", "hw.cpufrequency"])
+        .and_then(|value| value.parse::<u64>().ok())
+        .map(|hertz| hertz / 1_000_000)
 }
 
+#[cfg(target_os = "windows")]
+fn reported_cpu_frequency_mhz() -> Option<u64> {
+    optional_command(
+        "powershell.exe",
+        &[
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "(Get-CimInstance Win32_Processor | Measure-Object -Property CurrentClockSpeed -Average).Average",
+        ],
+    )
+    .and_then(|value| value.parse().ok())
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+fn reported_cpu_frequency_mhz() -> Option<u64> {
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn frequency_source() -> &'static str {
+    "sysfs scaling_cur_freq snapshot (first available CPU)"
+}
+
+#[cfg(target_os = "macos")]
+fn frequency_source() -> &'static str {
+    "sysctl hw.cpufrequency"
+}
+
+#[cfg(target_os = "windows")]
+fn frequency_source() -> &'static str {
+    "Win32_Processor CurrentClockSpeed average"
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+fn frequency_source() -> &'static str {
+    "unavailable"
+}
+
+#[cfg(target_os = "linux")]
 fn process_affinity() -> Option<String> {
-    #[cfg(target_os = "linux")]
-    {
-        return std::fs::read_to_string("/proc/self/status")
-            .ok()
-            .and_then(|status| {
-                status.lines().find_map(|line| {
-                    line.strip_prefix("Cpus_allowed_list:")
-                        .map(|value| value.trim().to_string())
-                })
-            });
-    }
-    #[cfg(target_os = "windows")]
-    {
-        return optional_command(
-            "powershell.exe",
-            &[
-                "-NoProfile",
-                "-NonInteractive",
-                "-Command",
-                "[System.Diagnostics.Process]::GetCurrentProcess().ProcessorAffinity.ToInt64().ToString('X')",
-            ],
-        );
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|status| {
+            status.lines().find_map(|line| {
+                line.strip_prefix("Cpus_allowed_list:")
+                    .map(|value| value.trim().to_string())
+            })
+        })
+}
+
+#[cfg(target_os = "windows")]
+fn process_affinity() -> Option<String> {
+    optional_command(
+        "powershell.exe",
+        &[
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "[System.Diagnostics.Process]::GetCurrentProcess().ProcessorAffinity.ToInt64().ToString('X')",
+        ],
+    )
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+fn process_affinity() -> Option<String> {
     None
 }
 
