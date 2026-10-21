@@ -41,7 +41,13 @@ pub(crate) fn map_execution_error(
     fuel_budget: Option<u64>,
     denial: Option<GrowthDenial>,
 ) -> RuntimeError {
+    if let Some(exit) = err.downcast_ref::<wasmtime_wasi::I32Exit>() {
+        return RuntimeError::WasiCommandExited { code: exit.0 };
+    }
     for cause in err.chain() {
+        if let Some(exit) = cause.downcast_ref::<wasmtime_wasi::I32Exit>() {
+            return RuntimeError::WasiCommandExited { code: exit.0 };
+        }
         if let Some(trap) = cause.downcast_ref::<wasmtime::Trap>() {
             match trap {
                 wasmtime::Trap::OutOfFuel => {

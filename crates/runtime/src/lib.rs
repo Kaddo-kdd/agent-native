@@ -58,8 +58,10 @@ pub use manifest::{
     CURRENT_MANIFEST_VERSION, ComponentManifest, CoreImport, ManifestCapabilities, WitOperation,
 };
 pub use policy::{
-    HostPolicy, WASI_CLI_STDERR_0_2_0, WASI_CLI_STDIN_0_2_0, WASI_CLI_STDOUT_0_2_0,
-    WASI_IO_ERROR_0_2_0, WASI_IO_POLL_0_2_0, WASI_IO_STREAMS_0_2_0,
+    HostPolicy, WASI_CLI_ENVIRONMENT_0_2_0, WASI_CLI_EXIT_0_2_0, WASI_CLI_STDERR_0_2_0,
+    WASI_CLI_STDIN_0_2_0, WASI_CLI_STDOUT_0_2_0, WASI_CLOCKS_WALL_CLOCK_0_2_0,
+    WASI_FILESYSTEM_PREOPENS_0_2_0, WASI_FILESYSTEM_TYPES_0_2_0, WASI_IO_ERROR_0_2_0,
+    WASI_IO_POLL_0_2_0, WASI_IO_STREAMS_0_2_0,
 };
 pub use resolver::Resolver;
 pub use tenant::{Tenant, TenantConfig, TenantId};

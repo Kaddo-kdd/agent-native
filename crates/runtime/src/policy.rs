@@ -54,6 +54,16 @@ pub const WASI_CLI_STDIN_0_2_0: &str = "wasi:cli/stdin@0.2.0";
 pub const WASI_CLI_STDOUT_0_2_0: &str = "wasi:cli/stdout@0.2.0";
 /// Canonical WASI 0.2.0 `stderr` interface identifier.
 pub const WASI_CLI_STDERR_0_2_0: &str = "wasi:cli/stderr@0.2.0";
+/// Canonical WASI 0.2.0 command environment interface identifier.
+pub const WASI_CLI_ENVIRONMENT_0_2_0: &str = "wasi:cli/environment@0.2.0";
+/// Canonical WASI 0.2.0 command exit interface identifier.
+pub const WASI_CLI_EXIT_0_2_0: &str = "wasi:cli/exit@0.2.0";
+/// Canonical WASI 0.2.0 wall-clock interface identifier.
+pub const WASI_CLOCKS_WALL_CLOCK_0_2_0: &str = "wasi:clocks/wall-clock@0.2.0";
+/// Canonical WASI 0.2.0 preopened-directories interface identifier.
+pub const WASI_FILESYSTEM_PREOPENS_0_2_0: &str = "wasi:filesystem/preopens@0.2.0";
+/// Canonical WASI 0.2.0 filesystem descriptor interface identifier.
+pub const WASI_FILESYSTEM_TYPES_0_2_0: &str = "wasi:filesystem/types@0.2.0";
 /// Canonical WASI 0.2.0 `io/streams` auxiliary interface identifier.
 pub const WASI_IO_STREAMS_0_2_0: &str = "wasi:io/streams@0.2.0";
 /// Canonical WASI 0.2.0 `io/error` auxiliary interface identifier.
@@ -232,6 +242,21 @@ impl HostPolicy {
         self.allow_wasi_stdin()
             .allow_wasi_stdout()
             .allow_wasi_stderr()
+    }
+
+    /// Grants the exact interfaces required by the AN-050 Rust 1.85
+    /// `wasm32-wasip2` command fixture.
+    ///
+    /// The runtime exposes an empty environment, no command arguments, no
+    /// preopened directories and a deterministic wall clock. This helper does
+    /// not grant filesystem access to the host, network access or randomness.
+    pub fn allow_wasi_command_empty_fs(&mut self) -> &mut Self {
+        self.allow_wasi_stdio()
+            .allow_wit_interface(WASI_CLI_ENVIRONMENT_0_2_0)
+            .allow_wit_interface(WASI_CLI_EXIT_0_2_0)
+            .allow_wit_interface(WASI_CLOCKS_WALL_CLOCK_0_2_0)
+            .allow_wit_interface(WASI_FILESYSTEM_PREOPENS_0_2_0)
+            .allow_wit_interface(WASI_FILESYSTEM_TYPES_0_2_0)
     }
 
     /// Legacy compatibility shim preserved for AN-010/011 call sites.

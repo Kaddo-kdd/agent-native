@@ -79,7 +79,7 @@ Ver `candidates:`.
 - `AN-045`: Autorización granular de stdio y streams bajo Requested ∩ Granted (`feature`, completed).
 - `AN-048`: Extensión Semantic IR v0.6 para `string`, `result<T, E>` y política `--experimental` (`feature`, completed).
 - `AN-049`: Stubs deterministas de I/O (`stdin`/`expected_stdout`/`expected_stderr`) y tipos v0.6 en el executor YAML (`feature`, completed).
-- `AN-050`: Soporte de binarios reales `wasm32-wasip2` bajo deny-by-default (`feature`, draft; ampliación posterior de INIT-07-01, no bloquea RM-08). El spike requiere el target instalado, un fixture con hash e inventario de imports antes de ampliar proveedores WASI.
+- `AN-050`: Soporte de binarios reales `wasm32-wasip2` bajo deny-by-default (`feature`, in-progress; ampliación posterior de INIT-07-01, no bloquea RM-08). El spike fijó dos fixtures con hash e inventario de imports; el perfil de comando conserva entorno, filesystem y reloj deterministas y acotados.
 
 ## Precisiones Arquitectónicas (INIT-07-01 / 2026-10-20)
 
