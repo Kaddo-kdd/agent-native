@@ -50,6 +50,8 @@ pub mod resolver;
 pub mod tenant;
 pub mod testing;
 pub mod wasi;
+/// Experimental bounded host-side concurrency with fresh instances per request.
+pub mod workers;
 
 pub use engine::{Component, Engine};
 pub use error::{IoStream, PolicyError, RuntimeError};

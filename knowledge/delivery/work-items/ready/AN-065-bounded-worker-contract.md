@@ -92,4 +92,5 @@ infiere una comparación de warm pool con ese identificador.
 
 Antes de implementar, se presentará un refinamiento técnico con API propuesta,
 modelo de concurrencia, estrategia de aislamiento, taxonomía de errores y plan
-de pruebas para revisión humana.
+de pruebas para revisión humana. El diseño propuesto está en
+[`docs/benchmarks/an-065-bounded-workers-technical-design.md`](../../../../docs/benchmarks/an-065-bounded-workers-technical-design.md).
