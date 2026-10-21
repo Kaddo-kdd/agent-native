@@ -30,6 +30,7 @@ candidates:
   - id: INIT-08-03
     title: Caché de componentes y warm pool
     status: candidate
+    materialized_as: Diseño experimental refinado; AN-063, AN-064 y AN-065 propuestos
   - id: INIT-08-04
     title: Concurrencia host-side (workers)
     status: candidate
@@ -175,3 +176,16 @@ Solo las siete referencias Criterion no WASI de Windows permanecen certificadas
 parcialmente; Linux, macOS, WASI y percentiles individuales siguen sin
 certificación. INIT-08-02 continúa abierta bajo su alcance cross-OS original.
 Ver `docs/benchmarks/an055-init0802-closure-proposal.md`.
+
+
+### Refinamiento de INIT-08-03 (2026-10-21)
+
+INIT-08-03 se refina como una decisión experimental y de aislamiento, no como
+una optimización ya aprobada. La referencia será Linux x86_64 GNU en una
+comparación controlada A/A y baseline/tratamiento con idéntico SHA, componente,
+entrada, API y frontera temporal. El Resolver ya proporciona caché de artefactos;
+cualquier caché adicional debe justificar qué coste no cubre. Un warm pool solo
+puede ser experimental tras demostrar aislamiento, wipe o descarte seguro y
+aplicación por checkout de policy, fuel y límites. El valor Z se propondrá a
+partir de la dispersión A/A, no de cifras cross-OS o históricas. Ver
+`docs/benchmarks/init-08-03-experimental-design.md`.
