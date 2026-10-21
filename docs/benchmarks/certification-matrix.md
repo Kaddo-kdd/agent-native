@@ -16,12 +16,12 @@ un objetivo Z% para INIT-08-03.
 | OS | Criterion aceptable en ambos workflows | Entorno registrado coincidente | Propuesta |
 |---|---:|---|---|
 | Linux | 7/14 | No: CPU e imagen difieren | Mantener como evidencia técnica; no proponer referencia entre sesiones. |
-| Windows | 8/14 | Sí: CPU, imagen, Rust, Wasmtime y fuentes coinciden | Elegible para revisión como referencia limitada al entorno registrado. |
+| Windows | 8/14 | Sí: CPU, imagen, Rust, Wasmtime y fuentes coinciden | Siete no WASI son favorables para revisión limitada; WASI requiere confirmación adicional. |
 | macOS | 0/14 | Sí, pero la variación persiste | Mantener como evidencia técnica; no proponer referencia. |
 
-## Referencias Criterion propuestas para Windows
+## Referencias Criterion no WASI propuestas para Windows
 
-Estas ocho operaciones fueron `aceptable` dentro de cada workflow y se midieron
+Estas siete operaciones no WASI fueron `aceptable` dentro de cada workflow y se midieron
 con el mismo perfil registrado de Windows. Si se aprueban, la afirmación debe
 limitarse al runner GitHub-hosted `win25-vs2026 / 20261007.264.1`, CPU `AMD EPYC
 7763 64-Core Processor`, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados.
@@ -35,9 +35,17 @@ máquina física.
 | `cold_run_core_identity` | 39449438474-windows | 39534970668-windows | Pendiente de aprobación humana |
 | `cold_run_component_model_point_sum` | 39449438474-windows | 39534970668-windows | Pendiente de aprobación humana |
 | `warm_run_core_identity` | 39449438474-windows | 39534970668-windows | Pendiente de aprobación humana |
-| `cold_run_component_model_wasi_echo` | 39449438474-windows | 39534970668-windows | Pendiente de aprobación humana |
 | `warm_run_component_model_v06_greet` | 39449438474-windows | 39534970668-windows | Pendiente de aprobación humana |
 | `warm_run_component_model_v06_safe_div` | 39449438474-windows | 39534970668-windows | Pendiente de aprobación humana |
+
+## Referencia WASI pendiente
+
+`cold_run_component_model_wasi_echo` fue aceptable en ambos workflows, pero no
+se propone todavía. La evidencia archivada no registra una huella de las fuentes
+efectivas del runtime; por tanto, no permite demostrar que el cambio WASI entre
+sesiones sea equivalente para fines de certificación. Se requiere repetir el
+benchmark con una versión idéntica del runtime en dos sesiones independientes o
+documentar y aprobar explícitamente esa equivalencia.
 
 ## Percentiles individuales
 
@@ -55,8 +63,9 @@ no reciben una regla de certificación en esta fase.
 
 ## Decisión requerida
 
-1. Aprobar o rechazar las ocho referencias Criterion limitadas de Windows.
-2. Mantener Linux, macOS y todos los percentiles individuales como evidencia
+1. Aprobar o rechazar las siete referencias Criterion no WASI limitadas de Windows.
+2. Autorizar la confirmación adicional para `cold_run_component_model_wasi_echo`.
+3. Mantener Linux, macOS y todos los percentiles individuales como evidencia
    técnica hasta obtener condiciones comparables o resolver sus avisos.
-3. Mantener AN-055 e INIT-08-02 abiertos. Esta matriz no fija Z% ni autoriza la
+4. Mantener AN-055 e INIT-08-02 abiertos. Esta matriz no fija Z% ni autoriza la
    implementación de caché o warm pools.

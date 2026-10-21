@@ -131,6 +131,16 @@ independiente para cualquier cifra. La preferencia técnica registrada es exigir
 esa comprobación para percentiles individuales y evaluar una certificación
 parcial de Criterion solamente tras formalizar la revisión.
 
+### Dictamen técnico de referencias parciales (2026-10-21)
+
+Siete referencias Criterion no WASI de Windows son favorables para aprobación
+humana limitada al entorno registrado. La referencia WASI
+`cold_run_component_model_wasi_echo` requiere una nueva confirmación con runtime
+idéntico o una equivalencia WASI documentada. No se modifica el umbral del 10 %:
+las variaciones exactas y condiciones de medición, incluidas las filas cercanas
+al límite, permanecen publicadas. La futura huella de fuentes efectivas del
+runtime es un requisito metodológico para evitar incertidumbre entre sesiones.
+
 ## Learning
 
 _Pendiente._

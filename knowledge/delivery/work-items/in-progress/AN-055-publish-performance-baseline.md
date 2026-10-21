@@ -201,6 +201,19 @@ recalculados de los doce datasets. Esta sesión aporta repetibilidad entre
 workflows, pero no certifica filas ni permite fijar todavía un objetivo Z%.
 
 La propuesta de certificación parcial está en
-`docs/benchmarks/certification-matrix.md`: delimita ocho referencias Criterion
-de Windows para decisión humana y mantiene Linux, macOS y los percentiles
+`docs/benchmarks/certification-matrix.md`: delimita siete referencias Criterion
+no WASI de Windows para decisión humana y mantiene Linux, macOS y los percentiles
 individuales como evidencia técnica.
+
+### Dictamen técnico sobre la matriz (2026-10-21)
+
+Las siete referencias Criterion no WASI de Windows son favorables para una
+aprobación humana limitada al entorno registrado. `cold_run_component_model_wasi_echo`
+permanece pendiente de una nueva confirmación con runtime idéntico o de una
+equivalencia WASI documentada y aprobada. p50, p95 y p99 no se certifican; Linux
+y macOS permanecen como evidencia técnica. Este dictamen no sustituye la
+aprobación humana explícita ni cierra AN-055 o INIT-08-02.
+
+Como seguimiento metodológico, el recolector debe registrar una huella de las
+fuentes efectivas del runtime además de las fuentes de escenarios. Esa mejora
+evitará incertidumbre de equivalencia en futuras certificaciones.
