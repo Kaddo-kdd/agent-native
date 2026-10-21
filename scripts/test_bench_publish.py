@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from bench_aggregate import BENCHMARKS, aggregate, write_json
+from bench_aggregate import BENCHMARKS, WASI_DIAGNOSTIC_BENCHMARKS, aggregate, write_json
 from bench_evidence import load, pack, recalculate
 from bench_publish import DEFAULT_INPUTS, build, check_cases, main, render_readme
 from test_bench_aggregate import RUNS, environment_fixture, write_run
@@ -59,6 +59,25 @@ class EvidenceTests(unittest.TestCase):
         entry = dict(self.entry, id="124-linux", archive="wasi.json.gz", kind="criterion-wasi-confirmation", **details)
         data = load(entry, self.base)
         self.assertEqual([row["benchmark"] for row in data["criterion"]["rows"]], ["cold_run_component_model_wasi_echo"])
+
+    def test_wasi_diagnostic_archive_preserves_the_three_isolated_stages(self):
+        source = self.base / "diagnostic-source"
+        source.mkdir()
+        write_json(source / "environment.json", environment_fixture())
+        for run in RUNS:
+            write_run(source, run, benchmarks=WASI_DIAGNOSTIC_BENCHMARKS)
+        write_json(source / "summary.json", aggregate(source, benchmarks=WASI_DIAGNOSTIC_BENCHMARKS))
+        archive = self.base / "diagnostic.json.gz"
+        details = pack(source, archive, "criterion-wasi-diagnostic")
+        entry = dict(
+            self.entry, id="125-linux", archive="diagnostic.json.gz",
+            kind="criterion-wasi-diagnostic", **details,
+        )
+        data = load(entry, self.base)
+        self.assertEqual(
+            [row["benchmark"] for row in data["criterion"]["rows"]],
+            list(WASI_DIAGNOSTIC_BENCHMARKS),
+        )
 
     def test_corrupt_archive_and_false_provenance_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "hash mismatch"):

@@ -14,11 +14,12 @@ import statistics
 import tempfile
 from pathlib import Path, PurePosixPath
 
-from bench_aggregate import BENCHMARKS, RUNS, aggregate, read_json, write_json
+from bench_aggregate import BENCHMARKS, RUNS, WASI_DIAGNOSTIC_BENCHMARKS, aggregate, read_json, write_json
 from bench_latency_aggregate import aggregate_latency
 
 
 WASI_CONFIRMATION = {"cold_run_component_model_wasi_echo": BENCHMARKS["cold_run_component_model_wasi_echo"]}
+WASI_DIAGNOSTIC = WASI_DIAGNOSTIC_BENCHMARKS
 
 
 def configuration(kind):
@@ -28,6 +29,8 @@ def configuration(kind):
         return BENCHMARKS, True
     if kind == "criterion-wasi-confirmation":
         return WASI_CONFIRMATION, False
+    if kind == "criterion-wasi-diagnostic":
+        return WASI_DIAGNOSTIC, False
     raise ValueError("unknown evidence kind: " + kind)
 
 
@@ -67,7 +70,7 @@ def recalculate(files, kind):
             destination.parent.mkdir(parents=True, exist_ok=True)
             write_json(destination, value)
         benchmarks, has_latency = configuration(kind)
-        criterion = aggregate(root, benchmarks=benchmarks if kind == "criterion-wasi-confirmation" else None)
+        criterion = aggregate(root, benchmarks=benchmarks if kind in ("criterion-wasi-confirmation", "criterion-wasi-diagnostic") else None)
         if criterion != files["summary.json"] or any(len(row["medians"]) != 3 for row in criterion["rows"]):
             raise ValueError("Criterion evidence incomplete or stored summary differs from raw samples")
         # Criterion 0.5 WallTime estimates the median of time/iteration samples.
@@ -141,7 +144,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("destination", type=Path)
-    parser.add_argument("--kind", choices=("criterion", "criterion-and-latency", "criterion-wasi-confirmation"), required=True)
+    parser.add_argument("--kind", choices=("criterion", "criterion-and-latency", "criterion-wasi-confirmation", "criterion-wasi-diagnostic"), required=True)
     args = parser.parse_args()
     print(json.dumps(pack(args.root, args.destination, args.kind)))
 

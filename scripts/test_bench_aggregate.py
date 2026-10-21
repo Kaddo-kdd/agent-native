@@ -22,12 +22,13 @@ def environment_fixture(run=None):
     return env
 
 
-def write_run(root, run, value=100.0):
+def write_run(root, run, value=100.0, benchmarks=BENCHMARKS):
     directory = root / run
     directory.mkdir(parents=True, exist_ok=True)
     write_json(directory / "environment.json", environment_fixture(run))
-    write_json(directory / "collection.json", {"complete": True, "commands": {"baseline": 0, "extended": 0}})
-    for name in BENCHMARKS:
+    suites = {value[0] for value in benchmarks.values()}
+    write_json(directory / "collection.json", {"complete": True, "commands": {suite: 0 for suite in suites}})
+    for name in benchmarks:
         raw = directory / "criterion" / name / "new"
         raw.mkdir(parents=True, exist_ok=True)
         write_json(raw / "benchmark.json", {"full_id": name})

@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from bench_aggregate import RUNS, read_json
-from bench_aggregate import BENCHMARKS
+from bench_aggregate import BENCHMARKS, WASI_DIAGNOSTIC_BENCHMARKS
 from bench_collect import collect, fingerprint
 from test_bench_aggregate import environment_fixture, write_run
 from test_bench_latency import latency_document
@@ -86,6 +86,36 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual([row["benchmark"] for row in summary["rows"]], ["cold_run_component_model_wasi_echo"])
         self.assertFalse((self.output / "latency-summary.json").exists())
         self.assertEqual(len(calls), 4)
+
+    def test_wasi_diagnostic_collects_all_three_stages_without_latency(self):
+        calls = []
+
+        def command(args, **kwargs):
+            calls.append(args)
+            if "--no-run" not in args:
+                self.assertEqual(args[-2:], ["--", "diagnostic_wasi_"])
+                write_run(
+                    self.output, Path(kwargs["env"]["CRITERION_HOME"]).parent.name,
+                    benchmarks=WASI_DIAGNOSTIC_BENCHMARKS,
+                )
+            return subprocess.CompletedProcess(args, 0)
+
+        with patch("bench_collect.environment", side_effect=environment_fixture), \
+                patch("bench_collect.subprocess.run", side_effect=command):
+            self.assertEqual(
+                collect(
+                    self.output, benchmarks=WASI_DIAGNOSTIC_BENCHMARKS, collect_latency=False,
+                    filters={"wasi_diagnostic": "diagnostic_wasi_"},
+                ),
+                0,
+            )
+        summary = read_json(self.output / "summary.json")
+        self.assertEqual(summary["selected_benchmarks"], list(WASI_DIAGNOSTIC_BENCHMARKS))
+        self.assertEqual(len(calls), 4)
+        for run in RUNS:
+            status = read_json(self.output / run / "collection.json")
+            self.assertIn("host_telemetry_before", status)
+            self.assertIn("host_telemetry_after", status)
 
     def test_runtime_fingerprint_is_order_independent(self):
         hashes = {"b.rs": "b" * 64, "a.rs": "a" * 64}

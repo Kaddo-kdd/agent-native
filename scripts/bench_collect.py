@@ -13,7 +13,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bench_aggregate import BENCHMARKS, RUNS, aggregate, write_json
+from bench_aggregate import BENCHMARKS, RUNS, WASI_DIAGNOSTIC_BENCHMARKS, aggregate, write_json
 from bench_latency_aggregate import aggregate_latency
 
 
@@ -21,6 +21,7 @@ REPO = Path(__file__).resolve().parents[1]
 SOURCES = (
     "Cargo.lock", "Cargo.toml", "rust-toolchain.toml", "crates/runtime/Cargo.toml",
     "crates/runtime/benches/baseline.rs", "crates/runtime/benches/extended.rs",
+    "crates/runtime/benches/wasi_diagnostic.rs",
     "crates/runtime/benches/fixtures/wasi_console_echo.wat",
     "crates/compiler/tests/fixtures/ir/program-005.ir.json",
     "crates/runtime/examples/bench_env.rs", "scripts/bench_collect.py",
@@ -90,7 +91,7 @@ def environment(run=None):
     return env
 
 
-def collect(output, benchmarks=None, collect_latency=True):
+def collect(output, benchmarks=None, collect_latency=True, filters=None):
     benchmarks = BENCHMARKS if benchmarks is None else benchmarks
     # Refuse to reuse an evidence directory, even after a partial/failed run.
     output = output.resolve()
@@ -118,7 +119,9 @@ def collect(output, benchmarks=None, collect_latency=True):
             status = {"started_at_utc": utc_now(), "complete": False, "commands": {}}
             write_json(directory / "collection.json", status)
             try:
-                write_json(directory / "environment.json", environment(run))
+                run_environment = environment(run)
+                status["host_telemetry_before"] = run_environment.get("host_telemetry")
+                write_json(directory / "environment.json", run_environment)
                 child_env = os.environ.copy()
                 # Criterion 0.5 honours CRITERION_HOME; fresh output directories
                 # prevent both overwrites and stale results from cargo caches.
@@ -129,7 +132,7 @@ def collect(output, benchmarks=None, collect_latency=True):
                     command = ["cargo", "bench", "--locked", "-p", "agent-native-runtime", "--bench", suite]
                     selected = [name for name, value in benchmarks.items() if value[0] == suite]
                     if len(benchmarks) != len(BENCHMARKS):
-                        command.extend(("--", selected[0]))
+                        command.extend(("--", (filters or {}).get(suite, selected[0])))
                     print(run + ": " + " ".join(command), flush=True)
                     with (directory / (suite + ".log")).open("w", encoding="utf-8") as log:
                         result = subprocess.run(command, cwd=REPO, env=child_env, stdout=log, stderr=subprocess.STDOUT)
@@ -151,6 +154,12 @@ def collect(output, benchmarks=None, collect_latency=True):
                 status["error"] = str(exc)
                 failed = True
             finally:
+                # This snapshot is deliberately outside Criterion's timed scope.
+                # A missing probe is evidence too, so it is represented as null.
+                try:
+                    status["host_telemetry_after"] = environment(run).get("host_telemetry")
+                except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                    status["host_telemetry_after_error"] = str(exc)
                 status["finished_at_utc"] = utc_now()
                 write_json(directory / "collection.json", status)
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
@@ -172,11 +181,16 @@ def collect(output, benchmarks=None, collect_latency=True):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=REPO / "bench-results")
-    parser.add_argument("--scope", choices=("full", "wasi-confirmation"), default="full")
+    parser.add_argument("--scope", choices=("full", "wasi-confirmation", "wasi-diagnostic"), default="full")
     args = parser.parse_args()
     if args.scope == "wasi-confirmation":
         selected = {"cold_run_component_model_wasi_echo": BENCHMARKS["cold_run_component_model_wasi_echo"]}
         return collect(args.output, benchmarks=selected, collect_latency=False)
+    if args.scope == "wasi-diagnostic":
+        return collect(
+            args.output, benchmarks=WASI_DIAGNOSTIC_BENCHMARKS, collect_latency=False,
+            filters={"wasi_diagnostic": "diagnostic_wasi_"},
+        )
     return collect(args.output)
 
 

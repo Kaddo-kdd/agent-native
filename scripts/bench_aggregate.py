@@ -28,6 +28,13 @@ BENCHMARKS = {
     "warm_run_component_model_v06_safe_div": ("extended", "warm_run", "cm_v06", "safe-div"),
     "warm_run_core_identity_fuel": ("extended", "warm_run", "core_identity", "identity"),
 }
+# AN-062 diagnostic stages. They are intentionally separate from BENCHMARKS:
+# their evidence localises variability and cannot replace historical cold data.
+WASI_DIAGNOSTIC_BENCHMARKS = {
+    "diagnostic_wasi_engine_construct": ("wasi_diagnostic", "diagnostic", "cm_wasi_echo", "engine"),
+    "diagnostic_wasi_component_load_with_policy": ("wasi_diagnostic", "diagnostic", "cm_wasi_echo", "load"),
+    "diagnostic_wasi_invoke_with_wasi": ("wasi_diagnostic", "diagnostic", "cm_wasi_echo", "invoke"),
+}
 ENV_KEYS = (
     "os", "arch", "cpu_model", "logical_cpus", "rustc", "cargo", "wasmtime",
     "profile", "commit", "workflow_run_id", "workflow_run_attempt", "runner_os",

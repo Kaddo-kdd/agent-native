@@ -6,13 +6,14 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: Full cross-OS suite or the narrow WASI confirmation
+        description: Full suite, narrow WASI confirmation, or AN-062 diagnostic
         required: true
         default: full
         type: choice
         options:
           - full
           - wasi-confirmation
+          - wasi-diagnostic
 
 permissions:
   contents: read
