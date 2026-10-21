@@ -1,7 +1,7 @@
 ---
 id: AN-061
 type: chore
-status: in-progress
+status: completed
 created_at: 2026-10-21T00:00:00.000Z
 title: Confirmación WASI independiente y huella efectiva del runtime
 knowledge_level: K3
@@ -84,8 +84,10 @@ de cada par de OS. Windows fue `inestable` (12,24 %) en la primera sesión y
 se certifica y AN-061 permanece abierto para diagnóstico de variabilidad, sin
 nuevas repeticiones por ahora.
 
-### Transferencia propuesta a AN-062 (2026-10-21)
+### Cierre humano condicionado (2026-10-21)
 
-AN-061 cumple sus objetivos instrumentales y preserva el resultado no certificable.
-Su cierre requiere una decisión humana explícita. AN-062 materializa el diagnóstico
-posterior por etapas y entorno, sin modificar ni repetir las sesiones de AN-061.
+Aprobado como trabajo diagnóstico: AN-061 cumple sus objetivos instrumentales y
+preserva el resultado no certificable. Su transferencia a AN-062 quedó completada
+sin modificar ni repetir las sesiones originales. WASI sigue sin certificar; la
+excepción metodológica y los límites de cierre se registran en
+`docs/benchmarks/an061-an062-closure-proposal.md`.

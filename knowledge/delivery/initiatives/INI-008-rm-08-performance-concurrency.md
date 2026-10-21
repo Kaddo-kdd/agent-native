@@ -26,7 +26,7 @@ candidates:
   - id: INIT-08-02
     title: Línea base pública cross-OS
     status: candidate
-    materialized_as: AN-053 (completed), AN-054 (completed), AN-055 (in-progress), AN-061 (in-progress), AN-062 (in-progress)
+    materialized_as: AN-053 (completed), AN-054 (completed), AN-055 (in-progress), AN-061 (completed), AN-062 (completed)
   - id: INIT-08-03
     title: Caché de componentes y warm pool
     status: candidate
@@ -158,3 +158,12 @@ siguiente trabajo de INIT-08-02 es registrar la huella efectiva de fuentes del
 runtime y repetir la confirmación WASI con versiones idénticas en dos workflows
 independientes. INIT-08-03 mantiene su puerta de evidencia: su comparación
 controlada definirá cualquier umbral de mejora a partir de mediciones nuevas.
+
+### Cierre condicionado de AN-061 y AN-062 (2026-10-21)
+
+Se aprobó cerrar AN-061 y AN-062 como investigación diagnóstica. La excepción
+aceptada registra que el A/A se ejecutó en runners hospedados, no en un host
+controlado: Linux y Windows cambiaron de CPU registrada entre sesiones y macOS
+no prueba identidad física. La decisión cierra los work items, no certifica
+WASI ni modifica AN-055, INIT-08-02, el umbral del 10 % o las siete referencias
+parciales de Windows. Ver `docs/benchmarks/an061-an062-closure-proposal.md`.

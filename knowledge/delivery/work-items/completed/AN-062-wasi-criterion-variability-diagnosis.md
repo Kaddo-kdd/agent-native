@@ -1,7 +1,7 @@
 ---
 id: AN-062
 type: chore
-status: in-progress
+status: completed
 created_at: 2026-10-21T00:00:00.000Z
 title: Diagnóstico de variabilidad Criterion en cold-run WASI
 knowledge_level: K2
@@ -81,5 +81,9 @@ Instrumento integrado y validado por CI. Las sesiones A/A
 La carga con política fue estable dentro de las seis sesiones; Engine y la
 invocación WASI no lo fueron de forma uniforme por OS. El análisis no atribuye
 causalidad a WASI, Wasmtime, Criterion ni al runner, y no certifica WASI.
-AN-062 permanece abierto hasta la revisión humana de esta interpretación y de
-un siguiente experimento que controle mejor el host o las señales disponibles.
+Cierre humano condicionado aprobado: AN-062 completa el diagnóstico con la
+excepción de que los runners hospedados no constituyeron un host controlado o
+dedicado. El trabajo documenta la variabilidad bajo entornos registrados, sin
+atribuir causalidad ni certificar WASI. Una investigación con host controlado o
+señales adicionales queda fuera de este work item; sus límites se registran en
+`docs/benchmarks/an061-an062-closure-proposal.md`.
