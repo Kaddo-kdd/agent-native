@@ -1,8 +1,9 @@
 ---
 id: AN-063
 type: chore
-status: in-progress
+status: completed
 created_at: 2026-10-21T00:00:00.000Z
+completed_at: 2026-10-21T00:00:00.000Z
 title: Contrato experimental y aislamiento para warm pool
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -49,6 +50,10 @@ template_version: 1
 
 # AN-063 — Contrato experimental y aislamiento para warm pool
 
+## Estado: completado
+
+El contrato se integró en `main` mediante `b113b82` y su corrección `132b3c8`. La CI `39571561792` aprobó los siete jobs en Linux, Windows y macOS; Website `39571561818` también finalizó correctamente.
+
 ## Objetivo
 
 Preparar una decisión segura sobre caché adicional o warm pool. AN-063 no añade
@@ -87,7 +92,7 @@ un global mutable y memoria lineal. Verifica que la baseline actual:
 
 ## Siguiente puerta
 
-AN-064 solo puede crear una variante experimental acotada tras revisar este
+AN-064 queda materializado como el sucesor experimental. Solo puede crear una variante experimental acotada tras revisar este
 contrato. Debe añadir capacidad máxima, ciclo de cierre, descarte en cualquier
 error y pruebas que pasen con el tratamiento. Si no puede preservar AC-02--AC-04,
 la decisión correcta es no implementar el pool.

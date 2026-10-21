@@ -110,11 +110,11 @@ la iniciativa sin añadir complejidad.
 ## Secuencia de Work Items propuesta
 
 1. **AN-063 — Contrato de experimento y aislamiento para warm pool** (`chore`,
-   K4): especificar la frontera temporal, API experimental, fixtures de
-   contaminación, matriz de seguridad y formato de evidencia. No cambia el
+   K4): **completado**. Define la frontera temporal y su fixture de
+   contaminación valida globals, memoria, trap, fuel y policy sin cambiar el
    camino de producción.
 2. **AN-064 — Implementación experimental de caché/pool acotado** (`feature`,
-   K4): solo después de aprobar AN-063. Implementar detrás de una API o flag
+   K4): **en curso**, detrás de una API o flag
    experimental, con capacidad acotada, descarte seguro y pruebas negativas.
 3. **AN-065 — Comparación controlada y decisión de producto** (`chore`, K4):
    ejecutar A/A y baseline/tratamiento en Linux controlado, publicar evidencia y

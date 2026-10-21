@@ -91,7 +91,7 @@ Fuentes:
 | **RM-08** | **Performance & Concurrency** | — | — | Runtime caracterizado por benchmarks | in-progress |
 | INIT-08-01 | Harness de benchmarks reproducible | medium | INIT-03-06, INIT-05-01 | Varianza acotada entre corridas; cross-OS | completed (AN-051, AN-052) |
 | INIT-08-02 | Línea base pública cross-OS | medium | INIT-08-01 | p50/p95/p99 publicados por operación | nuevo |
-| INIT-08-03 | Caché de componentes y warm pool | medium | INIT-06-03, INIT-08-02 | Decisión controlada sobre caché/pool, con aislamiento demostrado | in-progress (AN-063; AN-064/065 propuestos) |
+| INIT-08-03 | Caché de componentes y warm pool | medium | INIT-06-03, INIT-08-02 | Decisión controlada sobre caché/pool, con aislamiento demostrado | in-progress (AN-063 completed; AN-064; AN-065 propuesto) |
 | INIT-08-04 | Concurrencia host-side (workers) | low | INIT-08-03 | Throughput escala con N workers hasta saturar | nuevo |
 | **Diferido** | Interoperabilidad con componentes WIT externos | — | — | Objetivo arquitectónico; sin iniciativa activa | diferido |
 
@@ -926,9 +926,9 @@ seguro verificables.
 **Diseño refinado:** `docs/benchmarks/init-08-03-experimental-design.md`.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-08-03-01 / AN-063 en curso: contrato de experimento, frontera
+- WI-CANDIDATE-08-03-01 / AN-063 completado: contrato de experimento, frontera
   temporal y pruebas de contaminación/aislamiento (`chore`).
-- WI-CANDIDATE-08-03-02 / AN-064 propuesto: caché o pool experimental acotado
+- WI-CANDIDATE-08-03-02 / AN-064 en curso: caché o pool experimental acotado
   detrás de API/flag, solo tras AN-063 (`feature`).
 - WI-CANDIDATE-08-03-03 / AN-065 propuesto: A/A, evidencia Linux controlada y
   decisión humana de adopción o no adopción (`chore`).
