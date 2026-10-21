@@ -113,6 +113,24 @@ referencias parciales por operación y entorno. La evidencia inestable permanece
 publicada con sus limitaciones; no se exige estabilidad universal para una
 posible certificación parcial.
 
+### Preparación de INIT-08-03 (2026-10-20)
+
+La publicación candidata permite identificar la carga de componentes en Linux y
+Windows como candidata para comparar caché y warm pool. No fija aún un objetivo
+Z%: las mediciones disponibles no bastan para distinguir una mejora objetivo del
+ruido observado.
+
+Antes de implementar una optimización, el work item de INIT-08-03 debe definir
+una comparación controlada entre la implementación actual y la optimizada, con
+el mismo componente, entrada, API, hardware y frontera temporal. La mejora debe
+superar de forma clara la variación medida y justificar el coste de complejidad.
+
+La certificación sigue abierta. La decisión pendiente es aprobar referencias
+parciales, delimitadas por operación y entorno, o exigir primero la comprobación
+independiente para cualquier cifra. La preferencia técnica registrada es exigir
+esa comprobación para percentiles individuales y evaluar una certificación
+parcial de Criterion solamente tras formalizar la revisión.
+
 ## Learning
 
 _Pendiente._
