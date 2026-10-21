@@ -1,7 +1,7 @@
 ﻿---
 id: AN-055
 type: docs
-status: in-progress
+status: completed
 created_at: 2026-10-20T00:00:00.000Z
 title: Publicación reproducible de la línea base de rendimiento en docs/benchmarks
 knowledge_level: K3
@@ -248,3 +248,12 @@ huellas efectivas coinciden dentro de cada OS. Windows y macOS muestran una
 sesión estable y otra inestable; la evidencia no permite certificar WASI ni
 seleccionar la sesión favorable. Se conserva la certificación limitada de las
 siete referencias Windows y permanecen abiertos AN-055 e INIT-08-02.
+
+### Cierre humano limitado (2026-10-21)
+
+Se aprobó cerrar AN-055 como entrega de publicación reproducible de evidencia
+técnica. La certificación queda limitada a las siete referencias Criterion no
+WASI de Windows ya aprobadas; Linux y macOS, WASI y percentiles individuales
+permanecen como evidencia sin certificación. INIT-08-02 permanece abierta bajo
+su alcance cross-OS original. La decisión, límites y trabajo futuro están en
+`docs/benchmarks/an055-init0802-closure-proposal.md`.

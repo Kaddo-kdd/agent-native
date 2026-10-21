@@ -26,7 +26,7 @@ candidates:
   - id: INIT-08-02
     title: Línea base pública cross-OS
     status: candidate
-    materialized_as: AN-053 (completed), AN-054 (completed), AN-055 (in-progress), AN-061 (completed), AN-062 (completed)
+    materialized_as: AN-053 (completed), AN-054 (completed), AN-055 (completed), AN-061 (completed), AN-062 (completed)
   - id: INIT-08-03
     title: Caché de componentes y warm pool
     status: candidate
@@ -167,3 +167,11 @@ controlado: Linux y Windows cambiaron de CPU registrada entre sesiones y macOS
 no prueba identidad física. La decisión cierra los work items, no certifica
 WASI ni modifica AN-055, INIT-08-02, el umbral del 10 % o las siete referencias
 parciales de Windows. Ver `docs/benchmarks/an061-an062-closure-proposal.md`.
+
+### Cierre limitado de AN-055 (2026-10-21)
+
+Se aprobó cerrar AN-055 como publicación reproducible de evidencia técnica.
+Solo las siete referencias Criterion no WASI de Windows permanecen certificadas
+parcialmente; Linux, macOS, WASI y percentiles individuales siguen sin
+certificación. INIT-08-02 continúa abierta bajo su alcance cross-OS original.
+Ver `docs/benchmarks/an055-init0802-closure-proposal.md`.
