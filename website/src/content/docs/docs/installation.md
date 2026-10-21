@@ -12,6 +12,15 @@ el linker y herramientas nativas correspondientes.
 
 Node y pnpm solo son necesarios para desarrollar este sitio, no para ejecutar la CLI.
 
+## Plataformas iniciales
+
+Wasma recomienda **Linux x86_64 GNU** para las primeras integraciones y
+despliegues controlados. Windows x86_64 y macOS ARM64 siguen siendo compatibles
+y se validan funcionalmente en CI. Esta recomendación no afirma mejor
+rendimiento en Linux ni certifica WASI para cualquier carga de producción; las
+limitaciones de rendimiento permanecen documentadas.
+
+
 ## Compilar desde fuente
 
 ```sh

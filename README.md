@@ -23,6 +23,7 @@
 Lo que ya funciona:
 
 - **Workspace Rust robusto (4 crates)** + CI matrix en Linux/Windows/macOS (**162 tests** verdes).
+- **Soporte inicial de plataformas:** Linux x86_64 GNU es el entorno recomendado para primeras integraciones; Windows x86_64 y macOS ARM64 se mantienen compatibles y validados por CI. Esta prioridad operativa no certifica rendimiento ni WASI ([ADR-007](knowledge/tech/decisions/ADR-007-plataforma-operativa-inicial-wasma.md)).
 - **CLI Unificado `agent-native` (RM-05):** Subcomandos funcionales `spec`, `build`, `verify`, `test`, `run`, `publish`.
 - **Integración LLM en tiempo de construcción (RM-04 / AN-046):** Generación asistida con modos `fixtures`, `synthesizer` y `real` (adaptador HTTP síncrono para Anthropic y OpenAI con validación estricta de Semantic IR v0.5 y sanitización de credenciales).
 - **Control de Recursos y Límites en CLI (RM-06 / AN-047):** Invocación con `--fuel`, `--max-memory-bytes` y `--max-table-elements`, con reporte de `fuel_consumed` en JSON/texto y captura limpia de errores tipados.
