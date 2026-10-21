@@ -83,6 +83,11 @@ El umbral estricto actual de 10 % continúa clasificando estabilidad local de la
 medianas Criterion y p50. No certifica percentiles ni convierte el experimento
 en una certificación WASI.
 
+**Hallazgo AN-064:** la prueba `warm_pool_feasibility` confirma que una instancia
+Wasmtime reutilizada mantiene su global mutable. Como el runtime no cuenta con
+un reset genérico verificable de instancia/Store, no se implementará un pool
+genérico para los componentes actuales; se conserva la baseline fresca.
+
 ## Puertas de decisión
 
 ### Puerta 1 — preparación

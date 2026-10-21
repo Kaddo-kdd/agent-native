@@ -87,6 +87,21 @@ Antes de medir beneficio se añadirá una comparación A/A de la baseline. El
 umbral Z no se fija en este Work Item: AN-065 lo propondrá a partir de la
 dispersión observada en Linux x86_64 GNU controlado.
 
+## Hallazgo de viabilidad
+
+AN-064 verificó que una instancia Wasmtime viva conserva su global mutable entre
+llamadas. La evidencia ejecutable está en
+`crates/runtime/tests/warm_pool_feasibility.rs`: dos llamadas a una instancia
+reutilizada devuelven `1` y `2`; una instancia creada en un `Store` fresco vuelve
+a devolver `1`. La API de Wasmtime usada por el runtime no aporta un reset
+genérico y verificable de globals, memoria, tablas, recursos ni host context.
+
+Por ello, un pool genérico para los componentes actuales no puede satisfacer
+AC-03 y AC-04. No se implementará reutilización de instancias bajo AN-064. La
+baseline de Store e instancia frescos se conserva. Una propuesta futura solo
+sería posible con un contrato explícito de guest para reset verificable, con
+revisión de seguridad y un Work Item nuevo; no se infiere de este hallazgo.
+
 ## Criterios de aceptación
 
 - AC-01: la variante está aislada detrás de una API o flag experimental y no
