@@ -119,11 +119,10 @@ la iniciativa sin añadir complejidad.
    contaminación valida globals, memoria, trap, fuel y policy sin cambiar el
    camino de producción.
 2. **AN-064 — Implementación experimental de caché/pool acotado** (`feature`,
-   K4): **en curso**, detrás de una API o flag
-   experimental, con capacidad acotada, descarte seguro y pruebas negativas.
-3. **AN-065 — Comparación controlada y decisión de producto** (`chore`, K4):
-   ejecutar A/A y baseline/tratamiento en Linux controlado, publicar evidencia y
-   proponer Z o la decisión de no adoptar la optimización.
+   K4): **completado sin adopción**. La reutilización genérica retiene estado y
+   no dispone de reset verificable; la baseline fresca permanece.
+3. **AN-065 — Comparación controlada y decisión de producto** (`chore`, K4): no
+   materializado. Requiere primero un tratamiento seguro que comparar.
 
 INIT-08-04 depende de una decisión explícita de AN-065; un worker pool no debe
 ampliar un mecanismo de reutilización cuya seguridad o beneficio no esté probado.

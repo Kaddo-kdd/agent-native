@@ -1,8 +1,9 @@
 ---
 id: AN-064
 type: feature
-status: in-progress
+status: completed
 created_at: 2026-10-21T00:00:00.000Z
+completed_at: 2026-10-21T00:00:00.000Z
 title: Variante experimental de warm pool acotado
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -47,6 +48,18 @@ template_version: 1
 ---
 
 # AN-064 — Variante experimental de warm pool acotado
+
+## Estado: completado sin adopción
+
+El experimento concluye que no es seguro implementar un warm pool genérico para
+los componentes actuales. `warm_pool_feasibility` demuestra que una instancia
+Wasmtime viva retiene un global mutable entre invocaciones; el runtime no dispone
+de un reset genérico verificable de `Store`, memoria, tablas, globals, recursos o
+host context. Por ello no se incorporó una variante funcional ni se modificó la
+ruta productiva de Store e instancia frescos.
+
+La evidencia se publicó en `1a25646` y aprobó CI `39573751113` (7/7 en Linux,
+Windows y macOS) y Website `39573751072`.
 
 ## Objetivo
 

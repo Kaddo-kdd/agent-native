@@ -30,7 +30,7 @@ candidates:
   - id: INIT-08-03
     title: Caché de componentes y warm pool
     status: candidate
-    materialized_as: AN-063 (completed); AN-064 (in-progress); AN-065 propuesto
+    materialized_as: AN-063 (completed); AN-064 (completed, sin adopción); AN-065 no materializado
   - id: INIT-08-04
     title: Concurrencia host-side (workers)
     status: candidate
@@ -189,3 +189,13 @@ puede ser experimental tras demostrar aislamiento, wipe o descarte seguro y
 aplicación por checkout de policy, fuel y límites. El valor Z se propondrá a
 partir de la dispersión A/A, no de cifras cross-OS o históricas. Ver
 `docs/benchmarks/init-08-03-experimental-design.md`.
+
+
+### Resultado de AN-064 (2026-10-21)
+
+AN-064 concluyó sin adoptar un warm pool genérico. La prueba ejecutable muestra
+que una instancia Wasmtime reutilizada conserva estado mutable y el runtime no
+dispone de una limpieza genérica verificable. Se mantiene Store e instancia
+frescos por invocación; AN-065 no se materializa sin un tratamiento seguro que
+comparar. INIT-08-03 continúa abierta para una propuesta futura con contrato de
+reset explícito y revisión de seguridad.
