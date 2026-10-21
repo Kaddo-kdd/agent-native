@@ -97,7 +97,14 @@ decisión de no reutilizar instancias.
 - `close` deja de aceptar trabajo, drena o rechaza según contrato y libera los
   workers sin perder errores.
 
-### Work Items propuestos
+### Trazabilidad de AN-065 y Work Items propuestos
+
+El identificador **AN-065 no fue materializado**. En el diseño inicial de
+INIT-08-03 se reservaba para una comparación A/A de warm pool; AN-064 concluyó
+que no hay tratamiento genérico seguro que comparar. Esta propuesta reutiliza
+AN-065 para workers acotados y registra expresamente la sustitución para que no
+parezca que la comparación de warm pool fue ejecutada o descartada por datos de
+rendimiento. La reasignación solo entra en vigor con aprobación humana.
 
 | ID propuesto | Entrega | Criterios principales |
 |---|---|---|
@@ -118,8 +125,22 @@ variación observada y requerirá revisión humana para cualquier adopción.
 3. Cambiar las dependencias de INIT-08-04 a INIT-06-03, INIT-08-01 y AN-055;
    conservar INIT-08-03 como antecedente de seguridad, no como bloqueo.
 4. Sustituir los Work Items genéricos de worker/soak por AN-065, AN-066 y AN-067.
-5. Ajustar el hito RM-08 para separar evidencia de concurrencia con instancias
+5. Reformular el criterio 3 de RM-08 y M8: sustituir “caché mejora warm start
+   en Z%” por una **decisión trazable sobre optimización de instanciación**.
+   Puede consistir en adopción con mejora medida en campaña controlada o en no
+   adopción documentada por un límite de seguridad; ningún Z% se presume.
+6. Ajustar el hito RM-08 para separar evidencia de concurrencia con instancias
    frescas de cualquier optimización posterior de instanciación.
+
+
+## Reformulación propuesta de RM-08 y M8
+
+| Elemento actual | Ajuste propuesto pendiente de aprobación |
+|---|---|
+| RM-08, criterio 3: “Caché mejora warm start en Z%” | “Existe una decisión humana trazable sobre optimización de instanciación: adopción respaldada por una comparación controlada o no adopción sustentada por seguridad y evidencia.” |
+| RM-08, criterio 4: throughput con N workers | “Workers acotados preservan aislamiento y backpressure; la campaña AN-067 caracteriza throughput y saturación sin objetivo inventado.” |
+| RM-08, criterio 5: soak M horas sin degradación | “AN-067 define duración, carga y señales de degradación tras una baseline controlada; los datos y límites quedan publicados.” |
+| M8: línea base, caché cuantificado, concurrencia | “Línea base técnica publicada, decisión de instanciación trazable y concurrencia host-side evaluada con aislamiento, saturación y soak.” |
 
 ## Decisiones humanas requeridas
 

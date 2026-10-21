@@ -1099,7 +1099,7 @@ flowchart LR
 | M5 — Distribuible (RC v0.1.0) | Ola E | Instalación sin Rust; release candidate en 3 triples |
 | M6 — Runtime seguro | Ola F | Policy, fuel/limits, aislamiento, verificación de integridad |
 | M7 — Programas con I/O | Ola G | Hello world WASI real bajo policy |
-| M8 — Caracterizado | Ola H | Línea base pública, caché cuantificado, concurrencia |
+| M8 — Caracterizado | Ola H | Línea base pública, decisión trazable sobre instanciación y concurrencia aislada; ajuste pendiente de aprobación |
 
 Los hitos son **propuesta**; versiones comerciales se declaran solo tras aprobación formal.
 

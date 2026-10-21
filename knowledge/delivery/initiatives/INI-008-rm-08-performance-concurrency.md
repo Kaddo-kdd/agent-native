@@ -191,6 +191,15 @@ partir de la dispersión A/A, no de cifras cross-OS o históricas. Ver
 `docs/benchmarks/init-08-03-experimental-design.md`.
 
 
+### Propuesta pendiente — trazabilidad AN-065 y criterio M8 (2026-10-21)
+
+AN-065 no se materializó para warm pool. La propuesta solicita reutilizar el
+identificador para el contrato de workers y registra la sustitución para evitar
+ambigüedad histórica. También propone reemplazar el criterio M8 de mejora Z% de
+caché por una decisión trazable de adopción o no adopción de optimización de
+instanciación. Ninguno de estos cambios aplica sin aprobación humana. Ver
+`docs/benchmarks/init-08-03-08-04-architecture-proposal.md`.
+
 ### Propuesta pendiente — ajuste INIT-08-03/08-04 (2026-10-21)
 
 Pendiente de decisión humana: cerrar INIT-08-03 por no adopción de warm pool
