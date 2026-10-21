@@ -142,7 +142,7 @@ fn fresh_instance_contract_rechecks_policy_for_every_tenant() {
     let mut allowed_policy = HostPolicy::deny_all();
     allowed_policy.allow_core("env", "read");
     let allowed = engine.create_tenant(TenantConfig::new("allowed").with_policy(allowed_policy));
-    let (report, _) = allowed
+    let (report, ()) = allowed
         .invoke_core_with_host_ctx(
             &component,
             "query",
