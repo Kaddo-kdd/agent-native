@@ -40,13 +40,17 @@ def interval(value):
     return us(value["min"]) + "–" + us(value["max"]) if value else "no disponible"
 
 
-def classification(status, flags):
+def classification(status, flags, certification):
+    if certification:
+        return "referencia_parcial_certificada"
     if status != "aceptable":
         return "excluida_" + status
     return "requiere_revision_instrumento" if flags else "candidata_revision_humana"
 
 
 def editorial(row):
+    if row["certified"]:
+        return "Referencia parcial certificada"
     if row["status"] != "aceptable":
         return "Excluida: " + row["status"]
     return "Revisar instrumento" if row["instrument_flags"] else "Candidata a revisión"
@@ -95,7 +99,7 @@ def check_cases(dataset, registry):
                 raise ValueError("scenario API or timing boundary differs from evidence")
 
 
-def rows_for(dataset, registry):
+def rows_for(dataset, registry, certifications):
     result = []
     common = provenance(dataset)
     for method, summary in ((METHODS[0], dataset["criterion"]), (METHODS[1], dataset["latency"])):
@@ -107,10 +111,12 @@ def rows_for(dataset, registry):
             row["role"] = dataset["entry"]["role"]
             row["provenance"] = common
             row["case"] = registry["scenarios"][row["benchmark"]]
-            row["certified"] = False
+            certification = certifications.get(row["id"])
+            row["certified"] = certification is not None
+            row["certification"] = certification
             flags = sorted({flag for group in row.get("instrument_warnings", {}).values() for flag in group})
             row["instrument_flags"] = flags
-            row["publication_class"] = classification(row["status"], flags)
+            row["publication_class"] = classification(row["status"], flags, certification)
             row["exclusion_reason"] = None if row["status"] == "aceptable" else row["status"]
             if method == METHODS[0]:
                 row["sample_type"] = "Criterion grouped statistical samples; not individual invocations"
@@ -125,6 +131,41 @@ def rows_for(dataset, registry):
                 row["sample_type"] = "individual invocation durations"
                 row["wasm_sha256"] = row["descriptor"]["fixture_sha256"]
             result.append(row)
+    return result
+
+
+def partial_certifications(manifest, datasets):
+    by_id = {dataset["entry"]["id"]: dataset for dataset in datasets}
+    result = {}
+    required = {"id", "status", "approved_at", "dataset_id", "supporting_dataset_id", "method", "benchmarks", "scope"}
+    for decision in manifest.get("partial_certifications", []):
+        if set(decision) != required or decision["status"] != "human-approved":
+            raise ValueError("partial certification must be an explicit human approval")
+        primary = by_id.get(decision["dataset_id"])
+        supporting = by_id.get(decision["supporting_dataset_id"])
+        if primary is None or supporting is None or primary["entry"]["role"] != "primary" or supporting["entry"]["role"] != "verification":
+            raise ValueError("partial certification datasets must be primary and verification evidence")
+        if decision["method"] != METHODS[0] or primary["environment"]["os"] != "windows" or supporting["environment"]["os"] != "windows":
+            raise ValueError("partial certification scope is limited to Windows Criterion evidence")
+        if primary["environment"]["source_sha256"] != supporting["environment"]["source_sha256"]:
+            raise ValueError("partial certification requires matching recorded sources")
+        for key in ("cpu_model", "runner_image", "runner_image_version", "rustc", "wasmtime"):
+            if primary["environment"][key] != supporting["environment"][key]:
+                raise ValueError("partial certification environment differs: " + key)
+        benchmarks = decision["benchmarks"]
+        if not benchmarks or len(benchmarks) != len(set(benchmarks)):
+            raise ValueError("partial certification benchmarks must be unique and nonempty")
+        primary_rows = {row["benchmark"]: row for row in primary["criterion"]["rows"]}
+        supporting_rows = {row["benchmark"]: row for row in supporting["criterion"]["rows"]}
+        for benchmark in benchmarks:
+            if benchmark not in primary_rows or benchmark not in supporting_rows:
+                raise ValueError("partial certification benchmark missing from Criterion evidence")
+            if primary_rows[benchmark]["status"] != "aceptable" or supporting_rows[benchmark]["status"] != "aceptable":
+                raise ValueError("partial certification benchmark is not acceptable in both workflows")
+            row_id = decision["dataset_id"] + "/" + decision["method"] + "/" + benchmark
+            if row_id in result:
+                raise ValueError("partial certification duplicates a publication row")
+            result[row_id] = {key: decision[key] for key in ("id", "approved_at", "scope", "supporting_dataset_id")}
     return result
 
 
@@ -158,11 +199,13 @@ def build(inputs_path):
         raise ValueError("primary evidence must contain exactly one dataset per OS")
     if any(data["entry"]["run_id"] != manifest["primary_run_id"] or data["latency"] is None for data in primary):
         raise ValueError("primary workflow identity or individual evidence missing")
-    rows = [row for dataset in datasets for row in rows_for(dataset, registry)]
+    certifications = partial_certifications(manifest, datasets)
+    rows = [row for dataset in datasets for row in rows_for(dataset, registry, certifications)]
     result = {
         "schema_version": 1, "certification": "pending-human-review", "certified": False,
         "primary_run_id": manifest["primary_run_id"],
         "selection_rule": "complete AN-054 workflow fixed in inputs.json; no selection by performance or stability",
+        "partial_certifications": sorted(certifications.values(), key=lambda item: item["id"]),
         "units": "ns", "datasets": [{**data["entry"], "environment": data["environment"]} for data in datasets],
         "rows": rows,
         "calibration": {data["entry"]["id"]: data["latency"]["calibration_by_run"] for data in primary},
@@ -300,9 +343,10 @@ def render_history(publication):
 
 def render_readme(publication):
     dataset_count = len(publication["datasets"])
-    lines = ["# Línea base medida candidata — pendiente de revisión humana", "",
+    certified_count = sum(row["certified"] for row in publication["rows"])
+    lines = ["# Línea base medida — certificación parcial de Windows", "",
              "## Limitaciones y estado", "",
-             "**Ninguna fila está certificada.** Un workflow verde prueba recolección completa, no estabilidad ni certificación.",
+             "**" + str(certified_count) + " filas Criterion no WASI de Windows tienen certificación humana parcial y limitada.** La línea base cross-OS completa sigue pendiente.",
              "Las filas inestables permanecen visibles y quedan excluidas de afirmaciones de línea base certificada. Las aceptables con avisos requieren revisión del instrumento.", ""]
     lines += ["- " + value for value in publication["limitations"]]
     lines += ["", "Umbral conservado: `(max - min) / mediana` de tres medianas Criterion < 10 %; por separado, la misma regla sobre tres p50 individuales.",
@@ -312,7 +356,7 @@ def render_readme(publication):
               "Cada .json.gz contiene un objeto files con las rutas originales (run-XX/criterion/... y run-XX/latency/...). El compresor usa cabecera sin fecha ni nombre de máquina. Los hashes verifican integridad, no certificación ni firma de autoría.",
               "El comando verifica hashes, procedencia, fuentes de fixtures y ambos resúmenes contra las muestras antes de generar esta publicación. No necesita red ni volver a medir.",
               "Comprueba cada mediana Criterion como mediana de tiempos/iteraciones y recalcula los percentiles individuales con nearest-rank. Los intervalos bootstrap originales Criterion se conservan como evidencia; no se vuelven a simular ni se usan como intervalos de fuel.",
-              "[publication.json](publication.json) contiene todas las filas con procedencia completa; [cases.md](cases.md) detalla operación, entradas, salidas esperadas y API; [history.md](history.md) conserva grupos históricos independientes; [certification-matrix.md](certification-matrix.md) propone referencias parciales para revisión humana.", "",
+              "[publication.json](publication.json) contiene todas las filas con procedencia completa; [cases.md](cases.md) detalla operación, entradas, salidas esperadas y API; [history.md](history.md) conserva grupos históricos independientes; [certification-matrix.md](certification-matrix.md) delimita la certificación parcial y sus exclusiones.", "",
               "## Estado de las mediciones principales", ""]
     primary = [data for data in publication["datasets"] if data["role"] == "primary"]
     counts = []
@@ -351,7 +395,7 @@ def render_readme(publication):
               "Esta publicación permite localizar etapas y escenarios candidatos, pero no decide todavía caché o warm pools ni fija una mejora Z%.",
               "Antes de optimizar: revisar filas concretas aceptables y su instrumento, estabilizar mediciones relevantes (especialmente macOS), contrastar controles de igual operación/API y medir memoria/aislamiento donde corresponda.",
               "Cold-run vs warm-run cambia Engine/carga; no demuestra por sí solo el beneficio marginal de un warm pool. El Resolver existente ya cachea artefactos, no instancias.",
-              "La certificación y el cierre de AN-055 / INIT-08-02 requieren revisión humana explícita. Las cifras Wasmtime 27/--quick de AN-017 se conservan como historial y no son la referencia para nuevas decisiones.", ""]
+              "La certificación parcial de Windows no cierra AN-055 / INIT-08-02: WASI, los percentiles y la evidencia cross-OS siguen pendientes de revisión humana. Las cifras Wasmtime 27/--quick de AN-017 se conservan como historial y no son la referencia para nuevas decisiones.", ""]
     return "\n".join(lines)
 
 
@@ -381,7 +425,7 @@ def main():
             path.write_bytes(content.encode("utf-8"))
     if stale:
         raise SystemExit("Outdated benchmark publication: " + ", ".join(stale))
-    print("Verified offline candidate publication" if args.check else "Generated candidate publication; human certification pending")
+    print("Verified offline benchmark publication" if args.check else "Generated benchmark publication with explicit partial-certification records")
 
 
 if __name__ == "__main__":

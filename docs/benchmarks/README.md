@@ -1,8 +1,8 @@
-# Línea base medida candidata — pendiente de revisión humana
+# Línea base medida — certificación parcial de Windows
 
 ## Limitaciones y estado
 
-**Ninguna fila está certificada.** Un workflow verde prueba recolección completa, no estabilidad ni certificación.
+**7 filas Criterion no WASI de Windows tienen certificación humana parcial y limitada.** La línea base cross-OS completa sigue pendiente.
 Las filas inestables permanecen visibles y quedan excluidas de afirmaciones de línea base certificada. Las aceptables con avisos requieren revisión del instrumento.
 
 - Escenarios de runners hospedados, sin rendimiento universal por OS ni SLA.
@@ -29,7 +29,7 @@ inputs.json fija 12 fuentes y la ejecución principal; no selecciona repeticione
 Cada .json.gz contiene un objeto files con las rutas originales (run-XX/criterion/... y run-XX/latency/...). El compresor usa cabecera sin fecha ni nombre de máquina. Los hashes verifican integridad, no certificación ni firma de autoría.
 El comando verifica hashes, procedencia, fuentes de fixtures y ambos resúmenes contra las muestras antes de generar esta publicación. No necesita red ni volver a medir.
 Comprueba cada mediana Criterion como mediana de tiempos/iteraciones y recalcula los percentiles individuales con nearest-rank. Los intervalos bootstrap originales Criterion se conservan como evidencia; no se vuelven a simular ni se usan como intervalos de fuel.
-[publication.json](publication.json) contiene todas las filas con procedencia completa; [cases.md](cases.md) detalla operación, entradas, salidas esperadas y API; [history.md](history.md) conserva grupos históricos independientes; [certification-matrix.md](certification-matrix.md) propone referencias parciales para revisión humana.
+[publication.json](publication.json) contiene todas las filas con procedencia completa; [cases.md](cases.md) detalla operación, entradas, salidas esperadas y API; [history.md](history.md) conserva grupos históricos independientes; [certification-matrix.md](certification-matrix.md) delimita la certificación parcial y sus exclusiones.
 
 ## Estado de las mediciones principales
 
@@ -150,19 +150,19 @@ Medianas en µs; N cuenta muestras agrupadas Criterion, no invocaciones individu
 
 | Benchmark / fixture | R1 µs | R2 µs | R3 µs | Variación | N por R | Estado editorial | Procedencia |
 |---|---|---|---|---|---|---|---|
-| `engine_construct` / engine | 2.863 | 2.620 | 2.646 | 9.18 % | 100/100/100 | Candidata a revisión | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
+| `engine_construct` / engine | 2.863 | 2.620 | 2.646 | 9.18 % | 100/100/100 | Referencia parcial certificada | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
 | `load_core_identity` / core_identity | 455.428 | 512.367 | 471.065 | 12.09 % | 100/100/100 | Excluida: inestable | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
-| `load_component_model_point_sum` / cm_point_sum | 877.828 | 919.603 | 904.451 | 4.62 % | 100/100/100 | Candidata a revisión | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
-| `cold_run_core_identity` / core_identity | 439.148 | 476.271 | 467.015 | 7.95 % | 100/100/100 | Candidata a revisión | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
-| `cold_run_component_model_point_sum` / cm_point_sum | 916.995 | 917.475 | 969.793 | 5.75 % | 100/100/100 | Candidata a revisión | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
-| `warm_run_core_identity` / core_identity | 1.957 | 1.955 | 1.947 | 0.49 % | 100/100/100 | Candidata a revisión | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
+| `load_component_model_point_sum` / cm_point_sum | 877.828 | 919.603 | 904.451 | 4.62 % | 100/100/100 | Referencia parcial certificada | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
+| `cold_run_core_identity` / core_identity | 439.148 | 476.271 | 467.015 | 7.95 % | 100/100/100 | Referencia parcial certificada | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
+| `cold_run_component_model_point_sum` / cm_point_sum | 916.995 | 917.475 | 969.793 | 5.75 % | 100/100/100 | Referencia parcial certificada | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
+| `warm_run_core_identity` / core_identity | 1.957 | 1.955 | 1.947 | 0.49 % | 100/100/100 | Referencia parcial certificada | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
 | `warm_run_component_model_point_sum` / cm_point_sum | 28.385 | 42.721 | 32.272 | 44.42 % | 100/100/100 | Excluida: inestable | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
 | `cache_hit_run_core_identity` / core_identity | 2.138 | 2.395 | 2.410 | 11.39 % | 100/100/100 | Excluida: inestable | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
 | `cache_hit_run_component_model_point_sum` / cm_point_sum | 30.013 | 43.942 | 33.884 | 41.11 % | 100/100/100 | Excluida: inestable | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
 | `warm_run_component_model_wasi_echo` / cm_wasi_echo | 68.625 | 75.378 | 64.823 | 15.38 % | 100/100/100 | Excluida: inestable | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
 | `cold_run_component_model_wasi_echo` / cm_wasi_echo | 2448.780 | 2624.889 | 2403.273 | 9.05 % | 100/100/100 | Candidata a revisión | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
-| `warm_run_component_model_v06_greet` / cm_v06 | 25.550 | 27.063 | 24.540 | 9.88 % | 100/100/100 | Candidata a revisión | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
-| `warm_run_component_model_v06_safe_div` / cm_v06 | 25.256 | 26.787 | 24.618 | 8.59 % | 100/100/100 | Candidata a revisión | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
+| `warm_run_component_model_v06_greet` / cm_v06 | 25.550 | 27.063 | 24.540 | 9.88 % | 100/100/100 | Referencia parcial certificada | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
+| `warm_run_component_model_v06_safe_div` / cm_v06 | 25.256 | 26.787 | 24.618 | 8.59 % | 100/100/100 | Referencia parcial certificada | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
 | `warm_run_core_identity_fuel` / core_identity | 2.134 | 1.962 | 1.931 | 10.37 % | 100/100/100 | Excluida: inestable | [39449438474-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474/artifacts/12277678333) |
 
 ### Invocaciones — percentil_por_invocacion
@@ -314,4 +314,4 @@ ns por repetición; intervalo = rango de tres diferencias emparejadas de p50. **
 Esta publicación permite localizar etapas y escenarios candidatos, pero no decide todavía caché o warm pools ni fija una mejora Z%.
 Antes de optimizar: revisar filas concretas aceptables y su instrumento, estabilizar mediciones relevantes (especialmente macOS), contrastar controles de igual operación/API y medir memoria/aislamiento donde corresponda.
 Cold-run vs warm-run cambia Engine/carga; no demuestra por sí solo el beneficio marginal de un warm pool. El Resolver existente ya cachea artefactos, no instancias.
-La certificación y el cierre de AN-055 / INIT-08-02 requieren revisión humana explícita. Las cifras Wasmtime 27/--quick de AN-017 se conservan como historial y no son la referencia para nuevas decisiones.
+La certificación parcial de Windows no cierra AN-055 / INIT-08-02: WASI, los percentiles y la evidencia cross-OS siguen pendientes de revisión humana. Las cifras Wasmtime 27/--quick de AN-017 se conservan como historial y no son la referencia para nuevas decisiones.

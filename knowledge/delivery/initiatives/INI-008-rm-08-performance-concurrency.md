@@ -144,3 +144,17 @@ runtime es un requisito metodológico para evitar incertidumbre entre sesiones.
 ## Learning
 
 _Pendiente._
+
+### Aprobación parcial de Criterion Windows (2026-10-21)
+
+Se aprobó una referencia humana parcial para siete operaciones Criterion no WASI
+en Windows, delimitada por los datasets `39449438474-windows` y
+`39534970668-windows`, el runner, CPU y versiones registrados. La decisión queda
+reproducible en `docs/benchmarks/inputs.json` y su matriz de alcance; no altera el
+estado abierto de INIT-08-02 ni establece una línea base universal o cross-OS.
+
+WASI, percentiles individuales, Linux y macOS siguen como evidencia técnica. El
+siguiente trabajo de INIT-08-02 es registrar la huella efectiva de fuentes del
+runtime y repetir la confirmación WASI con versiones idénticas en dos workflows
+independientes. INIT-08-03 mantiene su puerta de evidencia: su comparación
+controlada definirá cualquier umbral de mejora a partir de mediciones nuevas.

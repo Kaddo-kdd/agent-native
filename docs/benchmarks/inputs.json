@@ -231,5 +231,25 @@
     }
   ],
   "primary_run_id": "39449438474",
-  "schema_version": 1
+  "schema_version": 1,
+  "partial_certifications": [
+    {
+      "id": "windows-criterion-non-wasi-2026-10-21",
+      "status": "human-approved",
+      "approved_at": "2026-10-21",
+      "dataset_id": "39449438474-windows",
+      "supporting_dataset_id": "39534970668-windows",
+      "method": "estimacion_agregada",
+      "benchmarks": [
+        "engine_construct",
+        "load_component_model_point_sum",
+        "cold_run_core_identity",
+        "cold_run_component_model_point_sum",
+        "warm_run_core_identity",
+        "warm_run_component_model_v06_greet",
+        "warm_run_component_model_v06_safe_div"
+      ],
+      "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS."
+    }
+  ]
 }

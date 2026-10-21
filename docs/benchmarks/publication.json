@@ -1005,6 +1005,50 @@
     "Los intervalos de fuel son rangos observados, no de confianza; el orden fijo puede introducir deriva temporal.",
     "No hay comparaciones con implementaciones nativas ni con el arranque de AWS Lambda."
   ],
+  "partial_certifications": [
+    {
+      "approved_at": "2026-10-21",
+      "id": "windows-criterion-non-wasi-2026-10-21",
+      "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+      "supporting_dataset_id": "39534970668-windows"
+    },
+    {
+      "approved_at": "2026-10-21",
+      "id": "windows-criterion-non-wasi-2026-10-21",
+      "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+      "supporting_dataset_id": "39534970668-windows"
+    },
+    {
+      "approved_at": "2026-10-21",
+      "id": "windows-criterion-non-wasi-2026-10-21",
+      "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+      "supporting_dataset_id": "39534970668-windows"
+    },
+    {
+      "approved_at": "2026-10-21",
+      "id": "windows-criterion-non-wasi-2026-10-21",
+      "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+      "supporting_dataset_id": "39534970668-windows"
+    },
+    {
+      "approved_at": "2026-10-21",
+      "id": "windows-criterion-non-wasi-2026-10-21",
+      "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+      "supporting_dataset_id": "39534970668-windows"
+    },
+    {
+      "approved_at": "2026-10-21",
+      "id": "windows-criterion-non-wasi-2026-10-21",
+      "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+      "supporting_dataset_id": "39534970668-windows"
+    },
+    {
+      "approved_at": "2026-10-21",
+      "id": "windows-criterion-non-wasi-2026-10-21",
+      "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+      "supporting_dataset_id": "39534970668-windows"
+    }
+  ],
   "primary_run_id": "39449438474",
   "rows": [
     {
@@ -1023,6 +1067,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -1130,6 +1175,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -1237,6 +1283,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -1348,6 +1395,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -1461,6 +1509,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -1572,6 +1621,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -1685,6 +1735,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -1801,6 +1852,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -1919,6 +1971,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -2036,6 +2089,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -2153,6 +2207,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -2262,6 +2317,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -2374,6 +2430,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -2488,6 +2545,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -2595,6 +2653,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -2702,6 +2761,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -2809,6 +2869,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -2920,6 +2981,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -3033,6 +3095,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -3144,6 +3207,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -3257,6 +3321,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -3373,6 +3438,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -3491,6 +3557,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -3608,6 +3675,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -3725,6 +3793,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -3834,6 +3903,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -3946,6 +4016,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -4060,6 +4131,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -4167,6 +4239,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -4274,6 +4347,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -4381,6 +4455,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -4492,6 +4567,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -4605,6 +4681,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -4716,6 +4793,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -4829,6 +4907,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -4945,6 +5024,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -5063,6 +5143,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -5180,6 +5261,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -5297,6 +5379,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -5406,6 +5489,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -5518,6 +5602,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -5632,6 +5717,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -5739,6 +5825,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -5846,6 +5933,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -5953,6 +6041,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -6064,6 +6153,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -6177,6 +6267,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -6288,6 +6379,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -6401,6 +6493,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -6517,6 +6610,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -6635,6 +6729,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -6752,6 +6847,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -6869,6 +6965,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -6978,6 +7075,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -7090,6 +7188,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -7204,6 +7303,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -7311,6 +7411,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -7418,6 +7519,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -7525,6 +7627,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -7636,6 +7739,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -7749,6 +7853,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -7860,6 +7965,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -7973,6 +8079,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -8089,6 +8196,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -8207,6 +8315,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -8324,6 +8433,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -8441,6 +8551,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -8550,6 +8661,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -8662,6 +8774,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -8776,6 +8889,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -8883,6 +8997,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -8990,6 +9105,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -9097,6 +9213,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -9208,6 +9325,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -9321,6 +9439,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -9432,6 +9551,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -9545,6 +9665,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -9661,6 +9782,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -9779,6 +9901,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -9896,6 +10019,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -10013,6 +10137,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -10122,6 +10247,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -10234,6 +10360,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -10348,6 +10475,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -10455,6 +10583,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -10562,6 +10691,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -10669,6 +10799,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -10780,6 +10911,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -10893,6 +11025,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -11004,6 +11137,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -11117,6 +11251,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -11233,6 +11368,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -11351,6 +11487,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -11468,6 +11605,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -11585,6 +11723,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -11694,6 +11833,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -11806,6 +11946,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -11920,6 +12061,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -12030,6 +12172,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -12175,6 +12318,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -12324,6 +12468,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -12474,6 +12619,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -12624,6 +12770,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_wasi",
@@ -12769,6 +12916,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -12913,6 +13061,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -13060,6 +13209,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(fuel=1000000)",
@@ -13206,6 +13356,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(unmetered)",
@@ -13346,6 +13497,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -13453,6 +13605,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -13560,6 +13713,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -13671,6 +13825,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -13784,6 +13939,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -13895,6 +14051,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -14008,6 +14165,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -14124,6 +14282,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -14242,6 +14401,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -14359,6 +14519,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -14476,6 +14637,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -14585,6 +14747,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -14697,6 +14860,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -14811,6 +14975,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -14921,6 +15086,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -15066,6 +15232,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -15215,6 +15382,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -15365,6 +15533,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -15515,6 +15684,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_wasi",
@@ -15660,6 +15830,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -15804,6 +15975,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -15951,6 +16123,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(fuel=1000000)",
@@ -16097,6 +16270,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(unmetered)",
@@ -16237,7 +16411,13 @@
         "outputs_observed": false,
         "stage": "engine"
       },
-      "certified": false,
+      "certification": {
+        "approved_at": "2026-10-21",
+        "id": "windows-criterion-non-wasi-2026-10-21",
+        "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+        "supporting_dataset_id": "39534970668-windows"
+      },
+      "certified": true,
       "criterion_sample_counts": {
         "run-01": 100,
         "run-02": 100,
@@ -16301,7 +16481,7 @@
         "wasmtime": "29.0.1",
         "workflow_url": "https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474"
       },
-      "publication_class": "candidata_revision_humana",
+      "publication_class": "referencia_parcial_certificada",
       "range_ns": {
         "max": 2862.8599149388624,
         "min": 2619.911643575958,
@@ -16344,6 +16524,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -16451,7 +16632,13 @@
         "outputs_observed": false,
         "stage": "load"
       },
-      "certified": false,
+      "certification": {
+        "approved_at": "2026-10-21",
+        "id": "windows-criterion-non-wasi-2026-10-21",
+        "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+        "supporting_dataset_id": "39534970668-windows"
+      },
+      "certified": true,
       "criterion_sample_counts": {
         "run-01": 100,
         "run-02": 100,
@@ -16515,7 +16702,7 @@
         "wasmtime": "29.0.1",
         "workflow_url": "https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474"
       },
-      "publication_class": "candidata_revision_humana",
+      "publication_class": "referencia_parcial_certificada",
       "range_ns": {
         "max": 919602.8985507246,
         "min": 877828.3333333333,
@@ -16562,7 +16749,13 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
-      "certified": false,
+      "certification": {
+        "approved_at": "2026-10-21",
+        "id": "windows-criterion-non-wasi-2026-10-21",
+        "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+        "supporting_dataset_id": "39534970668-windows"
+      },
+      "certified": true,
       "criterion_sample_counts": {
         "run-01": 100,
         "run-02": 100,
@@ -16626,7 +16819,7 @@
         "wasmtime": "29.0.1",
         "workflow_url": "https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474"
       },
-      "publication_class": "candidata_revision_humana",
+      "publication_class": "referencia_parcial_certificada",
       "range_ns": {
         "max": 476270.9943181818,
         "min": 439147.93562521064,
@@ -16675,7 +16868,13 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
-      "certified": false,
+      "certification": {
+        "approved_at": "2026-10-21",
+        "id": "windows-criterion-non-wasi-2026-10-21",
+        "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+        "supporting_dataset_id": "39534970668-windows"
+      },
+      "certified": true,
       "criterion_sample_counts": {
         "run-01": 100,
         "run-02": 100,
@@ -16739,7 +16938,7 @@
         "wasmtime": "29.0.1",
         "workflow_url": "https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474"
       },
-      "publication_class": "candidata_revision_humana",
+      "publication_class": "referencia_parcial_certificada",
       "range_ns": {
         "max": 969793.1318681319,
         "min": 916995.0048732944,
@@ -16786,7 +16985,13 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
-      "certified": false,
+      "certification": {
+        "approved_at": "2026-10-21",
+        "id": "windows-criterion-non-wasi-2026-10-21",
+        "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+        "supporting_dataset_id": "39534970668-windows"
+      },
+      "certified": true,
       "criterion_sample_counts": {
         "run-01": 100,
         "run-02": 100,
@@ -16850,7 +17055,7 @@
         "wasmtime": "29.0.1",
         "workflow_url": "https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474"
       },
-      "publication_class": "candidata_revision_humana",
+      "publication_class": "referencia_parcial_certificada",
       "range_ns": {
         "max": 1956.614503930888,
         "min": 1946.9784427966101,
@@ -16899,6 +17104,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -17015,6 +17221,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -17133,6 +17340,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -17250,6 +17458,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -17367,6 +17576,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -17476,7 +17686,13 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
-      "certified": false,
+      "certification": {
+        "approved_at": "2026-10-21",
+        "id": "windows-criterion-non-wasi-2026-10-21",
+        "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+        "supporting_dataset_id": "39534970668-windows"
+      },
+      "certified": true,
       "criterion_sample_counts": {
         "run-01": 100,
         "run-02": 100,
@@ -17540,7 +17756,7 @@
         "wasmtime": "29.0.1",
         "workflow_url": "https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474"
       },
-      "publication_class": "candidata_revision_humana",
+      "publication_class": "referencia_parcial_certificada",
       "range_ns": {
         "max": 27063.31325669561,
         "min": 24539.663303077938,
@@ -17588,7 +17804,13 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
-      "certified": false,
+      "certification": {
+        "approved_at": "2026-10-21",
+        "id": "windows-criterion-non-wasi-2026-10-21",
+        "scope": "Referencia parcial limitada al runner GitHub-hosted win25-vs2026 / 20261007.264.1, CPU AMD EPYC 7763 64-Core Processor, Rust 1.85.0, Wasmtime 29.0.1 y los commits archivados; no es una línea base universal ni cross-OS.",
+        "supporting_dataset_id": "39534970668-windows"
+      },
+      "certified": true,
       "criterion_sample_counts": {
         "run-01": 100,
         "run-02": 100,
@@ -17652,7 +17874,7 @@
         "wasmtime": "29.0.1",
         "workflow_url": "https://github.com/Kaddo-kdd/agent-native/actions/runs/39449438474"
       },
-      "publication_class": "candidata_revision_humana",
+      "publication_class": "referencia_parcial_certificada",
       "range_ns": {
         "max": 26787.41186839013,
         "min": 24618.25,
@@ -17702,6 +17924,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -17812,6 +18035,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -17965,6 +18189,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -18122,6 +18347,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -18280,6 +18506,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -18438,6 +18665,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_wasi",
@@ -18591,6 +18819,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -18743,6 +18972,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -18898,6 +19128,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(fuel=1000000)",
@@ -19052,6 +19283,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(unmetered)",
@@ -19200,6 +19432,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -19307,6 +19540,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -19414,6 +19648,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -19525,6 +19760,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -19638,6 +19874,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -19749,6 +19986,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -19862,6 +20100,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -19978,6 +20217,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -20096,6 +20336,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -20213,6 +20454,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -20330,6 +20572,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -20439,6 +20682,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -20551,6 +20795,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -20665,6 +20910,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -20775,6 +21021,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -20920,6 +21167,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -21069,6 +21317,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -21219,6 +21468,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -21369,6 +21619,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_wasi",
@@ -21514,6 +21765,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -21658,6 +21910,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -21805,6 +22058,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(fuel=1000000)",
@@ -21951,6 +22205,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(unmetered)",
@@ -22091,6 +22346,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -22198,6 +22454,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -22305,6 +22562,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -22416,6 +22674,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -22529,6 +22788,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -22640,6 +22900,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -22753,6 +23014,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -22869,6 +23131,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -22987,6 +23250,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -23104,6 +23368,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -23221,6 +23486,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -23330,6 +23596,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -23442,6 +23709,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -23556,6 +23824,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -23666,6 +23935,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -23811,6 +24081,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -23960,6 +24231,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -24110,6 +24382,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -24260,6 +24533,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_wasi",
@@ -24405,6 +24679,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -24549,6 +24824,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -24696,6 +24972,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(fuel=1000000)",
@@ -24842,6 +25119,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(unmetered)",
@@ -24982,6 +25260,7 @@
         "outputs_observed": false,
         "stage": "engine"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -25089,6 +25368,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -25196,6 +25476,7 @@
         "outputs_observed": false,
         "stage": "load"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -25307,6 +25588,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -25420,6 +25702,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -25531,6 +25814,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -25644,6 +25928,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -25760,6 +26045,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -25878,6 +26164,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -25995,6 +26282,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -26112,6 +26400,7 @@
         "outputs_observed": false,
         "stage": "cold_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -26221,6 +26510,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -26333,6 +26623,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -26447,6 +26738,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "criterion_sample_counts": {
         "run-01": 100,
@@ -26557,6 +26849,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -26710,6 +27003,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -26867,6 +27161,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -27025,6 +27320,7 @@
         "outputs_observed": false,
         "stage": "cache_hit_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "Resolver::load + invoke",
@@ -27183,6 +27479,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_wasi",
@@ -27336,6 +27633,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -27488,6 +27786,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke",
@@ -27643,6 +27942,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(fuel=1000000)",
@@ -27797,6 +28097,7 @@
         "outputs_observed": false,
         "stage": "warm_run"
       },
+      "certification": null,
       "certified": false,
       "descriptor": {
         "api": "invoke_with_limits(unmetered)",

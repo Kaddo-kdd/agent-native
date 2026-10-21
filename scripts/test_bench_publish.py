@@ -96,14 +96,20 @@ class PublicationTests(unittest.TestCase):
     def setUpClass(cls):
         cls.publication, cls.registry = build(DEFAULT_INPUTS)
 
-    def test_all_rows_remain_visible_without_certification(self):
+    def test_only_human_approved_rows_receive_partial_certification(self):
         p = self.publication
         self.assertEqual(len(p["datasets"]), 12)
         self.assertEqual(len(p["rows"]), 222)
         primary = [row for row in p["rows"] if row["role"] == "primary"]
         self.assertEqual(len(primary), 69)
         self.assertFalse(p["certified"])
-        self.assertTrue(all(row["certified"] is False for row in p["rows"]))
+        certified = [row for row in p["rows"] if row["certified"]]
+        self.assertEqual(len(certified), 7)
+        self.assertTrue(all(row["method"] == "estimacion_agregada" for row in certified))
+        self.assertTrue(all(row["provenance"]["dataset_id"] == "39449438474-windows" for row in certified))
+        self.assertTrue(all(row["publication_class"] == "referencia_parcial_certificada" for row in certified))
+        self.assertTrue(all(row["certification"]["supporting_dataset_id"] == "39534970668-windows" for row in certified))
+        self.assertFalse(any(row["certified"] for row in p["rows"] if row["method"] == "percentil_por_invocacion"))
         unstable = [row for row in primary if row["status"] == "inestable"]
         self.assertTrue(unstable)
         self.assertTrue(all(row["publication_class"] == "excluida_inestable" for row in unstable))

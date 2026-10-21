@@ -217,3 +217,19 @@ aprobación humana explícita ni cierra AN-055 o INIT-08-02.
 Como seguimiento metodológico, el recolector debe registrar una huella de las
 fuentes efectivas del runtime además de las fuentes de escenarios. Esa mejora
 evitará incertidumbre de equivalencia en futuras certificaciones.
+
+### Aprobación humana parcial registrada (2026-10-21)
+
+El responsable del proyecto aprobó explícitamente siete referencias `Criterion`
+no WASI de Windows: `engine_construct`, `load_component_model_point_sum`,
+`cold_run_core_identity`, `cold_run_component_model_point_sum`,
+`warm_run_core_identity`, `warm_run_component_model_v06_greet` y
+`warm_run_component_model_v06_safe_div`. La aprobación se materializa en
+`docs/benchmarks/inputs.json` y se valida al regenerar: exige los datasets
+primario `39449438474-windows` y de verificación `39534970668-windows`, fuentes,
+CPU, imagen, Rust y Wasmtime coincidentes, y estado `aceptable` en ambos workflows.
+
+Es una referencia parcial limitada al runner y versiones archivadas; no certifica
+p50/p95/p99, WASI, Linux, macOS ni una línea base cross-OS. AN-055 sigue abierto:
+queda confirmar WASI en dos sesiones con una huella efectiva del runtime y resolver
+las limitaciones de instrumento antes de cualquier certificación adicional.
