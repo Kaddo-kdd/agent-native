@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "source": "wasip2_exit7.rs",
+  "source_sha256": "4ef9ec9c1280b9a320500d56b169b448abc35b180e36918ea92abf3f4942c90c",
+  "artifact": "wasip2_exit7.wasm",
+  "artifact_sha256": "bbee186d581f3fcbe2872dc97f7940ee7412e1504c3159a316b313d0962118f3",
+  "artifact_bytes": 2085392,
+  "rustc": "rustc 1.85.0 (4d91de4e4 2025-02-17)",
+  "target": "wasm32-wasip2",
+  "compile_command": "rustc wasip2_exit7.rs --edition=2024 --target wasm32-wasip2 -O -o wasip2_exit7.wasm"
+}

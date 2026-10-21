@@ -25,14 +25,15 @@
 
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use bytes::Bytes;
 use wasmtime::Store;
 use wasmtime::component::{Linker, ResourceTable, Val};
 use wasmtime_wasi::pipe::{ClosedInputStream, MemoryInputPipe};
 use wasmtime_wasi::{
-    HostOutputStream, StdoutStream, StreamError, StreamResult, Subscribe, WasiCtx, WasiCtxBuilder,
-    WasiImpl, WasiView, async_trait,
+    HostOutputStream, HostWallClock, StdoutStream, StreamError, StreamResult, Subscribe, WasiCtx,
+    WasiCtxBuilder, WasiImpl, WasiView, async_trait,
 };
 
 use crate::engine::{Component, Payload};
@@ -264,6 +265,22 @@ struct WasiStoreData {
     limiter: StoreResourceLimiter,
 }
 
+/// Fixed Unix epoch clock used by the command profile.
+///
+/// It prevents a guest from observing host time while satisfying the Rust 1.85
+/// command component's required `wasi:clocks/wall-clock` import.
+struct DeterministicWallClock;
+
+impl HostWallClock for DeterministicWallClock {
+    fn resolution(&self) -> Duration {
+        Duration::from_nanos(1)
+    }
+
+    fn now(&self) -> Duration {
+        Duration::ZERO
+    }
+}
+
 impl WasiView for WasiStoreData {
     fn table(&mut self) -> &mut ResourceTable {
         &mut self.table
@@ -298,6 +315,7 @@ fn add_imported_interfaces(
     imported: &[String],
 ) -> wasmtime::Result<()> {
     let closure = type_annotate::<WasiStoreData, _>(|t| WasiImpl(t));
+    let link_options = wasmtime_wasi::bindings::sync::LinkOptions::default();
     let mut seen = HashSet::new();
     for name in imported {
         let base = interface_base(name);
@@ -313,6 +331,31 @@ fn add_imported_interfaces(
             }
             "wasi:cli/stderr" => {
                 wasmtime_wasi::bindings::cli::stderr::add_to_linker_get_host(linker, closure)?;
+            }
+            "wasi:cli/environment" => {
+                wasmtime_wasi::bindings::cli::environment::add_to_linker_get_host(linker, closure)?;
+            }
+            "wasi:cli/exit" => {
+                wasmtime_wasi::bindings::cli::exit::add_to_linker_get_host(
+                    linker,
+                    &link_options.clone().into(),
+                    closure,
+                )?;
+            }
+            "wasi:clocks/wall-clock" => {
+                wasmtime_wasi::bindings::clocks::wall_clock::add_to_linker_get_host(
+                    linker, closure,
+                )?;
+            }
+            "wasi:filesystem/types" => {
+                wasmtime_wasi::bindings::sync::filesystem::types::add_to_linker_get_host(
+                    linker, closure,
+                )?;
+            }
+            "wasi:filesystem/preopens" => {
+                wasmtime_wasi::bindings::filesystem::preopens::add_to_linker_get_host(
+                    linker, closure,
+                )?;
             }
             "wasi:io/error" => {
                 wasmtime_wasi::bindings::io::error::add_to_linker_get_host(linker, closure)?;
@@ -419,6 +462,7 @@ fn invoke_component_wasi(
         Arc::clone(&overflow),
     );
     let mut builder = WasiCtxBuilder::new();
+    builder.wall_clock(DeterministicWallClock);
     match io.stdin.filter(|_| has_stdin) {
         Some(bytes) => builder.stdin(MemoryInputPipe::new(Bytes::from(bytes))),
         None => builder.stdin(ClosedInputStream),

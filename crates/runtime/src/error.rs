@@ -109,6 +109,10 @@ pub enum RuntimeError {
         attempted_bytes: usize,
     },
 
+    /// A WASI command requested process termination with a non-zero status.
+    #[error("WASI command exited with status {code}")]
+    WasiCommandExited { code: i32 },
+
     /// The component declares a host import that the runtime did not
     /// provide. Detected pre-instantiate per ADR-004 (fail-explicit).
     #[error("unauthorized or missing host import: {module}::{name}")]
