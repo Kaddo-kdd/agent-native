@@ -83,3 +83,9 @@ de cada par de OS. Windows fue `inestable` (12,24 %) en la primera sesión y
 `aceptable` (3,53 %) en la segunda; macOS invierte ese patrón. Por ello WASI no
 se certifica y AN-061 permanece abierto para diagnóstico de variabilidad, sin
 nuevas repeticiones por ahora.
+
+### Transferencia propuesta a AN-062 (2026-10-21)
+
+AN-061 cumple sus objetivos instrumentales y preserva el resultado no certificable.
+Su cierre requiere una decisión humana explícita. AN-062 materializa el diagnóstico
+posterior por etapas y entorno, sin modificar ni repetir las sesiones de AN-061.
