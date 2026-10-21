@@ -91,8 +91,8 @@ Fuentes:
 | **RM-08** | **Performance & Concurrency** | — | — | Runtime caracterizado por benchmarks | in-progress |
 | INIT-08-01 | Harness de benchmarks reproducible | medium | INIT-03-06, INIT-05-01 | Varianza acotada entre corridas; cross-OS | completed (AN-051, AN-052) |
 | INIT-08-02 | Línea base pública cross-OS | medium | INIT-08-01 | p50/p95/p99 publicados por operación | nuevo |
-| INIT-08-03 | Caché de componentes y warm pool | medium | INIT-06-03, INIT-08-02 | Decisión controlada sobre caché/pool, con aislamiento demostrado | in-progress (AN-063/064 completed; no se adopta pool genérico) |
-| INIT-08-04 | Concurrencia host-side (workers) | low | INIT-08-03 | Throughput escala con N workers hasta saturar | nuevo |
+| INIT-08-03 | Caché de componentes y warm pool | medium | INIT-06-03, INIT-08-02 | Decisión de no adopción documentada; Store/instancia fresca preservados | completed (AN-063, AN-064) |
+| INIT-08-04 | Concurrencia host-side (workers) | low | INIT-06-03, INIT-08-01, AN-055 | Workers acotados con aislamiento, backpressure y caracterización controlada | in-progress (AN-065/066/067 ready) |
 | **Diferido** | Interoperabilidad con componentes WIT externos | — | — | Objetivo arquitectónico; sin iniciativa activa | diferido |
 
 Total: 8 bloques, 29 iniciativas activas y 1 objetivo diferido.
@@ -911,44 +911,38 @@ Harness formal, benchmarks reproducibles cross-OS, caché/warm pool, concurrenci
 
 #### INIT-08-03: Caché de componentes y warm pool
 
-**Status:** candidate · **Priority:** medium · **K4**
+**Status:** completed · **Priority:** medium · **K4**
 
 **Dependencies:** INIT-06-03, INIT-08-02.
 
-**Notes:** el `Resolver` ya conserva caché content-addressed de artefactos; no
-se duplica sin identificar un coste residual. INIT-08-02 sigue abierta, pero su
-publicación aporta evidencia suficiente para diseñar un experimento controlado.
-La adopción de una optimización depende de una A/A y comparación pareada en
-Linux x86_64 GNU, no de una cifra cross-OS. Store fresco por invocación sigue
-siendo la baseline de ADR-005; cualquier pool requiere aislamiento y descarte
-seguro verificables.
+**Resultado aprobado:** AN-063 y AN-064 demuestran que un warm pool genérico
+no puede verificar limpieza completa de estado. Se cierra por no adopción y
+ADR-005 conserva Store/instancia fresca. Guests reseteables y pooling allocator
+son investigaciones futuras independientes, sin implementación activa.
 
 **Diseño refinado:** `docs/benchmarks/init-08-03-experimental-design.md`.
 
 **Suggested Work Items:**
-- WI-CANDIDATE-08-03-01 / AN-063 completado: contrato de experimento, frontera
-  temporal y pruebas de contaminación/aislamiento (`chore`).
-- WI-CANDIDATE-08-03-02 / AN-064 completado sin adopción: caché o pool experimental acotado
-  detrás de API/flag, solo tras AN-063 (`feature`).
-- WI-CANDIDATE-08-03-03 / AN-065: no materializado; requiere primero un
-  tratamiento seguro y verificable que comparar (`chore`).
+- AN-063 completado: contrato de aislamiento (`chore`).
+- AN-064 completado sin adopción: evidencia de reutilización insegura (`feature`).
+- Guests reseteables y pooling allocator: investigaciones futuras independientes.
 
 ---
 
 #### INIT-08-04: Concurrencia host-side (workers)
 
-**Status:** candidate · **Priority:** low · **K4**
+**Status:** in-progress · **Priority:** low · **K4**
 
-**Dependencies propuestas (pendientes de aprobación):** INIT-06-03,
-INIT-08-01 y AN-055. INIT-08-03 queda como antecedente de seguridad de no
-reutilización, no como bloqueo: los workers conservan Store/instancia fresca.
+**Dependencies:** INIT-06-03, INIT-08-01 y AN-055. INIT-08-03 es antecedente
+de seguridad de no reutilización, no un bloqueo: los workers conservan
+Store/instancia fresca.
 
 **Propuesta:** `docs/benchmarks/init-08-03-08-04-architecture-proposal.md`.
 
-**Suggested Work Items propuestos:**
-- AN-065: contrato y prototipo experimental de workers acotados (`feature`).
-- AN-066: aislamiento concurrente, backpressure y fallos (`chore`).
-- AN-067: saturación, throughput y soak controlados (`chore`).
+**Work Items materializados:**
+- AN-065: contrato y prototipo experimental de workers acotados (`feature`, ready).
+- AN-066: aislamiento concurrente, backpressure y fallos (`chore`, ready).
+- AN-067: saturación, throughput y soak controlados (`chore`, ready).
 
 ---
 
@@ -1001,7 +995,7 @@ INIT-07-01 → INIT-07-02 → INIT-07-03.
 **Hito M7:** programas con I/O autorizada.
 
 **Ola H — RM-08 (Rendimiento y concurrencia):**
-INIT-08-01 → INIT-08-02 → INIT-08-03 → INIT-08-04.
+INIT-08-01 → INIT-08-02; INIT-08-03 se completa por no adopción; INIT-08-04 avanza con workers de instancia fresca.
 **Hito M8:** runtime caracterizado por benchmarks reproducibles.
 
 ## Dependency Map
@@ -1084,8 +1078,10 @@ flowchart LR
     I0701 --> I0703
     I0303 --> I0703
     I0306 --> I0801
-    I0501 --> I0801 --> I0802 --> I0803 --> I0804
+    I0501 --> I0801 --> I0802 --> I0803
     I0603 --> I0803
+    I0603 --> I0804
+    I0801 --> I0804
 ```
 
 ## Milestones
@@ -1099,7 +1095,7 @@ flowchart LR
 | M5 — Distribuible (RC v0.1.0) | Ola E | Instalación sin Rust; release candidate en 3 triples |
 | M6 — Runtime seguro | Ola F | Policy, fuel/limits, aislamiento, verificación de integridad |
 | M7 — Programas con I/O | Ola G | Hello world WASI real bajo policy |
-| M8 — Caracterizado | Ola H | Línea base pública, decisión trazable sobre instanciación y concurrencia aislada; ajuste pendiente de aprobación |
+| M8 — Caracterizado | Ola H | Línea base pública, decisión trazable sobre instanciación y concurrencia aislada |
 
 Los hitos son **propuesta**; versiones comerciales se declaran solo tras aprobación formal.
 

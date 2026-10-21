@@ -29,11 +29,12 @@ candidates:
     materialized_as: AN-053 (completed), AN-054 (completed), AN-055 (completed), AN-061 (completed), AN-062 (completed)
   - id: INIT-08-03
     title: Caché de componentes y warm pool
-    status: candidate
-    materialized_as: AN-063 (completed); AN-064 (completed, sin adopción); AN-065 no materializado
+    status: completed
+    materialized_as: AN-063 (completed); AN-064 (completed, sin adopción)
   - id: INIT-08-04
     title: Concurrencia host-side (workers)
-    status: candidate
+    status: in-progress
+    materialized_as: AN-065, AN-066 y AN-067 (ready)
 ---
 
 # RM-08 — Performance & Concurrency
@@ -63,9 +64,13 @@ Materializa el business goal "decisiones basadas en evidencia" y permite publica
 
 1. Dos corridas consecutivas del harness producen varianza < Y% (Y documentado).
 2. Línea base publicada con metodología, hardware y resultados por operación/OS.
-3. Caché mejora warm start en Z% medible vs línea base (Z fijado por INIT-08-02).
-4. Throughput escala con N workers hasta saturar; sin estado compartido entre tenants.
-5. Soak test de M horas sin degradación perceptible ni fuga de memoria.
+3. Existe una decisión humana trazable sobre optimización de instanciación:
+   adopción respaldada por una comparación controlada o no adopción sustentada
+   por seguridad y evidencia.
+4. Workers acotados preservan aislamiento y backpressure; AN-067 caracteriza
+   throughput y saturación sin objetivo inventado.
+5. El soak define duración, carga y señales de degradación tras la baseline
+   controlada, y publica su evidencia.
 
 ## Dependencies
 
@@ -217,3 +222,15 @@ dispone de una limpieza genérica verificable. Se mantiene Store e instancia
 frescos por invocación; AN-065 no se materializa sin un tratamiento seguro que
 comparar. INIT-08-03 continúa abierta para una propuesta futura con contrato de
 reset explícito y revisión de seguridad.
+
+
+### Decisión humana aprobada — transición a workers frescos (2026-10-21)
+
+Se cierra INIT-08-03 por no adopción de warm pool genérico, preservando AN-063,
+AN-064 y ADR-005. RM-08/M8 reemplaza el requisito de Z% obligatorio por una
+decisión trazable de optimización de instanciación. AN-065 se reasigna, con
+trazabilidad explícita, al contrato de workers acotados. INIT-08-04 avanza con
+Store e instancia frescos por solicitud, capacidad y backpressure explícitos.
+Guests reseteables y pooling allocator de Wasmtime permanecen como investigaciones
+futuras independientes sin implementación autorizada. AN-065, AN-066 y AN-067
+quedan materializados y listos; no se inicia código hasta revisar AN-065.

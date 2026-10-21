@@ -1,4 +1,4 @@
-# Propuesta arquitectónica — Ajuste de INIT-08-03 e INIT-08-04
+# Decisión arquitectónica aprobada — Ajuste de INIT-08-03 e INIT-08-04
 
 ## Estado y decisión que se conserva
 
@@ -24,8 +24,7 @@ Sus criterios de cierre propuestos son:
    contrato de guest reseteable y pooling allocator.
 4. No se promulga una API de pool ni se afirma una mejora de rendimiento.
 
-Con esos criterios, INIT-08-03 **podría cerrarse por no adopción**, previa
-aprobación humana. El trabajo de reset y el allocator no deben mantenerla abierta:
+Con esos criterios, INIT-08-03 queda **cerrada por no adopción** mediante aprobación humana el 2026-10-21. El trabajo de reset y el allocator no deben mantenerla abierta:
 son alternativas con hipótesis, riesgos y aceptación propios.
 
 ### Camino futuro A — Guests reseteables
@@ -104,7 +103,7 @@ INIT-08-03 se reservaba para una comparación A/A de warm pool; AN-064 concluyó
 que no hay tratamiento genérico seguro que comparar. Esta propuesta reutiliza
 AN-065 para workers acotados y registra expresamente la sustitución para que no
 parezca que la comparación de warm pool fue ejecutada o descartada por datos de
-rendimiento. La reasignación solo entra en vigor con aprobación humana.
+rendimiento. La reasignación entra en vigor con la aprobación humana del 2026-10-21.
 
 | ID propuesto | Entrega | Criterios principales |
 |---|---|---|
@@ -135,18 +134,17 @@ variación observada y requerirá revisión humana para cualquier adopción.
 
 ## Reformulación propuesta de RM-08 y M8
 
-| Elemento actual | Ajuste propuesto pendiente de aprobación |
+| Elemento actual | Ajuste aprobado |
 |---|---|
 | RM-08, criterio 3: “Caché mejora warm start en Z%” | “Existe una decisión humana trazable sobre optimización de instanciación: adopción respaldada por una comparación controlada o no adopción sustentada por seguridad y evidencia.” |
 | RM-08, criterio 4: throughput con N workers | “Workers acotados preservan aislamiento y backpressure; la campaña AN-067 caracteriza throughput y saturación sin objetivo inventado.” |
 | RM-08, criterio 5: soak M horas sin degradación | “AN-067 define duración, carga y señales de degradación tras una baseline controlada; los datos y límites quedan publicados.” |
 | M8: línea base, caché cuantificado, concurrencia | “Línea base técnica publicada, decisión de instanciación trazable y concurrencia host-side evaluada con aislamiento, saturación y soak.” |
 
-## Decisiones humanas requeridas
+## Decisión humana aplicada
 
-- Aprobar o rechazar el cierre de INIT-08-03 por no adopción.
-- Aprobar que INIT-08-04 avance con workers de instancia fresca.
-- Decidir si alguna de las dos alternativas futuras merece materialización.
-
-Hasta esas decisiones no se implementa código, no se crean Work Items activos y
-no se cambia el estado de las iniciativas.
+Se aprobaron el cierre de INIT-08-03 por no adopción, la reformulación de M8 y
+el avance de INIT-08-04 con workers de instancia fresca. Guests reseteables y
+pooling allocator permanecen sin materializar. AN-065, AN-066 y AN-067 se crean
+como Work Items listos; AN-065 requiere refinamiento técnico y una revisión
+humana antes de cualquier código funcional.
