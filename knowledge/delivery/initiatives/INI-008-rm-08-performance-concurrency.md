@@ -30,7 +30,7 @@ candidates:
   - id: INIT-08-03
     title: Caché de componentes y warm pool
     status: candidate
-    materialized_as: Diseño experimental refinado; AN-063, AN-064 y AN-065 propuestos
+    materialized_as: AN-063 (in-progress); AN-064 y AN-065 propuestos
   - id: INIT-08-04
     title: Concurrencia host-side (workers)
     status: candidate
