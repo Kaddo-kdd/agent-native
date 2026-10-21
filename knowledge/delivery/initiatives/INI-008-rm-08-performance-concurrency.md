@@ -99,6 +99,20 @@ Ver `candidates:`.
 - OQ L153 (umbrales de rendimiento) — se cierra al publicar INIT-08-02; los números concretos salen de la medición, no de supuestos.
 - Riesgo R-10 (afirmaciones de rendimiento sin medición) — mitigado por este bloque entero.
 
+### Dictamen humano sobre AN-055 (2026-10-20)
+
+Se acepta la publicación como candidata técnica, incluidos la regeneración,
+trazabilidad y control offline en CI. No hay certificación automática de las 31
+filas aceptables sin avisos, de las filas con avisos de instrumento ni de una
+línea base cross-OS completa.
+
+Antes de cerrar INIT-08-02 se requiere una nueva ejecución independiente de
+AN-054 desde `main`, análisis entre sesiones —especialmente en macOS—,
+caracterización de los avisos del reloj en Windows y una matriz aprobada de
+referencias parciales por operación y entorno. La evidencia inestable permanece
+publicada con sus limitaciones; no se exige estabilidad universal para una
+posible certificación parcial.
+
 ## Learning
 
 _Pendiente._

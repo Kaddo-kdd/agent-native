@@ -151,3 +151,33 @@ work item y de INIT-08-02 sigue condicionado a esa revisión.
   para Linux, Windows y macOS.
 - AN-017 conserva sus cifras históricas y remite a la nueva candidata. INIT-08-02
   sigue abierto; no se fija Z% ni se decide caché/warm pools antes de revisar datos.
+
+## Dictamen humano de publicación (2026-10-20)
+
+Se acepta el informe como **publicación técnica candidata**. La evidencia, el
+mecanismo de regeneración y la trazabilidad quedan validados como base para una
+revisión posterior, incluida su comprobación offline en CI.
+
+No se certifica automáticamente ninguna de las 31 filas `aceptable` sin avisos.
+Tampoco se certifican las cinco filas con avisos de instrumento ni se declara una
+línea base cross-OS completamente certificada. Todas las filas continúan con su
+clasificación técnica actual y sin reclamar una certificación que los datos no
+sostienen.
+
+### Evidencia adicional requerida antes del cierre
+
+1. Ejecutar AN-054 nuevamente desde `main` como workflow independiente y
+   conservar sus tres repeticiones como un dataset nuevo, sin mezclar muestras
+   ni resúmenes con las ejecuciones anteriores.
+2. Comparar las variaciones entre sesiones, con revisión específica de macOS,
+   y documentar si el runner Apple M1 virtualizado condiciona la referencia.
+3. Caracterizar o resolver los avisos de resolución del reloj en Windows antes
+   de certificar percentiles por invocación.
+4. Proponer una matriz explícita que identifique, por operación y entorno,
+   qué filas pueden aprobarse como referencias limitadas, cuáles siguen como
+   evidencia técnica y qué limitaciones acompañan cada afirmación.
+
+La estabilidad no es requisito para conservar evidencia técnica, ni se exige que
+todos los benchmarks sean estables para proponer una línea base parcial. AN-055
+e INIT-08-02 permanecen `in-progress` hasta que la matriz de certificación parcial
+y la nueva ejecución independiente reciban aprobación humana explícita.
