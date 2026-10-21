@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from bench_aggregate import aggregate, write_json
+from bench_aggregate import BENCHMARKS, aggregate, write_json
 from bench_evidence import load, pack, recalculate
 from bench_publish import DEFAULT_INPUTS, build, check_cases, main, render_readme
 from test_bench_aggregate import RUNS, environment_fixture, write_run
@@ -45,6 +45,20 @@ class EvidenceTests(unittest.TestCase):
         data = load(self.entry, self.base)
         self.assertTrue(data["criterion"]["complete"])
         self.assertEqual(len(data["criterion"]["rows"]), 14)
+
+    def test_wasi_confirmation_archive_preserves_only_its_selected_benchmark(self):
+        source = self.base / "wasi-source"
+        source.mkdir()
+        write_json(source / "environment.json", environment_fixture())
+        for run in RUNS:
+            write_run(source, run)
+        selected = {"cold_run_component_model_wasi_echo": BENCHMARKS["cold_run_component_model_wasi_echo"]}
+        write_json(source / "summary.json", aggregate(source, benchmarks=selected))
+        archive = self.base / "wasi.json.gz"
+        details = pack(source, archive, "criterion-wasi-confirmation")
+        entry = dict(self.entry, id="124-linux", archive="wasi.json.gz", kind="criterion-wasi-confirmation", **details)
+        data = load(entry, self.base)
+        self.assertEqual([row["benchmark"] for row in data["criterion"]["rows"]], ["cold_run_component_model_wasi_echo"])
 
     def test_corrupt_archive_and_false_provenance_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "hash mismatch"):

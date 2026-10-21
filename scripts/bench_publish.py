@@ -63,7 +63,7 @@ def status_counts(rows):
 
 def provenance(dataset):
     entry, env, files = dataset["entry"], dataset["environment"], dataset["files"]
-    return {
+    result = {
         "dataset_id": entry["id"], "commit": env["commit"], "os": env["os"],
         "arch": env["arch"], "cpu_model": env["cpu_model"], "rustc": env["rustc"],
         "cargo": env["cargo"], "wasmtime": env["wasmtime"], "profile": env["profile"],
@@ -77,6 +77,10 @@ def provenance(dataset):
         "artifact_name": entry["artifact_name"], "archive": entry["archive"],
         "archive_sha256": entry["sha256"], "payload_sha256": entry["payload_sha256"],
     }
+    for key in ("runtime_source_sha256", "runtime_source_fingerprint_sha256"):
+        if key in env:
+            result[key] = env[key]
+    return result
 
 
 def check_cases(dataset, registry):

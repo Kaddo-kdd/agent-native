@@ -18,6 +18,19 @@ from bench_aggregate import BENCHMARKS, RUNS, aggregate, read_json, write_json
 from bench_latency_aggregate import aggregate_latency
 
 
+WASI_CONFIRMATION = {"cold_run_component_model_wasi_echo": BENCHMARKS["cold_run_component_model_wasi_echo"]}
+
+
+def configuration(kind):
+    if kind == "criterion":
+        return BENCHMARKS, False
+    if kind == "criterion-and-latency":
+        return BENCHMARKS, True
+    if kind == "criterion-wasi-confirmation":
+        return WASI_CONFIRMATION, False
+    raise ValueError("unknown evidence kind: " + kind)
+
+
 def canonical(value):
     return (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
 
@@ -27,17 +40,16 @@ def sha256(value):
 
 
 def members(kind):
-    if kind not in ("criterion", "criterion-and-latency"):
-        raise ValueError("unknown evidence kind: " + kind)
+    benchmarks, has_latency = configuration(kind)
     names = {"environment.json", "summary.json"}
     for run in RUNS:
         names.update({run + "/environment.json", run + "/collection.json"})
-        for name in BENCHMARKS:
+        for name in benchmarks:
             for file in ("benchmark.json", "sample.json", "estimates.json"):
                 names.add(run + "/criterion/" + name + "/new/" + file)
-        if kind == "criterion-and-latency":
+        if has_latency:
             names.add(run + "/latency/measurements.json")
-    if kind == "criterion-and-latency":
+    if has_latency:
         names.add("latency-summary.json")
     return names
 
@@ -54,13 +66,14 @@ def recalculate(files, kind):
             destination = root / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             write_json(destination, value)
-        criterion = aggregate(root)
+        benchmarks, has_latency = configuration(kind)
+        criterion = aggregate(root, benchmarks=benchmarks if kind == "criterion-wasi-confirmation" else None)
         if criterion != files["summary.json"] or any(len(row["medians"]) != 3 for row in criterion["rows"]):
             raise ValueError("Criterion evidence incomplete or stored summary differs from raw samples")
         # Criterion 0.5 WallTime estimates the median of time/iteration samples.
         # Independently verify the point estimate; do not re-run its bootstrap CIs.
         for run in RUNS:
-            for name in BENCHMARKS:
+            for name in benchmarks:
                 prefix = run + "/criterion/" + name + "/new/"
                 samples = files[prefix + "sample.json"]
                 median = statistics.median(time / count for time, count in zip(samples["times"], samples["iters"]))
@@ -68,7 +81,7 @@ def recalculate(files, kind):
                 if not math.isclose(median, recorded, rel_tol=1e-12, abs_tol=1e-9):
                     raise ValueError("Criterion point estimate differs from raw time/iteration median")
         latency = None
-        if kind == "criterion-and-latency":
+        if has_latency:
             latency = aggregate_latency(root)
             if latency != files["latency-summary.json"] or any(len(row["statistics_by_run"]) != 3 for row in latency["rows"]):
                 raise ValueError("individual evidence incomplete or stored summary differs from raw samples")
@@ -128,7 +141,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("destination", type=Path)
-    parser.add_argument("--kind", choices=("criterion", "criterion-and-latency"), required=True)
+    parser.add_argument("--kind", choices=("criterion", "criterion-and-latency", "criterion-wasi-confirmation"), required=True)
     args = parser.parse_args()
     print(json.dumps(pack(args.root, args.destination, args.kind)))
 

@@ -13,7 +13,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from bench_aggregate import RUNS, aggregate, write_json
+from bench_aggregate import BENCHMARKS, RUNS, aggregate, write_json
 from bench_latency_aggregate import aggregate_latency
 
 
@@ -31,6 +31,32 @@ SOURCES = (
 )
 
 
+def runtime_sources():
+    """Return the workspace files that can affect the runtime executable."""
+    roots = ("crates/runtime/src", "crates/ir/src")
+    fixed = ("Cargo.lock", "Cargo.toml", "rust-toolchain.toml", "crates/ir/Cargo.toml", "crates/runtime/Cargo.toml")
+    discovered = [
+        path.relative_to(REPO).as_posix()
+        for root in roots
+        for path in (REPO / root).rglob("*.rs")
+    ]
+    return tuple(sorted((*fixed, *discovered)))
+
+
+def source_hashes(names):
+    return {name: hashlib.sha256((REPO / name).read_bytes()).hexdigest() for name in names}
+
+
+def fingerprint(hashes):
+    digest = hashlib.sha256()
+    for name, value in sorted(hashes.items()):
+        digest.update(name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(value.encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
 def utc_now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -41,6 +67,7 @@ def capture(command):
 
 def environment(run=None):
     env = json.loads(capture(["cargo", "run", "--locked", "-q", "-p", "agent-native-runtime", "--example", "bench_env"]))
+    runtime_hashes = source_hashes(runtime_sources())
     env.update({
         "commit": capture(["git", "rev-parse", "HEAD"]),
         "tracked_dirty": bool(capture(["git", "status", "--porcelain", "--untracked-files=no"])),
@@ -54,16 +81,17 @@ def environment(run=None):
         "runner_image": os.environ.get("ImageOS", "local"),
         "runner_image_version": os.environ.get("ImageVersion", "local"),
         "measurement_mode": "criterion-default-full",
-        "source_sha256": {
-            name: hashlib.sha256((REPO / name).read_bytes()).hexdigest() for name in SOURCES
-        },
+        "source_sha256": source_hashes(SOURCES),
+        "runtime_source_sha256": runtime_hashes,
+        "runtime_source_fingerprint_sha256": fingerprint(runtime_hashes),
     })
     if run:
         env["repetition"] = run
     return env
 
 
-def collect(output):
+def collect(output, benchmarks=None, collect_latency=True):
+    benchmarks = BENCHMARKS if benchmarks is None else benchmarks
     # Refuse to reuse an evidence directory, even after a partial/failed run.
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -75,14 +103,16 @@ def collect(output):
     try:
         write_json(output / "environment.json", environment())
         # Compile once outside the measured repetitions; never use --quick.
-        subprocess.run([
-            "cargo", "bench", "--locked", "-p", "agent-native-runtime",
-            "--bench", "baseline", "--bench", "extended", "--no-run",
-        ], cwd=REPO, check=True)
-        subprocess.run([
-            "cargo", "build", "--release", "--locked", "-p", "agent-native-runtime",
-            "--example", "bench_latency",
-        ], cwd=REPO, check=True)
+        suites = tuple(sorted({value[0] for value in benchmarks.values()}))
+        compile_command = ["cargo", "bench", "--locked", "-p", "agent-native-runtime"]
+        for suite in suites:
+            compile_command.extend(("--bench", suite))
+        subprocess.run([*compile_command, "--no-run"], cwd=REPO, check=True)
+        if collect_latency:
+            subprocess.run([
+                "cargo", "build", "--release", "--locked", "-p", "agent-native-runtime",
+                "--example", "bench_latency",
+            ], cwd=REPO, check=True)
         for run in RUNS:
             directory = output / run
             status = {"started_at_utc": utc_now(), "complete": False, "commands": {}}
@@ -95,22 +125,26 @@ def collect(output):
                 child_env["CRITERION_HOME"] = str(directory / "criterion")
                 # cargo-criterion's optional socket must not redirect evidence.
                 child_env.pop("CARGO_CRITERION_PORT", None)
-                for suite in ("baseline", "extended"):
+                for suite in suites:
                     command = ["cargo", "bench", "--locked", "-p", "agent-native-runtime", "--bench", suite]
+                    selected = [name for name, value in benchmarks.items() if value[0] == suite]
+                    if len(benchmarks) != len(BENCHMARKS):
+                        command.extend(("--", selected[0]))
                     print(run + ": " + " ".join(command), flush=True)
                     with (directory / (suite + ".log")).open("w", encoding="utf-8") as log:
                         result = subprocess.run(command, cwd=REPO, env=child_env, stdout=log, stderr=subprocess.STDOUT)
                     status["commands"][suite] = result.returncode
                     write_json(directory / "collection.json", status)
-                status["criterion_complete"] = all(status["commands"].get(suite) == 0 for suite in ("baseline", "extended"))
-                command = ["cargo", "run", "--release", "--locked", "-q", "-p", "agent-native-runtime",
-                           "--example", "bench_latency", "--", "--environment", str(directory / "environment.json")]
-                print(run + ": individual invocation latencies", flush=True)
-                with (directory / "latency/measurements.json").open("w", encoding="utf-8") as output_stream, \
-                        (directory / "latency.log").open("w", encoding="utf-8") as log:
-                    result = subprocess.run(command, cwd=REPO, env=child_env, stdout=output_stream, stderr=log)
-                status["commands"]["latency"] = result.returncode
-                status["latency_complete"] = result.returncode == 0
+                status["criterion_complete"] = all(status["commands"].get(suite) == 0 for suite in suites)
+                if collect_latency:
+                    command = ["cargo", "run", "--release", "--locked", "-q", "-p", "agent-native-runtime",
+                               "--example", "bench_latency", "--", "--environment", str(directory / "environment.json")]
+                    print(run + ": individual invocation latencies", flush=True)
+                    with (directory / "latency/measurements.json").open("w", encoding="utf-8") as output_stream, \
+                            (directory / "latency.log").open("w", encoding="utf-8") as log:
+                        result = subprocess.run(command, cwd=REPO, env=child_env, stdout=output_stream, stderr=log)
+                    status["commands"]["latency"] = result.returncode
+                    status["latency_complete"] = result.returncode == 0
                 status["complete"] = all(code == 0 for code in status["commands"].values())
                 failed = failed or not status["complete"]
             except (OSError, ValueError, subprocess.SubprocessError) as exc:
@@ -124,20 +158,25 @@ def collect(output):
         print(str(exc), file=sys.stderr)
         failed = True
     finally:
-        summary = aggregate(output)
+        summary = aggregate(output, benchmarks=benchmarks)
         write_json(output / "summary.json", summary)
-        latency_summary = aggregate_latency(output)
-        write_json(output / "latency-summary.json", latency_summary)
+        latency_summary = aggregate_latency(output) if collect_latency else None
+        if latency_summary is not None:
+            write_json(output / "latency-summary.json", latency_summary)
         for row in summary["rows"]:
             print(row["benchmark"] + ": " + row["status"], flush=True)
     # Noise is data: instability does not fail collection. Missing/invalid evidence does.
-    return 1 if failed or not summary["complete"] or not latency_summary["complete"] else 0
+    return 1 if failed or not summary["complete"] or (latency_summary is not None and not latency_summary["complete"]) else 0
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=REPO / "bench-results")
+    parser.add_argument("--scope", choices=("full", "wasi-confirmation"), default="full")
     args = parser.parse_args()
+    if args.scope == "wasi-confirmation":
+        selected = {"cold_run_component_model_wasi_echo": BENCHMARKS["cold_run_component_model_wasi_echo"]}
+        return collect(args.output, benchmarks=selected, collect_latency=False)
     return collect(args.output)
 
 

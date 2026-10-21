@@ -103,6 +103,24 @@ class AggregateTests(unittest.TestCase):
                 self.assertNotIn("relative_variation", self.row())
         write_json(self.root / "run-02/environment.json", environment_fixture("run-02"))
 
+    def test_runtime_fingerprint_is_checked_when_collected(self):
+        reference = environment_fixture()
+        reference["runtime_source_sha256"] = {"crates/runtime/src/lib.rs": "a" * 64}
+        reference["runtime_source_fingerprint_sha256"] = "b" * 64
+        write_json(self.root / "environment.json", reference)
+        for run in RUNS:
+            env = environment_fixture(run)
+            env["runtime_source_sha256"] = dict(reference["runtime_source_sha256"])
+            env["runtime_source_fingerprint_sha256"] = reference["runtime_source_fingerprint_sha256"]
+            write_json(self.root / run / "environment.json", env)
+        self.assertTrue(aggregate(self.root)["complete"])
+        changed = environment_fixture("run-02")
+        changed["runtime_source_sha256"] = {"crates/runtime/src/lib.rs": "c" * 64}
+        changed["runtime_source_fingerprint_sha256"] = "d" * 64
+        write_json(self.root / "run-02/environment.json", changed)
+        self.assertFalse(aggregate(self.root)["complete"])
+        self.assertEqual(self.row()["status"], "incompleto")
+
     def test_quick_and_malformed_evidence_rejected(self):
         raw = self.root / "run-01/criterion/engine_construct/new"
         write_json(raw / "sample.json", {"iters": [1, 2], "times": [100, 200]})

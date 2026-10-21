@@ -23,11 +23,13 @@ def range_text(value):
 
 def render(root):
     criterion = load(root / "summary.json")
-    latency = load(root / "latency-summary.json")
+    latency_path = root / "latency-summary.json"
+    latency = load(latency_path) if latency_path.is_file() else None
     env = criterion.get("environment", {})
     lines = ["# Resultados técnicos de benchmarks — sin certificar", "",
              "OS: **" + env.get("os", "pendiente") + "**. CPU: " + env.get("cpu_model", "pendiente") + ".",
              "Commit: `" + env.get("commit", "pendiente") + "`.", "",
+             "Huella de fuentes del runtime: `" + env.get("runtime_source_fingerprint_sha256", "no registrada (evidencia anterior)") + "`.", "",
              "Cada grupo contiene tres repeticiones en el mismo runner. No se agrupan ejecuciones independientes.",
              "Un workflow verde indica recolección completa; las filas inestables se conservan y no certifican una línea base.", "",
              "## Criterion: medianas agregadas (µs)", "",
@@ -39,26 +41,30 @@ def render(root):
         variation = row.get("relative_variation")
         cells += ["{:.2f} %".format(variation * 100) if variation is not None else "no evaluada", row["status"]]
         lines.append("| `" + row["benchmark"] + "` | " + " | ".join(cells) + " |")
-    lines += ["", "## Invocaciones individuales: p50 y rangos de colas (µs)", "",
+    if latency is None:
+        lines += ["", "## Invocaciones individuales", "",
+                  "Esta confirmación acotada no recolecta percentiles individuales; conserva solo las tres medianas Criterion del escenario WASI."]
+    else:
+        lines += ["", "## Invocaciones individuales: p50 y rangos de colas (µs)", "",
               "Nearest-rank. Umbral < 10 % únicamente para p50; p95/p99 conservan rangos y advertencias de variabilidad.",
               "Preparación de entradas y destrucción de resultados fuera del intervalo. Store nuevo por invocación.", "",
               "| Benchmark | p50 R1 | p50 R2 | p50 R3 | Variación p50 | p95 min–max | p99 min–max | Estado | Advertencias |",
               "|---|---:|---:|---:|---:|---:|---:|---|---|"]
-    for row in latency.get("rows", []):
-        values = row.get("statistics_by_run", {})
-        cells = [microseconds(values.get(run, {}).get("p50")) for run in ("run-01", "run-02", "run-03")]
-        variation = row.get("relative_variation_p50")
-        tails = row.get("tail_ranges_ns", {})
-        flags = sorted({flag for warnings in row.get("instrument_warnings", {}).values() for flag in warnings})
-        cells += ["{:.2f} %".format(variation * 100) if variation is not None else "no evaluada",
-                  range_text(tails.get("p95")), range_text(tails.get("p99")), row["status"], ", ".join(flags) or "—"]
-        lines.append("| `" + row["benchmark"] + "` | " + " | ".join(cells) + " |")
+        for row in latency.get("rows", []):
+            values = row.get("statistics_by_run", {})
+            cells = [microseconds(values.get(run, {}).get("p50")) for run in ("run-01", "run-02", "run-03")]
+            variation = row.get("relative_variation_p50")
+            tails = row.get("tail_ranges_ns", {})
+            flags = sorted({flag for warnings in row.get("instrument_warnings", {}).values() for flag in warnings})
+            cells += ["{:.2f} %".format(variation * 100) if variation is not None else "no evaluada",
+                      range_text(tails.get("p95")), range_text(tails.get("p99")), row["status"], ", ".join(flags) or "—"]
+            lines.append("| `" + row["benchmark"] + "` | " + " | ".join(cells) + " |")
     lines += ["", "## Instrumento y límites", "",
               "No se resta overhead de ninguna muestra. Una mediana de overhead de 0 ns puede estar por debajo de la resolución del reloj; no demuestra coste cero.",
               "La resolución observada es el mínimo salto positivo entre lecturas, una cota empírica superior de la resolución intrínseca.",
               "Ver muestras, calibración antes/después y comparaciones de fuel en los JSON del artefacto. Los intervalos de diferencias de fuel son rangos observados, no intervalos de confianza.",
               "Cambiar de identity a WASI echo o IR v0.6 cambia la operación; no aísla por sí solo la sobrecarga de una característica."]
-    errors = criterion.get("errors", []) + latency.get("errors", [])
+    errors = criterion.get("errors", []) + ([] if latency is None else latency.get("errors", []))
     if errors:
         lines += ["", "## Evidencia incompleta", ""] + ["- " + error for error in errors]
     return "\n".join(lines) + "\n"

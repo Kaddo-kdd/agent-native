@@ -33,6 +33,7 @@ ENV_KEYS = (
     "profile", "commit", "workflow_run_id", "workflow_run_attempt", "runner_os",
     "source_sha256", "measurement_mode",
 )
+OPTIONAL_FINGERPRINT_KEYS = ("runtime_source_sha256", "runtime_source_fingerprint_sha256")
 
 
 def read_json(path):
@@ -62,11 +63,27 @@ def environment_errors(env, run=None):
         errors.append("missing capture timestamp")
     if run is not None and env.get("repetition") != run:
         errors.append("repetition identity mismatch")
+    for key in OPTIONAL_FINGERPRINT_KEYS:
+        value = env.get(key)
+        if value is None:
+            continue
+        if key.endswith("fingerprint_sha256"):
+            valid = isinstance(value, str) and len(value) == 64 and all(char in "0123456789abcdef" for char in value)
+        else:
+            valid = isinstance(value, dict) and bool(value) and all(
+                isinstance(path, str) and isinstance(digest, str) and len(digest) == 64
+                and all(char in "0123456789abcdef" for char in digest)
+                for path, digest in value.items()
+            )
+        if not valid:
+            errors.append("invalid runtime source fingerprint: " + key)
     return errors
 
 
-def aggregate(root):
+def aggregate(root, benchmarks=None):
     root = Path(root)
+    selected = benchmarks is not None
+    benchmarks = BENCHMARKS if benchmarks is None else benchmarks
     errors = []
     environments = {}
     try:
@@ -88,12 +105,12 @@ def aggregate(root):
         for env in environments.values()
     )
     for run, env in environments.items():
-        for key in ENV_KEYS:
+        for key in ENV_KEYS + tuple(key for key in OPTIONAL_FINGERPRINT_KEYS if key in reference or key in env):
             if env.get(key) != reference.get(key):
                 errors.append(run + ": environment mismatch: " + key)
 
     rows = []
-    for name, (suite, stage, fixture, operation) in BENCHMARKS.items():
+    for name, (suite, stage, fixture, operation) in benchmarks.items():
         medians = {}
         sources = {}
         sample_counts = {}
@@ -147,7 +164,7 @@ def aggregate(root):
         rows.append(row)
 
     complete = not errors and all(row["status"] in ("aceptable", "inestable") for row in rows)
-    return {
+    result = {
         "schema_version": 1, "scope": "same-job-repeatability",
         "environment": reference, "runs": list(RUNS), "complete": complete,
         "certified": False,
@@ -161,6 +178,9 @@ def aggregate(root):
             "Unstable rows remain technical evidence; baseline certification requires human review.",
         ],
     }
+    if selected:
+        result["selected_benchmarks"] = list(benchmarks)
+    return result
 
 
 def main():

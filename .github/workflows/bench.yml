@@ -4,6 +4,15 @@ name: Benchmarks Cross-OS
 # feed INIT-08-02. See knowledge/tech/baselines/benchmark-methodology.md.
 on:
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Full cross-OS suite or the narrow WASI confirmation
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - wasi-confirmation
 
 permissions:
   contents: read
@@ -47,7 +56,7 @@ jobs:
         run: cargo test --locked -p agent-native-runtime --example bench_latency
 
       - name: Three full repetitions on this runner
-        run: python scripts/bench_collect.py
+        run: python scripts/bench_collect.py --scope "${{ inputs.scope }}"
 
       - name: Show technical results in job summary
         if: always()

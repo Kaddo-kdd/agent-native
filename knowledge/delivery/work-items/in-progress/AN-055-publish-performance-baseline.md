@@ -233,3 +233,10 @@ Es una referencia parcial limitada al runner y versiones archivadas; no certific
 p50/p95/p99, WASI, Linux, macOS ni una línea base cross-OS. AN-055 sigue abierto:
 queda confirmar WASI en dos sesiones con una huella efectiva del runtime y resolver
 las limitaciones de instrumento antes de cualquier certificación adicional.
+
+### AN-061 — Confirmación WASI y huella efectiva del runtime (2026-10-21)
+
+Se materializa AN-061 para registrar hashes de las fuentes efectivas del runtime y
+recolectar `cold_run_component_model_wasi_echo` en dos workflows independientes de
+alcance acotado. La implementación no certifica WASI automáticamente: la matriz y
+el cierre siguen condicionados a la evidencia archivada y a revisión humana.
