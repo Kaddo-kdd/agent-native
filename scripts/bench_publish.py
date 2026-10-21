@@ -173,6 +173,28 @@ def partial_certifications(manifest, datasets):
     return result
 
 
+def confirmation_comparisons(datasets):
+    comparisons = []
+    for os in OS_NAMES:
+        items = sorted((data for data in datasets if data["entry"]["role"] == "confirmation" and data["entry"]["os"] == os),
+                       key=lambda data: data["entry"]["id"])
+        if len(items) != 2:
+            continue
+        first, second = items
+        a, b = first["environment"], second["environment"]
+        comparisons.append({
+            "os": os, "first": first["entry"]["id"], "second": second["entry"]["id"],
+            "same_commit": a["commit"] == b["commit"],
+            "same_scenario_sources": a["source_sha256"] == b["source_sha256"],
+            "same_runtime_sources": a.get("runtime_source_sha256") == b.get("runtime_source_sha256"),
+            "same_runtime_fingerprint": a.get("runtime_source_fingerprint_sha256") == b.get("runtime_source_fingerprint_sha256"),
+            "same_cpu_model": a["cpu_model"] == b["cpu_model"],
+            "same_image": all(a[key] == b[key] for key in ("runner_image", "runner_image_version")),
+            "samples_pooled": False,
+        })
+    return comparisons
+
+
 def build(inputs_path):
     root = inputs_path.parent
     manifest = read_json(inputs_path)
@@ -188,7 +210,7 @@ def build(inputs_path):
         if entry["id"] != str(entry["run_id"]) + "-" + entry["os"] or entry["id"] in seen:
             raise ValueError("duplicate or mismatched dataset identity")
         seen.add(entry["id"])
-        if entry["role"] not in ("primary", "historical", "verification") or entry["os"] not in OS_NAMES:
+        if entry["role"] not in ("primary", "historical", "verification", "confirmation") or entry["os"] not in OS_NAMES:
             raise ValueError("unsupported dataset role or OS")
         if entry["artifact_url"] != entry["workflow_url"] + "/artifacts/" + str(entry["artifact_id"]):
             raise ValueError("artifact provenance URL inconsistent")
@@ -245,6 +267,7 @@ def build(inputs_path):
                                     "same_image": all(a["environment"][key] == b["environment"][key] for key in ("runner_image", "runner_image_version")),
                                     "samples_pooled": False})
     result["historical_comparisons"] = comparisons
+    result["confirmation_comparisons"] = confirmation_comparisons(datasets)
     return result, registry
 
 
@@ -360,7 +383,7 @@ def render_readme(publication):
               "Cada .json.gz contiene un objeto files con las rutas originales (run-XX/criterion/... y run-XX/latency/...). El compresor usa cabecera sin fecha ni nombre de máquina. Los hashes verifican integridad, no certificación ni firma de autoría.",
               "El comando verifica hashes, procedencia, fuentes de fixtures y ambos resúmenes contra las muestras antes de generar esta publicación. No necesita red ni volver a medir.",
               "Comprueba cada mediana Criterion como mediana de tiempos/iteraciones y recalcula los percentiles individuales con nearest-rank. Los intervalos bootstrap originales Criterion se conservan como evidencia; no se vuelven a simular ni se usan como intervalos de fuel.",
-              "[publication.json](publication.json) contiene todas las filas con procedencia completa; [cases.md](cases.md) detalla operación, entradas, salidas esperadas y API; [history.md](history.md) conserva grupos históricos independientes; [certification-matrix.md](certification-matrix.md) delimita la certificación parcial y sus exclusiones.", "",
+              "[publication.json](publication.json) contiene todas las filas con procedencia completa; [cases.md](cases.md) detalla operación, entradas, salidas esperadas y API; [history.md](history.md) conserva grupos históricos independientes; [wasi-confirmation.md](wasi-confirmation.md) analiza las dos sesiones WASI; [certification-matrix.md](certification-matrix.md) delimita la certificación parcial y sus exclusiones.", "",
               "## Estado de las mediciones principales", ""]
     primary = [data for data in publication["datasets"] if data["role"] == "primary"]
     counts = []

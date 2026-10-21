@@ -112,8 +112,8 @@ class PublicationTests(unittest.TestCase):
 
     def test_only_human_approved_rows_receive_partial_certification(self):
         p = self.publication
-        self.assertEqual(len(p["datasets"]), 12)
-        self.assertEqual(len(p["rows"]), 222)
+        self.assertEqual(len(p["datasets"]), 18)
+        self.assertEqual(len(p["rows"]), 228)
         primary = [row for row in p["rows"] if row["role"] == "primary"]
         self.assertEqual(len(primary), 69)
         self.assertFalse(p["certified"])
@@ -124,6 +124,14 @@ class PublicationTests(unittest.TestCase):
         self.assertTrue(all(row["publication_class"] == "referencia_parcial_certificada" for row in certified))
         self.assertTrue(all(row["certification"]["supporting_dataset_id"] == "39534970668-windows" for row in certified))
         self.assertFalse(any(row["certified"] for row in p["rows"] if row["method"] == "percentil_por_invocacion"))
+        confirmations = [row for row in p["rows"] if row["role"] == "confirmation"]
+        self.assertEqual(len(confirmations), 6)
+        self.assertTrue(all(row["benchmark"] == "cold_run_component_model_wasi_echo" for row in confirmations))
+        self.assertTrue(all(row["certified"] is False for row in confirmations))
+        comparisons = {item["os"]: item for item in p["confirmation_comparisons"]}
+        self.assertEqual(set(comparisons), {"linux", "windows", "macos"})
+        self.assertTrue(all(item["same_runtime_sources"] and item["same_runtime_fingerprint"] for item in comparisons.values()))
+        self.assertTrue(all(item["samples_pooled"] is False for item in comparisons.values()))
         unstable = [row for row in primary if row["status"] == "inestable"]
         self.assertTrue(unstable)
         self.assertTrue(all(row["publication_class"] == "excluida_inestable" for row in unstable))

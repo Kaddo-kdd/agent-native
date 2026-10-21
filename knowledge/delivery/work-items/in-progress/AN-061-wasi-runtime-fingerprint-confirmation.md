@@ -70,3 +70,16 @@ variabilidad de macOS y no fija Z% para INIT-08-03.
 La instrumentación y el workflow acotado se implementan en este work item. Quedan
 pendientes los dos workflows manuales y su revisión humana antes de modificar la
 matriz de certificación o cerrar AN-055 / INIT-08-02.
+
+## Evidencia de dos sesiones independientes (2026-10-21)
+
+Los workflows `39549485766` y `39550537942` terminaron correctamente con el
+mismo SHA `96c9179319ee374c84708a1f5c8ecd819a7f19e1`. Sus seis artefactos se
+archivaron como datasets `criterion-wasi-confirmation`, sin pooling, y el análisis
+está en `docs/benchmarks/wasi-confirmation.md`.
+
+Las huellas del runtime, las fuentes de escenarios, CPU e imagen coinciden dentro
+de cada par de OS. Windows fue `inestable` (12,24 %) en la primera sesión y
+`aceptable` (3,53 %) en la segunda; macOS invierte ese patrón. Por ello WASI no
+se certifica y AN-061 permanece abierto para diagnóstico de variabilidad, sin
+nuevas repeticiones por ahora.

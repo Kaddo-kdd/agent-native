@@ -240,3 +240,11 @@ Se materializa AN-061 para registrar hashes de las fuentes efectivas del runtime
 recolectar `cold_run_component_model_wasi_echo` en dos workflows independientes de
 alcance acotado. La implementación no certifica WASI automáticamente: la matriz y
 el cierre siguen condicionados a la evidencia archivada y a revisión humana.
+
+### Resultado de AN-061: confirmación WASI (2026-10-21)
+
+Las dos sesiones de confirmación WASI están archivadas por separado y sus
+huellas efectivas coinciden dentro de cada OS. Windows y macOS muestran una
+sesión estable y otra inestable; la evidencia no permite certificar WASI ni
+seleccionar la sesión favorable. Se conserva la certificación limitada de las
+siete referencias Windows y permanecen abiertos AN-055 e INIT-08-02.

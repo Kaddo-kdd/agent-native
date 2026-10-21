@@ -1,7 +1,7 @@
 # Ejecuciones históricas independientes
 
 Datos técnicos sin certificar. Cada bloque conserva tres repeticiones propias; no se agrupan seis o nueve medianas.
-Mismo modelo de CPU no demuestra misma máquina física. 9 workflows conservan invocaciones individuales sin agruparlas.
+Mismo modelo de CPU no demuestra misma máquina física. 15 workflows conservan invocaciones individuales sin agruparlas.
 
 ## 39441524333-linux
 
@@ -390,12 +390,164 @@ Las colas muestran rangos observados entre repeticiones y pueden variar; no son 
 | `warm_run_core_identity_fuel` | 1.900 | 2.100 | 2.100 | 9.52 % | 2.000–2.500 | 2.100–3.000 | 10000 / 1000 | Revisar instrumento | mediana de overhead no resuelta por reloj [artefacto](https://github.com/Kaddo-kdd/agent-native/actions/runs/39534970668/artifacts/12318315159) |
 | `warm_run_core_identity_limits_unmetered` | 1.900 | 2.100 | 2.200 | 14.29 % | 2.000–4.000 | 2.300–4.700 | 10000 / 1000 | Excluida: inestable | mediana de overhead no resuelta por reloj [artefacto](https://github.com/Kaddo-kdd/agent-native/actions/runs/39534970668/artifacts/12318315159) |
 
+## 39549485766-linux
+
+[Workflow](https://github.com/Kaddo-kdd/agent-native/actions/runs/39549485766) · [Artefacto](https://github.com/Kaddo-kdd/agent-native/actions/runs/39549485766/artifacts/12322284282) · [Evidencia archivada](evidence/39549485766/linux-wasi-confirmation.json.gz)
+
+| Campo | Evidencia |
+|---|---|
+| Commit medido | `96c9179319ee374c84708a1f5c8ecd819a7f19e1` |
+| Captura UTC | 2026-10-21T05:27:22.038535+00:00 (ficha de sesión, no timestamp de cada muestra) |
+| OS / arquitectura | linux / x86_64 |
+| CPU / lógicas disponibles | AMD EPYC 7763 64-Core Processor / 4 |
+| Rust | rustc 1.85.0 (4d91de4e4 2025-02-17) |
+| Cargo | cargo 1.85.0 (d73d2caf9 2024-12-31) |
+| Wasmtime / perfil | 29.0.1 / release (criterion) |
+| Imagen | ubuntu24 / 20261012.334.1 |
+
+### Criterion — estimacion_agregada
+
+Medianas en µs; N cuenta muestras agrupadas Criterion, no invocaciones individuales.
+
+| Benchmark / fixture | R1 µs | R2 µs | R3 µs | Variación | N por R | Estado editorial | Procedencia |
+|---|---|---|---|---|---|---|---|
+| `cold_run_component_model_wasi_echo` / cm_wasi_echo | 2212.118 | 2211.003 | 2186.810 | 1.14 % | 100/100/100 | Candidata a revisión | [39549485766-linux](https://github.com/Kaddo-kdd/agent-native/actions/runs/39549485766/artifacts/12322284282) |
+
+Este dataset no contiene invocaciones individuales. No se inventan p50/p95/p99.
+
+## 39549485766-macos
+
+[Workflow](https://github.com/Kaddo-kdd/agent-native/actions/runs/39549485766) · [Artefacto](https://github.com/Kaddo-kdd/agent-native/actions/runs/39549485766/artifacts/12323003714) · [Evidencia archivada](evidence/39549485766/macos-wasi-confirmation.json.gz)
+
+| Campo | Evidencia |
+|---|---|
+| Commit medido | `96c9179319ee374c84708a1f5c8ecd819a7f19e1` |
+| Captura UTC | 2026-10-21T05:26:22.355996+00:00 (ficha de sesión, no timestamp de cada muestra) |
+| OS / arquitectura | macos / aarch64 |
+| CPU / lógicas disponibles | Apple M1 (Virtual) / 3 |
+| Rust | rustc 1.85.0 (4d91de4e4 2025-02-17) |
+| Cargo | cargo 1.85.0 (d73d2caf9 2024-12-31) |
+| Wasmtime / perfil | 29.0.1 / release (criterion) |
+| Imagen | macos26 / 20261013.0424.1 |
+
+### Criterion — estimacion_agregada
+
+Medianas en µs; N cuenta muestras agrupadas Criterion, no invocaciones individuales.
+
+| Benchmark / fixture | R1 µs | R2 µs | R3 µs | Variación | N por R | Estado editorial | Procedencia |
+|---|---|---|---|---|---|---|---|
+| `cold_run_component_model_wasi_echo` / cm_wasi_echo | 987.910 | 1026.037 | 984.006 | 4.25 % | 100/100/100 | Candidata a revisión | [39549485766-macos](https://github.com/Kaddo-kdd/agent-native/actions/runs/39549485766/artifacts/12323003714) |
+
+Este dataset no contiene invocaciones individuales. No se inventan p50/p95/p99.
+
+## 39549485766-windows
+
+[Workflow](https://github.com/Kaddo-kdd/agent-native/actions/runs/39549485766) · [Artefacto](https://github.com/Kaddo-kdd/agent-native/actions/runs/39549485766/artifacts/12323063560) · [Evidencia archivada](evidence/39549485766/windows-wasi-confirmation.json.gz)
+
+| Campo | Evidencia |
+|---|---|
+| Commit medido | `96c9179319ee374c84708a1f5c8ecd819a7f19e1` |
+| Captura UTC | 2026-10-21T05:27:19.959513+00:00 (ficha de sesión, no timestamp de cada muestra) |
+| OS / arquitectura | windows / x86_64 |
+| CPU / lógicas disponibles | AMD EPYC 7763 64-Core Processor / 4 |
+| Rust | rustc 1.85.0 (4d91de4e4 2025-02-17) |
+| Cargo | cargo 1.85.0 (d73d2caf9 2024-12-31) |
+| Wasmtime / perfil | 29.0.1 / release (criterion) |
+| Imagen | win25-vs2026 / 20261007.264.1 |
+
+### Criterion — estimacion_agregada
+
+Medianas en µs; N cuenta muestras agrupadas Criterion, no invocaciones individuales.
+
+| Benchmark / fixture | R1 µs | R2 µs | R3 µs | Variación | N por R | Estado editorial | Procedencia |
+|---|---|---|---|---|---|---|---|
+| `cold_run_component_model_wasi_echo` / cm_wasi_echo | 2432.161 | 2658.245 | 2360.538 | 12.24 % | 100/100/100 | Excluida: inestable | [39549485766-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39549485766/artifacts/12323063560) |
+
+Este dataset no contiene invocaciones individuales. No se inventan p50/p95/p99.
+
+## 39550537942-linux
+
+[Workflow](https://github.com/Kaddo-kdd/agent-native/actions/runs/39550537942) · [Artefacto](https://github.com/Kaddo-kdd/agent-native/actions/runs/39550537942/artifacts/12323940364) · [Evidencia archivada](evidence/39550537942/linux-wasi-confirmation.json.gz)
+
+| Campo | Evidencia |
+|---|---|
+| Commit medido | `96c9179319ee374c84708a1f5c8ecd819a7f19e1` |
+| Captura UTC | 2026-10-21T05:37:26.411940+00:00 (ficha de sesión, no timestamp de cada muestra) |
+| OS / arquitectura | linux / x86_64 |
+| CPU / lógicas disponibles | AMD EPYC 7763 64-Core Processor / 4 |
+| Rust | rustc 1.85.0 (4d91de4e4 2025-02-17) |
+| Cargo | cargo 1.85.0 (d73d2caf9 2024-12-31) |
+| Wasmtime / perfil | 29.0.1 / release (criterion) |
+| Imagen | ubuntu24 / 20261012.334.1 |
+
+### Criterion — estimacion_agregada
+
+Medianas en µs; N cuenta muestras agrupadas Criterion, no invocaciones individuales.
+
+| Benchmark / fixture | R1 µs | R2 µs | R3 µs | Variación | N por R | Estado editorial | Procedencia |
+|---|---|---|---|---|---|---|---|
+| `cold_run_component_model_wasi_echo` / cm_wasi_echo | 2244.833 | 2239.765 | 2279.267 | 1.76 % | 100/100/100 | Candidata a revisión | [39550537942-linux](https://github.com/Kaddo-kdd/agent-native/actions/runs/39550537942/artifacts/12323940364) |
+
+Este dataset no contiene invocaciones individuales. No se inventan p50/p95/p99.
+
+## 39550537942-macos
+
+[Workflow](https://github.com/Kaddo-kdd/agent-native/actions/runs/39550537942) · [Artefacto](https://github.com/Kaddo-kdd/agent-native/actions/runs/39550537942/artifacts/12324270310) · [Evidencia archivada](evidence/39550537942/macos-wasi-confirmation.json.gz)
+
+| Campo | Evidencia |
+|---|---|
+| Commit medido | `96c9179319ee374c84708a1f5c8ecd819a7f19e1` |
+| Captura UTC | 2026-10-21T05:37:38.701960+00:00 (ficha de sesión, no timestamp de cada muestra) |
+| OS / arquitectura | macos / aarch64 |
+| CPU / lógicas disponibles | Apple M1 (Virtual) / 3 |
+| Rust | rustc 1.85.0 (4d91de4e4 2025-02-17) |
+| Cargo | cargo 1.85.0 (d73d2caf9 2024-12-31) |
+| Wasmtime / perfil | 29.0.1 / release (criterion) |
+| Imagen | macos26 / 20261013.0424.1 |
+
+### Criterion — estimacion_agregada
+
+Medianas en µs; N cuenta muestras agrupadas Criterion, no invocaciones individuales.
+
+| Benchmark / fixture | R1 µs | R2 µs | R3 µs | Variación | N por R | Estado editorial | Procedencia |
+|---|---|---|---|---|---|---|---|
+| `cold_run_component_model_wasi_echo` / cm_wasi_echo | 1258.578 | 1082.326 | 1829.547 | 59.37 % | 100/100/100 | Excluida: inestable | [39550537942-macos](https://github.com/Kaddo-kdd/agent-native/actions/runs/39550537942/artifacts/12324270310) |
+
+Este dataset no contiene invocaciones individuales. No se inventan p50/p95/p99.
+
+## 39550537942-windows
+
+[Workflow](https://github.com/Kaddo-kdd/agent-native/actions/runs/39550537942) · [Artefacto](https://github.com/Kaddo-kdd/agent-native/actions/runs/39550537942/artifacts/12323208551) · [Evidencia archivada](evidence/39550537942/windows-wasi-confirmation.json.gz)
+
+| Campo | Evidencia |
+|---|---|
+| Commit medido | `96c9179319ee374c84708a1f5c8ecd819a7f19e1` |
+| Captura UTC | 2026-10-21T05:38:42.089000+00:00 (ficha de sesión, no timestamp de cada muestra) |
+| OS / arquitectura | windows / x86_64 |
+| CPU / lógicas disponibles | AMD EPYC 7763 64-Core Processor / 4 |
+| Rust | rustc 1.85.0 (4d91de4e4 2025-02-17) |
+| Cargo | cargo 1.85.0 (d73d2caf9 2024-12-31) |
+| Wasmtime / perfil | 29.0.1 / release (criterion) |
+| Imagen | win25-vs2026 / 20261007.264.1 |
+
+### Criterion — estimacion_agregada
+
+Medianas en µs; N cuenta muestras agrupadas Criterion, no invocaciones individuales.
+
+| Benchmark / fixture | R1 µs | R2 µs | R3 µs | Variación | N por R | Estado editorial | Procedencia |
+|---|---|---|---|---|---|---|---|
+| `cold_run_component_model_wasi_echo` / cm_wasi_echo | 2306.445 | 2365.680 | 2389.963 | 3.53 % | 100/100/100 | Candidata a revisión | [39550537942-windows](https://github.com/Kaddo-kdd/agent-native/actions/runs/39550537942/artifacts/12323208551) |
+
+Este dataset no contiene invocaciones individuales. No se inventan p50/p95/p99.
+
 ## Diagnóstico macOS
 
 - 39441524333-macos: 14 inestable; R3 menor que R1 en 14/14 medianas.
 - 39446048498-macos: 1 aceptable; 13 inestable; R3 menor que R1 en 14/14 medianas.
 - 39449438474-macos: 1 aceptable; 13 inestable; R3 menor que R1 en 10/14 medianas.
 - 39534970668-macos: 1 aceptable; 13 inestable; R3 menor que R1 en 8/14 medianas.
+- 39549485766-macos: 1 aceptable; R3 menor que R1 en 1/1 medianas.
+- 39550537942-macos: 1 inestable; R3 menor que R1 en 0/1 medianas.
 
 La deriva se repite. Los metadatos no contienen telemetría de carga, energía/frecuencia o scheduling del host: no permiten atribuir la causa a la virtualización.
 Mantener el 10 %; medir condiciones del host y contrastar en un runner controlado antes de relajar metodología o certificar macOS.
