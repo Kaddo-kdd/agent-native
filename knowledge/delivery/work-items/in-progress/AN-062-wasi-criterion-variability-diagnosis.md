@@ -72,8 +72,8 @@ cierra AN-055, INIT-08-02 o AN-061 sin una decisión humana explícita.
 
 ## Estado
 
-Instrumento integrado en `main` y pendiente de CI. No se ha ejecutado todav�a
-el diagn�stico ni el A/A. El banco `wasi_diagnostic` registra tres etapas
+Instrumento integrado en `main` y pendiente de CI. No se ha ejecutado todavía
+el diagnóstico ni el A/A. El banco `wasi_diagnostic` registra tres etapas
 separadas, conserva `extended.rs` sin cambios y guarda
 `host_telemetry_before` y `host_telemetry_after` en `collection.json`.
 El archivo `criterion-wasi-diagnostic` conserva solamente esas tres etapas.
