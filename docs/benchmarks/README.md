@@ -25,7 +25,7 @@ python scripts/bench_publish.py
 python scripts/bench_publish.py --check
 ```
 
-inputs.json fija las nueve fuentes y la ejecución principal; no selecciona repeticiones favorables. evidence/ conserva JSON crudo comprimido y hashes, sin depender de la caducidad de artefactos GitHub.
+inputs.json fija 12 fuentes y la ejecución principal; no selecciona repeticiones favorables. evidence/ conserva JSON crudo comprimido y hashes, sin depender de la caducidad de artefactos GitHub.
 Cada .json.gz contiene un objeto files con las rutas originales (run-XX/criterion/... y run-XX/latency/...). El compresor usa cabecera sin fecha ni nombre de máquina. Los hashes verifican integridad, no certificación ni firma de autoría.
 El comando verifica hashes, procedencia, fuentes de fixtures y ambos resúmenes contra las muestras antes de generar esta publicación. No necesita red ni volver a medir.
 Comprueba cada mediana Criterion como mediana de tiempos/iteraciones y recalcula los percentiles individuales con nearest-rank. Los intervalos bootstrap originales Criterion se conservan como evidencia; no se vuelven a simular ni se usan como intervalos de fuel.

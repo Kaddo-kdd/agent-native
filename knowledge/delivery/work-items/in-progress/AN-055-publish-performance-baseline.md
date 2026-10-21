@@ -181,3 +181,21 @@ La estabilidad no es requisito para conservar evidencia técnica, ni se exige qu
 todos los benchmarks sean estables para proponer una línea base parcial. AN-055
 e INIT-08-02 permanecen `in-progress` hasta que la matriz de certificación parcial
 y la nueva ejecución independiente reciban aprobación humana explícita.
+
+### Verificación independiente de AN-054 (run 39534970668)
+
+La ejecución manual desde `main` sobre el commit
+`679490606a398e807c19dd6dfa2dec794de6311d` concluyó correctamente en Linux,
+macOS y Windows. Sus tres artefactos se archivaron como datasets de verificación
+independientes en `docs/benchmarks/evidence/39534970668/`; no sustituyen la
+fuente primaria ni mezclan muestras con ella.
+
+- Linux: 10/14 filas Criterion y 6/9 p50 individuales fueron `aceptable`.
+- Windows: 11/14 filas Criterion y 5/9 p50 fueron `aceptable`; los cinco p50
+  aceptables mantienen el aviso de resolución del reloj.
+- macOS: 1/14 filas Criterion y 1/9 p50 fueron `aceptable`; la variación sigue
+  impidiendo una referencia certificable en ese runner.
+
+La regeneración offline comprobó hashes, procedencia, muestras y los resúmenes
+recalculados de los doce datasets. Esta sesión aporta repetibilidad entre
+workflows, pero no certifica filas ni permite fijar todavía un objetivo Z%.

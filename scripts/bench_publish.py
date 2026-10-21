@@ -167,7 +167,11 @@ def build(inputs_path):
         "rows": rows,
         "calibration": {data["entry"]["id"]: data["latency"]["calibration_by_run"] for data in primary},
         "fuel_comparisons": {data["entry"]["id"]: data["latency"]["fuel_comparisons"] for data in primary},
-        "individual_reproducibility": "not established: one independent individual-collector workflow",
+        "individual_reproducibility": (
+            "not established: "
+            + str(sum(data["latency"] is not None for data in datasets))
+            + " independent individual-collector workflows are preserved without pooling"
+        ),
         "limitations": [
             "Escenarios de runners hospedados, sin rendimiento universal por OS ni SLA.",
             "Repetibilidad en el mismo runner y reproducibilidad entre workflows son evaluaciones separadas.",
@@ -259,9 +263,14 @@ def render_cases(registry):
 
 
 def render_history(publication):
+    individual_workflows = sum(
+        dataset["role"] != "historical" for dataset in publication["datasets"]
+    )
     lines = ["# Ejecuciones históricas independientes", "",
              "Datos técnicos sin certificar. Cada bloque conserva tres repeticiones propias; no se agrupan seis o nueve medianas.",
-             "Mismo modelo de CPU no demuestra misma máquina física. Solo el último workflow tiene invocaciones individuales.", ""]
+             "Mismo modelo de CPU no demuestra misma máquina física. "
+             + str(individual_workflows)
+             + " workflows conservan invocaciones individuales sin agruparlas.", ""]
     datasets = publication["datasets"]
     for dataset in datasets:
         if dataset["role"] == "primary":
@@ -279,7 +288,7 @@ def render_history(publication):
     lines += ["", "La deriva se repite. Los metadatos no contienen telemetría de carga, energía/frecuencia o scheduling del host: no permiten atribuir la causa a la virtualización.",
               "Mantener el 10 %; medir condiciones del host y contrastar en un runner controlado antes de relajar metodología o certificar macOS.",
               "AN-054 añadió otro instrumento y cambió la secuencia de recolección: no atribuir cambios numéricos a una mejora del runtime.", "",
-              "## Comparabilidad de las dos ejecuciones AN-053", "",
+              "## Comparabilidad entre sesiones independientes", "",
               "Coincidir en modelo de CPU o imagen no identifica una misma máquina física; no se agrupan muestras.", ""]
     lines += table(["OS", "Anterior", "Verificación", "Fuentes registradas idénticas", "Mismo modelo CPU", "Misma imagen"], [
         [item["os"], item["before"], item["after"], "sí" if item["same_recorded_sources"] else "no",
@@ -290,6 +299,7 @@ def render_history(publication):
 
 
 def render_readme(publication):
+    dataset_count = len(publication["datasets"])
     lines = ["# Línea base medida candidata — pendiente de revisión humana", "",
              "## Limitaciones y estado", "",
              "**Ninguna fila está certificada.** Un workflow verde prueba recolección completa, no estabilidad ni certificación.",
@@ -298,7 +308,7 @@ def render_readme(publication):
     lines += ["", "Umbral conservado: `(max - min) / mediana` de tres medianas Criterion < 10 %; por separado, la misma regla sobre tres p50 individuales.",
               "Porcentajes y µs se redondean para mostrar; la clasificación usa los valores completos. p95/p99 no reciben ese umbral inicialmente.", "",
               "## Regeneración offline", "", "```text", "python scripts/bench_publish.py", "python scripts/bench_publish.py --check", "```", "",
-              "inputs.json fija las nueve fuentes y la ejecución principal; no selecciona repeticiones favorables. evidence/ conserva JSON crudo comprimido y hashes, sin depender de la caducidad de artefactos GitHub.",
+              "inputs.json fija " + str(dataset_count) + " fuentes y la ejecución principal; no selecciona repeticiones favorables. evidence/ conserva JSON crudo comprimido y hashes, sin depender de la caducidad de artefactos GitHub.",
               "Cada .json.gz contiene un objeto files con las rutas originales (run-XX/criterion/... y run-XX/latency/...). El compresor usa cabecera sin fecha ni nombre de máquina. Los hashes verifican integridad, no certificación ni firma de autoría.",
               "El comando verifica hashes, procedencia, fuentes de fixtures y ambos resúmenes contra las muestras antes de generar esta publicación. No necesita red ni volver a medir.",
               "Comprueba cada mediana Criterion como mediana de tiempos/iteraciones y recalcula los percentiles individuales con nearest-rank. Los intervalos bootstrap originales Criterion se conservan como evidencia; no se vuelven a simular ni se usan como intervalos de fuel.",

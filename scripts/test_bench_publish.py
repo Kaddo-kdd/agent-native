@@ -98,8 +98,8 @@ class PublicationTests(unittest.TestCase):
 
     def test_all_rows_remain_visible_without_certification(self):
         p = self.publication
-        self.assertEqual(len(p["datasets"]), 9)
-        self.assertEqual(len(p["rows"]), 153)
+        self.assertEqual(len(p["datasets"]), 12)
+        self.assertEqual(len(p["rows"]), 222)
         primary = [row for row in p["rows"] if row["role"] == "primary"]
         self.assertEqual(len(primary), 69)
         self.assertFalse(p["certified"])
