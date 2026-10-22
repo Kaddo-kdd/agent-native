@@ -2,7 +2,11 @@
   "mcpServers": {
     "kaddo": {
       "command": "npx",
-      "args": ["@kaddo/mcp"]
+      "args": ["-y", "@kaddo/mcp"],
+      "cwd": "C:/Users/Admin/Documents/repos/agent-native",
+      "env": {
+        "KADDO_PROJECT_DIR": "C:/Users/Admin/Documents/repos/agent-native"
+      }
     }
   }
 }
