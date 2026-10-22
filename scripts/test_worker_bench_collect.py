@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import tempfile
+import sys
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -35,6 +36,15 @@ class WorkerBenchCollectTests(unittest.TestCase):
         })
         self.assertEqual(summary["throughput_per_second"], 2_000_000)
 
+    def test_rss_runner_records_relative_samples_and_exits(self):
+        output, samples = worker_bench_collect.run_with_rss_samples(
+            [sys.executable, "-c", "print('rss-test')"])
+        self.assertEqual(output.strip(), "rss-test")
+        self.assertTrue(samples)
+        self.assertEqual(samples, sorted(samples, key=lambda sample: sample["offset_ns"]))
+        for sample in samples:
+            self.assertIn("rss", sample)
+            self.assertIn("available", sample["rss"])
     def test_positive_csv_deduplicates_and_rejects_zero(self):
         self.assertEqual(worker_bench_collect.positive_csv("4,1,4", "workers"), [1, 4])
         with self.assertRaises(Exception):

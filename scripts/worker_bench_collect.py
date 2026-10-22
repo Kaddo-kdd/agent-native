@@ -125,15 +125,54 @@ def validate_document(document, mode, workload, workers, queue_capacity, concurr
         raise ValueError("benchmark document has an invalid sample")
 
 
-def rss_snapshot():
-    if os.name == "posix":
-        import resource
+def process_tree_rss(pid):
+    """Return RSS samples for a POSIX process and its descendants, in KiB."""
+    if os.name != "posix":
+        return {"available": False, "reason": "RSS collector currently implemented for POSIX only"}
+    processes = {}
+    for status in Path("/proc").glob("[0-9]*/status"):
+        fields = {}
+        try:
+            content = status.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for line in content.splitlines():
+            if ":" in line:
+                key, value = line.split(":", 1)
+                fields[key] = value.strip()
+        try:
+            processes[int(status.parent.name)] = (int(fields["PPid"].split()[0]),
+                                                 int(fields.get("VmRSS", "0 kB").split()[0]))
+        except (KeyError, ValueError):
+            continue
+    descendants = {pid}
+    changed = True
+    while changed:
+        changed = False
+        for candidate, (parent, _rss) in processes.items():
+            if parent in descendants and candidate not in descendants:
+                descendants.add(candidate)
+                changed = True
+    return {"available": True, "unit": "KiB", "source": "/proc/<pid>/status VmRSS",
+            "value": sum(processes[item][1] for item in descendants if item in processes),
+            "pids": sorted(descendants)}
 
-        return {"available": True, "unit": "KiB", "source": "getrusage(RUSAGE_CHILDREN).ru_maxrss",
-                "value": resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss}
-    return {"available": False, "reason": "RSS collector currently implemented for POSIX only"}
 
-
+def run_with_rss_samples(command):
+    started = time.monotonic_ns()
+    process = subprocess.Popen(command, cwd=REPO, text=True, encoding="utf-8",
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    samples = []
+    while process.poll() is None:
+        samples.append({"offset_ns": time.monotonic_ns() - started,
+                        "rss": process_tree_rss(process.pid)})
+        time.sleep(0.05)
+    stdout, stderr = process.communicate()
+    samples.append({"offset_ns": time.monotonic_ns() - started,
+                    "rss": process_tree_rss(process.pid)})
+    if process.returncode:
+        raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
+    return stdout, samples
 def environment(args):
     return {
         "schema_version": 1,
@@ -169,10 +208,8 @@ def invoke(mode, workload, workers, queue_capacity, concurrency, args):
         "--queue-capacity", str(queue_capacity), "--concurrency", str(concurrency),
         "--warmup", str(args.warmup), "--requests", str(args.requests),
     ]
-    before = rss_snapshot()
-    output = subprocess.check_output(command, cwd=REPO, text=True, encoding="utf-8")
-    after = rss_snapshot()
-    return json.loads(output), {"before": before, "after": after}
+    output, samples = run_with_rss_samples(command)
+    return json.loads(output), {"rss_samples": samples}
 
 
 def session_name(repetition, workload, workers, queue_capacity, concurrency, mode, round_number):
