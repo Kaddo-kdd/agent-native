@@ -1,7 +1,7 @@
 ---
 id: AN-067
 type: chore
-status: ready
+status: in-progress
 created_at: 2026-10-21T00:00:00.000Z
 title: Saturación, throughput y soak de workers host-side
 knowledge_level: K4
@@ -32,6 +32,7 @@ related_decisions:
   - ADR-007
 project_state: ai-assisted
 refined_by: codex
+implemented_by: codex
 template_version: 1
 ---
 

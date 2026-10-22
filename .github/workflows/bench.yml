@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: Full suite, narrow WASI confirmation, or AN-062 diagnostic
+        description: Full suite, narrow WASI confirmation, AN-062 diagnostic, or AN-067 workers A/A
         required: true
         default: full
         type: choice
@@ -14,6 +14,7 @@ on:
           - full
           - wasi-confirmation
           - wasi-diagnostic
+          - workers-aa
 
 permissions:
   contents: read
@@ -24,6 +25,7 @@ concurrency:
 
 jobs:
   bench:
+    if: inputs.scope != 'workers-aa'
     name: Bench (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
@@ -69,5 +71,47 @@ jobs:
         with:
           name: bench-${{ matrix.os }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: bench-results/
+          if-no-files-found: error
+          retention-days: 30
+
+  worker-bench:
+    if: inputs.scope == 'workers-aa'
+    name: Worker A/A benchmark (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust toolchain (per rust-toolchain.toml)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85.0
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: worker-bench-linux
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify worker benchmark collector
+        run: python -m unittest scripts/test_worker_bench_collect.py -v
+
+      - name: Collect worker A/A sessions
+        run: >-
+          python scripts/worker_bench_collect.py --output worker-bench-results
+          --workers 1,2 --queue-capacities 1,4 --concurrency 1,2,4
+          --repetitions 3 --warmup 1000 --requests 10000
+
+      - name: Upload worker benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worker-bench-${{ github.run_id }}-${{ github.run_attempt }}
+          path: worker-bench-results/
           if-no-files-found: error
           retention-days: 30
