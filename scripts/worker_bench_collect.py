@@ -66,10 +66,12 @@ def percentile(samples, percentile):
 
 def summarize(document):
     samples = document["samples"]
-    latencies = [sample["latency_ns"] for sample in samples]
     outcomes = {}
+    latencies_by_outcome = {}
     for sample in samples:
-        outcomes[sample["outcome"]] = outcomes.get(sample["outcome"], 0) + 1
+        outcome = sample["outcome"]
+        outcomes[outcome] = outcomes.get(outcome, 0) + 1
+        latencies_by_outcome.setdefault(outcome, []).append(sample["latency_ns"])
     completed = outcomes.get("completed", 0)
     elapsed = document["wall_elapsed_ns"]
     return {
@@ -82,11 +84,10 @@ def summarize(document):
         "wall_elapsed_ns": elapsed,
         "throughput_per_second": completed * 1_000_000_000 / elapsed if elapsed else None,
         "outcomes": outcomes,
-        "latency_ns": {
-            "p50": percentile(latencies, 50),
-            "p95": percentile(latencies, 95),
-            "p99": percentile(latencies, 99),
-            "max": max(latencies),
+        "latency_ns_by_outcome": {
+            outcome: {"p50": percentile(values, 50), "p95": percentile(values, 95),
+                      "p99": percentile(values, 99), "max": max(values)}
+            for outcome, values in sorted(latencies_by_outcome.items())
         },
     }
 
@@ -197,7 +198,7 @@ def collect(args):
                 for workers in args.workers:
                     for queue_capacity in args.queue_capacities:
                         for concurrency in args.concurrency:
-                            for mode in ("sequential", "workers"):
+                            for mode in (("sequential", "workers") if (round_number + repetition) % 2 else ("workers", "sequential")):
                                 document, resources = invoke(
                                     mode, workload, workers, queue_capacity, concurrency, args)
                                 validate_document(
@@ -250,6 +251,9 @@ def arguments():
         parser.error("repetitions and requests must be positive; warmup cannot be negative")
     if args.soak_seconds is not None and args.soak_seconds <= 0:
         parser.error("soak-seconds must be positive")
+    if args.soak_seconds is not None and (len(args.workers) != 1 or len(args.queue_capacities) != 1
+                                         or len(args.concurrency) != 1 or args.repetitions != 1):
+        parser.error("soak requires one workers, queue capacity, concurrency and repetition")
     return args
 
 

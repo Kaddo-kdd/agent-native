@@ -105,14 +105,12 @@ fn elapsed_ns(start: Instant) -> u64 {
 }
 
 fn sequential_samples(
+    config: &Config,
     engine: &Engine,
     component: &Component,
-    workload: Workload,
-    warmup: usize,
-    requests: usize,
-) -> (Vec<Sample>, u64) {
-    let (function, arguments) = function(workload);
-    for index in 0..warmup {
+) -> Result<(Vec<Sample>, u64), String> {
+    let (function, arguments) = function(config.workload);
+    for index in 0..config.warmup {
         black_box(
             tenant(engine, index)
                 .invoke(component, function, &arguments)
@@ -120,26 +118,41 @@ fn sequential_samples(
         );
     }
     let start = Instant::now();
-    let samples = (0..requests)
-        .map(|index| {
-            let request_start = Instant::now();
-            let started_offset_ns = elapsed_ns(start);
-            let result = tenant(engine, warmup + index).invoke(component, function, &arguments);
-            black_box(&result);
-            let finished_offset_ns = elapsed_ns(start);
-            Sample {
-                started_offset_ns,
-                finished_offset_ns,
-                latency_ns: elapsed_ns(request_start),
-                outcome: if result.is_ok() {
-                    "completed"
-                } else {
-                    "runtime_error"
-                },
-            }
-        })
-        .collect();
-    (samples, elapsed_ns(start))
+    let samples = thread::scope(|scope| {
+        let mut emitters = Vec::with_capacity(config.concurrency);
+        for emitter in 0..config.concurrency {
+            let arguments = arguments.clone();
+            emitters.push(scope.spawn(move || {
+                let mut local = Vec::new();
+                for index in (emitter..config.requests).step_by(config.concurrency) {
+                    let request_start = Instant::now();
+                    let started_offset_ns = elapsed_ns(start);
+                    let result = tenant(engine, config.warmup + index)
+                        .invoke(component, function, &arguments);
+                    black_box(&result);
+                    let finished_offset_ns = elapsed_ns(start);
+                    local.push(Sample {
+                        started_offset_ns,
+                        finished_offset_ns,
+                        latency_ns: elapsed_ns(request_start),
+                        outcome: if result.is_ok() {
+                            "completed"
+                        } else {
+                            "runtime_error"
+                        },
+                    });
+                }
+                local
+            }));
+        }
+        let mut samples = Vec::with_capacity(config.requests);
+        for emitter in emitters {
+            samples.extend(emitter.join().map_err(|_| "benchmark emitter panicked")?);
+        }
+        Ok::<_, &'static str>(samples)
+    })
+    .map_err(str::to_string)?;
+    Ok((samples, elapsed_ns(start)))
 }
 
 fn worker_request(
@@ -278,13 +291,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let engine = Engine::new()?;
     let component = Arc::new(engine.load_component(&fixture(config.workload))?);
     let (samples, wall_elapsed_ns) = match config.mode {
-        Mode::Sequential => sequential_samples(
-            &engine,
-            &component,
-            config.workload,
-            config.warmup,
-            config.requests,
-        ),
+        Mode::Sequential => {
+            sequential_samples(&config, &engine, &component).map_err(std::io::Error::other)?
+        }
         Mode::Workers => {
             worker_samples(&config, &engine, &component).map_err(std::io::Error::other)?
         }

@@ -28,7 +28,11 @@ class WorkerBenchCollectTests(unittest.TestCase):
         }
         summary = worker_bench_collect.summarize(document)
         self.assertEqual(summary["outcomes"], {"completed": 2, "backpressure": 1, "runtime_error": 1})
-        self.assertEqual(summary["latency_ns"], {"p50": 2, "p95": 4, "p99": 4, "max": 4})
+        self.assertEqual(summary["latency_ns_by_outcome"], {
+            "backpressure": {"p50": 1, "p95": 1, "p99": 1, "max": 1},
+            "completed": {"p50": 2, "p95": 4, "p99": 4, "max": 4},
+            "runtime_error": {"p50": 3, "p95": 3, "p99": 3, "max": 3},
+        })
         self.assertEqual(summary["throughput_per_second"], 2_000_000)
 
     def test_positive_csv_deduplicates_and_rejects_zero(self):
