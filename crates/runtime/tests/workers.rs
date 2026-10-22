@@ -18,6 +18,7 @@ fn fixture() -> Vec<u8> {
     wat::parse_str(
         r#"(module
             (global $state (mut i32) (i32.const 0))
+            (memory 1)
             (func (export "increment") (result i32)
                 global.get $state
                 i32.const 1
@@ -26,12 +27,43 @@ fn fixture() -> Vec<u8> {
                 global.get $state)
             (func (export "identity") (param i32) (result i32)
                 local.get 0)
+            (func (export "write_then_read") (param i32) (result i32)
+                i32.const 0
+                local.get 0
+                i32.store
+                i32.const 0
+                i32.load)
+            (func (export "read_memory") (result i32)
+                i32.const 0
+                i32.load)
+            (func (export "mutate_then_trap")
+                i32.const 99
+                global.set $state
+                unreachable)
+            (func (export "grow_then_trap")
+                i32.const 1
+                memory.grow
+                drop
+                unreachable)
             (func (export "spin")
                 (loop $forever
                     br $forever))
         )"#,
     )
     .expect("valid Core WASM fixture")
+}
+
+fn imported_component(engine: &Engine) -> Arc<Component> {
+    let bytes = wat::parse_str(
+        r#"(module
+            (import "env" "read" (func $read (param i32) (result i32)))
+            (func (export "query") (param i32) (result i32)
+                local.get 0
+                call $read)
+        )"#,
+    )
+    .expect("valid imported Core WASM fixture");
+    Arc::new(engine.load_component(&bytes).expect("imported component"))
 }
 
 fn component() -> (Engine, Arc<Component>) {
@@ -47,6 +79,17 @@ fn request(
     arguments: Vec<Val>,
 ) -> WorkerRequest {
     WorkerRequest::new(component, tenant, function, arguments)
+}
+
+fn wait_for_running(pool: &WorkerPool, expected: usize) {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while pool.stats().running != expected {
+        assert!(
+            Instant::now() < deadline,
+            "worker pool did not reach {expected} running request(s)"
+        );
+        thread::yield_now();
+    }
 }
 
 #[test]
@@ -113,6 +156,162 @@ fn each_worker_request_uses_a_fresh_guest_instance() {
     assert_eq!(second.values, vec![Val::S32(1)]);
     let report = pool.close(ShutdownMode::Drain);
     assert_eq!(report.stats.completed, 2);
+}
+
+#[test]
+fn concurrent_tenants_keep_globals_and_memory_isolated() {
+    let (engine, component) = component();
+    let pool = WorkerPool::new(WorkerPoolConfig::new(2, 2)).expect("pool");
+    let tenant_a = engine.create_tenant(TenantConfig::new("tenant-a").with_fuel_budget(10_000_000));
+    let tenant_b = engine.create_tenant(TenantConfig::new("tenant-b").with_fuel_budget(10_000_000));
+
+    let spinning_a = pool
+        .submit(request(component.clone(), tenant_a.clone(), "spin", vec![]))
+        .expect("first spin accepted");
+    let spinning_b = pool
+        .submit(request(component.clone(), tenant_b.clone(), "spin", vec![]))
+        .expect("second spin accepted");
+    wait_for_running(&pool, 2);
+    assert!(matches!(
+        spinning_a.recv(),
+        Err(WorkerError::Runtime(RuntimeError::FuelExhausted { .. }))
+    ));
+    assert!(matches!(
+        spinning_b.recv(),
+        Err(WorkerError::Runtime(RuntimeError::FuelExhausted { .. }))
+    ));
+
+    let global_a = pool
+        .submit(request(
+            component.clone(),
+            tenant_a.clone(),
+            "increment",
+            vec![],
+        ))
+        .expect("tenant A increment accepted");
+    let global_b = pool
+        .submit(request(
+            component.clone(),
+            tenant_b.clone(),
+            "increment",
+            vec![],
+        ))
+        .expect("tenant B increment accepted");
+    assert_eq!(
+        global_a.recv().expect("tenant A global").values,
+        vec![Val::S32(1)]
+    );
+    assert_eq!(
+        global_b.recv().expect("tenant B global").values,
+        vec![Val::S32(1)]
+    );
+
+    let memory_a = pool
+        .submit(request(
+            component.clone(),
+            tenant_a,
+            "write_then_read",
+            vec![Val::S32(41)],
+        ))
+        .expect("tenant A memory write accepted");
+    let memory_b = pool
+        .submit(request(
+            component.clone(),
+            tenant_b,
+            "write_then_read",
+            vec![Val::S32(7)],
+        ))
+        .expect("tenant B memory write accepted");
+    assert_eq!(
+        memory_a.recv().expect("tenant A memory").values,
+        vec![Val::S32(41)]
+    );
+    assert_eq!(
+        memory_b.recv().expect("tenant B memory").values,
+        vec![Val::S32(7)]
+    );
+
+    let clean_memory = pool
+        .submit(request(
+            component,
+            engine.create_tenant(TenantConfig::new("tenant-clean").with_fuel_budget(10_000)),
+            "read_memory",
+            vec![],
+        ))
+        .expect("clean memory read accepted");
+    assert_eq!(
+        clean_memory.recv().expect("fresh memory").values,
+        vec![Val::S32(0)]
+    );
+    let report = pool.close(ShutdownMode::Drain);
+    assert_eq!(report.stats.running, 0);
+}
+
+#[test]
+fn tenant_policy_and_memory_failures_do_not_leak_to_next_request() {
+    let (engine, component) = component();
+    let imported = imported_component(&engine);
+    let pool = WorkerPool::new(WorkerPoolConfig::new(1, 2)).expect("pool");
+    let denied = engine.create_tenant(TenantConfig::new("denied").with_fuel_budget(10_000));
+    let tight_memory = engine.create_tenant(
+        TenantConfig::new("tight-memory")
+            .with_fuel_budget(10_000)
+            .with_max_memory_bytes(65_536),
+    );
+    let healthy = engine.create_tenant(TenantConfig::new("healthy").with_fuel_budget(10_000));
+
+    let denied_result = pool
+        .submit(request(imported, denied, "query", vec![Val::S32(3)]))
+        .expect("denied request accepted")
+        .recv();
+    assert!(matches!(
+        denied_result,
+        Err(WorkerError::Runtime(
+            RuntimeError::UnauthorizedImport { .. }
+        ))
+    ));
+
+    let trap_result = pool
+        .submit(request(
+            component.clone(),
+            healthy.clone(),
+            "mutate_then_trap",
+            vec![],
+        ))
+        .expect("trapping request accepted")
+        .recv();
+    assert!(matches!(
+        trap_result,
+        Err(WorkerError::Runtime(RuntimeError::ExecutionFailed(_)))
+    ));
+
+    let memory_result = pool
+        .submit(request(
+            component.clone(),
+            tight_memory,
+            "grow_then_trap",
+            vec![],
+        ))
+        .expect("memory-limited request accepted")
+        .recv();
+    assert!(matches!(
+        memory_result,
+        Err(WorkerError::Runtime(
+            RuntimeError::MemoryLimitExceeded { .. }
+        ))
+    ));
+
+    assert_eq!(
+        pool.submit(request(component, healthy, "identity", vec![Val::S32(5)]))
+            .expect("healthy request accepted after failures")
+            .recv()
+            .expect("healthy result")
+            .values,
+        vec![Val::S32(5)]
+    );
+    let report = pool.close(ShutdownMode::Drain);
+    assert_eq!(report.stats.failed, 3);
+    assert_eq!(report.stats.completed, 1);
 }
 
 #[test]
@@ -255,12 +454,13 @@ fn reject_queued_shutdown_cancels_only_work_that_has_not_started() {
         .submit(request(component, ordinary, "identity", vec![Val::S32(8)]))
         .expect("queued request accepted");
 
-    let report = pool.close(ShutdownMode::RejectQueued);
+    let closer = thread::spawn(move || pool.close(ShutdownMode::RejectQueued));
     assert_eq!(queued.recv(), Err(WorkerError::Cancelled));
     assert!(matches!(
         running.recv(),
         Err(WorkerError::Runtime(RuntimeError::FuelExhausted { .. }))
     ));
+    let report = closer.join().expect("close thread must not panic");
     assert_eq!(report.stats.cancelled, 1);
     assert_eq!(report.stats.running, 0);
 }
@@ -286,7 +486,7 @@ fn drain_shutdown_finishes_work_already_in_the_queue() {
         .submit(request(component, ordinary, "identity", vec![Val::S32(9)]))
         .expect("queued request accepted");
 
-    let report = pool.close(ShutdownMode::Drain);
+    let closer = thread::spawn(move || pool.close(ShutdownMode::Drain));
     assert!(matches!(
         running.recv(),
         Err(WorkerError::Runtime(RuntimeError::FuelExhausted { .. }))
@@ -295,6 +495,7 @@ fn drain_shutdown_finishes_work_already_in_the_queue() {
         queued.recv().expect("drained result").values,
         vec![Val::S32(9)]
     );
+    let report = closer.join().expect("close thread must not panic");
     assert_eq!(report.stats.completed, 1);
     assert_eq!(report.stats.cancelled, 0);
 }

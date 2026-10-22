@@ -1,7 +1,7 @@
 ---
 id: AN-066
 type: chore
-status: ready
+status: in-progress
 created_at: 2026-10-21T00:00:00.000Z
 title: Aislamiento concurrente, backpressure y fallos de workers
 knowledge_level: K4
@@ -26,6 +26,7 @@ expected_value: >-
 related_decisions:
   - ADR-005
 project_state: ai-assisted
+implemented_by: codex
 template_version: 1
 ---
 
