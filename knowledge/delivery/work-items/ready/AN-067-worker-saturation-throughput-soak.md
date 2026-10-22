@@ -6,9 +6,11 @@ created_at: 2026-10-21T00:00:00.000Z
 title: Saturación, throughput y soak de workers host-side
 knowledge_level: K4
 suggested_knowledge_level: K4
-scope_confidence: medium
+scope_confidence: high
 code:
   - crates/runtime/benches/
+  - crates/runtime/examples/
+  - crates/runtime/src/workers.rs
   - scripts/
   - docs/benchmarks/
   - .github/workflows/
@@ -29,6 +31,7 @@ expected_value: >-
 related_decisions:
   - ADR-007
 project_state: ai-assisted
+refined_by: codex
 template_version: 1
 ---
 
@@ -50,3 +53,41 @@ template_version: 1
 ## Fuera de alcance
 
 No certifica rendimiento cross-OS, WASI ni una mejora de instanciación.
+
+## Protocolo de campaña
+
+- El entorno de referencia es Linux x86_64 GNU. Los runners hospedados pueden
+  aportar evidencia comparativa, pero no certifican rendimiento universal.
+- Cada sesión compara A/A el camino secuencial de `Tenant::invoke` con el pool
+  `experimental-workers`, usando el mismo commit, componente, límites de fuel,
+  política, carga y fase de calentamiento.
+- La matriz de workers, capacidad de cola, concurrencia ofrecida, repeticiones,
+  warmup y duración de soak se recibe como configuración obligatoria de la
+  campaña y se persiste junto con el resultado. No se fija una meta de mejora,
+  un tamaño N ni una duración sin una primera ejecución controlada.
+- Los workloads iniciales deben incluir una invocación Core corta y una
+  invocación Component Model de coste mayor. Cualquier workload adicional se
+  documenta con su fixture, argumentos, límites y contrato de salida.
+
+## Datos y métricas
+
+- Cada repetición publica un manifiesto con SHA, fecha UTC, versión de Rust y
+  Wasmtime, perfil de compilación, CPU, núcleos lógicos, sistema operativo,
+  feature flags y todos los parámetros de carga.
+- Las muestras crudas por solicitud conservan inicio, fin, resultado y causa de
+  rechazo o error. La agregación calcula throughput completado, p50/p95/p99,
+  aceptaciones, rechazos por backpressure, errores y ocupación máxima
+  observada; nunca combina sesiones distintas.
+- El recolector registra RSS o declara explícitamente que la señal no estuvo
+  disponible. En soak se publican máximos, muestras temporales y cualquier
+  tendencia observada, sin afirmar fuga o ausencia de fuga sin evidencia.
+
+## Entregables y puertas
+
+- Un ejecutable o script reproducible genera directorios de sesión inmutables
+  con manifiesto, muestras crudas, resumen y hashes de integridad.
+- La automatización valida esquema, recalcula agregados desde las muestras y
+  conserva resultados separados de cada campaña.
+- El informe propone objetivos cuantitativos solo después de comparar las
+  repeticiones A/A. La adopción del pool sigue requiriendo revisión humana y
+  mantiene `experimental-workers` deshabilitado por defecto.
