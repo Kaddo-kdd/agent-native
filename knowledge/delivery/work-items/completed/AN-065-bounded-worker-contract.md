@@ -1,8 +1,9 @@
 ---
 id: AN-065
 type: feature
-status: ready
+status: completed
 created_at: 2026-10-21T00:00:00.000Z
+completed_at: 2026-10-21
 title: Contrato y prototipo experimental de workers acotados
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -45,6 +46,10 @@ related_decisions:
 project_state: ai-assisted
 generated_by: work-item-agent
 refined_by: work-item-agent
+implemented_by: codex
+closed_by: codex
+implementation_status: completed
+validation_status: passed
 template_version: 1
 ---
 
@@ -94,3 +99,23 @@ Antes de implementar, se presentará un refinamiento técnico con API propuesta,
 modelo de concurrencia, estrategia de aislamiento, taxonomía de errores y plan
 de pruebas para revisión humana. El diseño propuesto está en
 [`docs/benchmarks/an-065-bounded-workers-technical-design.md`](../../../../docs/benchmarks/an-065-bounded-workers-technical-design.md).
+
+## Evidencia de implementación
+
+- `bde8a8a`, `f05565d` y `9ce2fa8` implementaron y endurecieron el prototipo,
+  sus pruebas y la validación de CI para la configuración predeterminada y
+  `--all-features`.
+- La CI [#39719357129](https://github.com/Kaddo-kdd/agent-native/actions/runs/39719357129)
+  aprobó 7 de 7 jobs en Linux, Windows y macOS: formato, Clippy, tests y build
+  en ambas configuraciones, pruebas offline de AWS Lambda e integridad de
+  benchmarks.
+- `experimental-workers` permanece deshabilitada por defecto. Cada solicitud
+  usa `Tenant::invoke`, que crea un `Store` y una instancia nuevos; no existe un
+  pool de instancias ni se modificó la ruta productiva.
+
+## Learning
+
+Reutilizar hilos del host puede mejorar la capacidad sin reutilizar instancias
+WebAssembly. El prototipo debe mantenerse experimental hasta que AN-066 pruebe
+aislamiento concurrente y recuperación ante fallos, y AN-067 aporte mediciones
+de saturación, latencia y estabilidad.
