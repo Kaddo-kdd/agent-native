@@ -56,10 +56,16 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-      - name: Tests
+      - name: Tests (default features)
+        run: cargo test --workspace --all-targets
+
+      - name: Tests (all features)
         run: cargo test --workspace --all-targets --all-features
 
-      - name: Build release
+      - name: Build release (default features)
+        run: cargo build --workspace --release
+
+      - name: Build release (all features)
         run: cargo build --workspace --release --all-features
 
       - name: Enforce ADR-002 (runtime does not depend on compiler)

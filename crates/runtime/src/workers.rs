@@ -113,11 +113,8 @@ impl WorkerRequest {
         if self.panic_before_invoke {
             panic!("controlled AN-065 worker panic");
         }
-        self.tenant.invoke(
-            &self.component,
-            &self.function,
-            &self.arguments,
-        )
+        self.tenant
+            .invoke(&self.component, &self.function, &self.arguments)
     }
 
     #[cfg(test)]
@@ -512,9 +509,7 @@ fn complete_job(inner: &Arc<PoolInner>, job: Job) {
         Err(WorkerError::Runtime(_)) => Completion::RuntimeFailure,
         Err(WorkerError::WorkerPanicked) => Completion::Panic,
         Err(
-            WorkerError::Cancelled
-            | WorkerError::WorkerUnavailable
-            | WorkerError::WorkerFaulted,
+            WorkerError::Cancelled | WorkerError::WorkerUnavailable | WorkerError::WorkerFaulted,
         ) => unreachable!("running work cannot produce this result"),
     };
     completion.finish(result, outcome);
@@ -638,7 +633,9 @@ mod tests {
         )
         .with_controlled_panic();
         assert_eq!(
-            pool.submit(panicking).expect("accepted panic request").recv(),
+            pool.submit(panicking)
+                .expect("accepted panic request")
+                .recv(),
             Err(WorkerError::WorkerPanicked)
         );
 

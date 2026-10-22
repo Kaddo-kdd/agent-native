@@ -66,7 +66,9 @@ fn worker_messages_are_thread_safe_without_unsafe_adapters() {
 fn worker_pool_rejects_zero_capacities() {
     assert!(matches!(
         WorkerPool::new(WorkerPoolConfig::new(0, 1)),
-        Err(WorkerPoolInitError::Config(WorkerPoolConfigError::ZeroWorkers))
+        Err(WorkerPoolInitError::Config(
+            WorkerPoolConfigError::ZeroWorkers
+        ))
     ));
     assert!(matches!(
         WorkerPool::new(WorkerPoolConfig::new(1, 0)),
