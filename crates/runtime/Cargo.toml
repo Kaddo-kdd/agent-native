@@ -57,3 +57,7 @@ harness = false
 [[bench]]
 name = "wasi_diagnostic"
 harness = false
+
+[[example]]
+name = "worker_bench"
+required-features = ["experimental-workers"]
