@@ -104,7 +104,7 @@ jobs:
       - name: Collect worker A/A sessions
         run: >-
           python scripts/worker_bench_collect.py --output worker-bench-results
-          --workers 1,2 --queue-capacities 1,4 --concurrency 1,2,4
+          --workers 2 --queue-capacities 4 --concurrency 4
           --repetitions 3 --warmup 1000 --requests 10000
 
       - name: Upload worker benchmark results
