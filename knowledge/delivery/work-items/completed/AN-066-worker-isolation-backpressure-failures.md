@@ -1,8 +1,9 @@
 ---
 id: AN-066
 type: chore
-status: in-progress
+status: completed
 created_at: 2026-10-21T00:00:00.000Z
+completed_at: 2026-10-22
 title: Aislamiento concurrente, backpressure y fallos de workers
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -27,6 +28,9 @@ related_decisions:
   - ADR-005
 project_state: ai-assisted
 implemented_by: codex
+closed_by: codex
+implementation_status: completed
+validation_status: passed
 template_version: 1
 ---
 
@@ -48,3 +52,16 @@ template_version: 1
 
 No mide throughput de producto ni habilita workers por defecto; AN-067 realizará
 la caracterización cuantitativa.
+
+## Evidencia de cierre
+
+- CI #39727654611 superada en Linux, macOS y Windows: formato, Clippy, pruebas
+  con configuración predeterminada y `--all-features`, builds release, pruebas
+  offline de AWS Lambda e integridad de benchmarks.
+- Las pruebas de workers cubren aislamiento observable entre tenants,
+  backpressure, cancelación, cierre Drain/RejectQueued y recuperación tras
+  fallos de policy, memoria, runtime y fuel.
+- La aserción dependiente de `running == 2` se retiró porque Wasmtime y el
+  scheduler del host no garantizan ese detalle interno en todos los runners.
+  Las pruebas conservan la admisión concurrente y las garantías observables de
+  aislamiento.
