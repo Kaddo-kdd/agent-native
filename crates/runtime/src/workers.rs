@@ -54,6 +54,28 @@ pub enum WorkerPoolConfigError {
     ZeroQueueCapacity,
 }
 
+/// Failure while constructing an experimental [`WorkerPool`].
+#[derive(Debug, Error)]
+pub enum WorkerPoolInitError {
+    /// The configured limits are invalid.
+    #[error(transparent)]
+    Config(#[from] WorkerPoolConfigError),
+    /// The host could not create every requested worker thread.
+    ///
+    /// Workers created before this failure are stopped and joined before this
+    /// error is returned, so no partially initialized pool remains active.
+    #[error("could not create worker {worker_index} of {workers}")]
+    Spawn {
+        /// Zero-based index of the worker whose creation failed.
+        worker_index: usize,
+        /// Total configured worker count.
+        workers: usize,
+        /// Host thread creation error.
+        #[source]
+        source: std::io::Error,
+    },
+}
+
 /// A request that owns all invocation-specific state.
 ///
 /// The component is an immutable parsed artifact. It is never an instantiated
@@ -63,6 +85,8 @@ pub struct WorkerRequest {
     tenant: Tenant,
     function: String,
     arguments: Vec<Val>,
+    #[cfg(test)]
+    panic_before_invoke: bool,
 }
 
 impl WorkerRequest {
@@ -79,7 +103,27 @@ impl WorkerRequest {
             tenant,
             function: function.into(),
             arguments,
+            #[cfg(test)]
+            panic_before_invoke: false,
         }
+    }
+
+    fn invoke(&self) -> Result<InvocationReport, RuntimeError> {
+        #[cfg(test)]
+        if self.panic_before_invoke {
+            panic!("controlled AN-065 worker panic");
+        }
+        self.tenant.invoke(
+            &self.component,
+            &self.function,
+            &self.arguments,
+        )
+    }
+
+    #[cfg(test)]
+    fn with_controlled_panic(mut self) -> Self {
+        self.panic_before_invoke = true;
+        self
     }
 }
 
@@ -112,6 +156,12 @@ pub enum WorkerError {
     /// The worker caught a Rust panic while processing the request.
     #[error("worker request panicked")]
     WorkerPanicked,
+    /// The worker completed neither a response nor a captured panic result.
+    #[error("worker became unavailable before responding")]
+    WorkerUnavailable,
+    /// Worker bookkeeping panicked after a request was admitted.
+    #[error("worker bookkeeping failed while completing the request")]
+    WorkerFaulted,
 }
 
 /// A cancellation request that cannot remove a queued job.
@@ -208,7 +258,7 @@ impl WorkerTicket {
     pub fn recv(self) -> Result<InvocationReport, WorkerError> {
         self.receiver
             .recv()
-            .unwrap_or(Err(WorkerError::WorkerPanicked))
+            .unwrap_or(Err(WorkerError::WorkerUnavailable))
     }
 }
 
@@ -223,17 +273,31 @@ impl WorkerPool {
     ///
     /// # Errors
     ///
-    /// Returns [`WorkerPoolConfigError`] when either configured capacity is zero.
-    pub fn new(config: WorkerPoolConfig) -> Result<Self, WorkerPoolConfigError> {
+    /// Returns a typed error for invalid limits or unavailable host threads.
+    ///
+    /// If host thread creation fails after some workers started, those workers
+    /// are stopped and joined before this method returns an error.
+    pub fn new(config: WorkerPoolConfig) -> Result<Self, WorkerPoolInitError> {
         let (workers, queue_capacity) = config.validate()?;
         let inner = Arc::new(PoolInner {
             state: Mutex::new(PoolState::new(workers.get(), queue_capacity.get())),
             wake: Condvar::new(),
         });
         let mut handles = Vec::with_capacity(workers.get());
-        for _ in 0..workers.get() {
+        for worker_index in 0..workers.get() {
             let worker_inner = Arc::clone(&inner);
-            handles.push(thread::spawn(move || worker_loop(&worker_inner)));
+            let builder = thread::Builder::new().name(format!("wasma-worker-{worker_index}"));
+            match builder.spawn(move || worker_loop(&worker_inner)) {
+                Ok(handle) => handles.push(handle),
+                Err(source) => {
+                    stop_workers(&inner, &mut handles);
+                    return Err(WorkerPoolInitError::Spawn {
+                        worker_index,
+                        workers: workers.get(),
+                        source,
+                    });
+                }
+            }
         }
         Ok(Self { inner, handles })
     }
@@ -281,6 +345,10 @@ impl WorkerPool {
     }
 
     /// Stops admission, applies the selected queue policy, and joins workers.
+    ///
+    /// The shutdown outcome is deterministic, but this method has no wall-clock
+    /// deadline: a running request must return through its own fuel and resource
+    /// limits before its worker can be joined.
     #[must_use]
     pub fn close(mut self, mode: ShutdownMode) -> ShutdownReport {
         {
@@ -295,9 +363,7 @@ impl WorkerPool {
             }
             self.inner.wake.notify_all();
         }
-        for handle in self.handles.drain(..) {
-            let _ = handle.join();
-        }
+        join_workers(&mut self.handles);
         let mut state = lock_state(&self.inner);
         state.lifecycle = Lifecycle::Closed;
         ShutdownReport {
@@ -419,35 +485,109 @@ fn worker_loop(inner: &Arc<PoolInner>) {
             }
         };
 
-        let result = catch_unwind(AssertUnwindSafe(|| {
-            job.request.tenant.invoke(
-                &job.request.component,
-                &job.request.function,
-                &job.request.arguments,
-            )
-        }));
-        let result = match result {
-            Ok(Ok(report)) => Ok(report),
-            Ok(Err(error)) => Err(WorkerError::Runtime(error)),
-            Err(_) => Err(WorkerError::WorkerPanicked),
-        };
-        let outcome = match &result {
-            Ok(_) => Completion::Success,
-            Err(WorkerError::Runtime(_)) => Completion::RuntimeFailure,
-            Err(WorkerError::WorkerPanicked) => Completion::Panic,
-            Err(WorkerError::Cancelled) => unreachable!("running work cannot be cancelled"),
-        };
-        let _ = job.response.send(result);
+        // The request itself has its own panic boundary. This outer boundary
+        // keeps the thread available if completion bookkeeping panics; the
+        // `RunningJob` guard releases the slot while unwinding.
+        let _maintenance_panicked =
+            catch_unwind(AssertUnwindSafe(|| complete_job(inner, job))).is_err();
+    }
+}
 
-        let mut state = lock_state(inner);
-        state.running -= 1;
-        match outcome {
-            Completion::Success => state.completed += 1,
-            Completion::RuntimeFailure => state.failed += 1,
-            Completion::Panic => state.panicked += 1,
+fn complete_job(inner: &Arc<PoolInner>, job: Job) {
+    let Job {
+        request,
+        response,
+        control,
+        ..
+    } = job;
+    let mut completion = RunningJob::new(Arc::clone(inner), response, control);
+    let result = catch_unwind(AssertUnwindSafe(|| request.invoke()));
+    let result = match result {
+        Ok(Ok(report)) => Ok(report),
+        Ok(Err(error)) => Err(WorkerError::Runtime(error)),
+        Err(_) => Err(WorkerError::WorkerPanicked),
+    };
+    let outcome = match &result {
+        Ok(_) => Completion::Success,
+        Err(WorkerError::Runtime(_)) => Completion::RuntimeFailure,
+        Err(WorkerError::WorkerPanicked) => Completion::Panic,
+        Err(
+            WorkerError::Cancelled
+            | WorkerError::WorkerUnavailable
+            | WorkerError::WorkerFaulted,
+        ) => unreachable!("running work cannot produce this result"),
+    };
+    completion.finish(result, outcome);
+}
+
+struct RunningJob {
+    inner: Arc<PoolInner>,
+    response: Option<Sender<Result<InvocationReport, WorkerError>>>,
+    control: Arc<Mutex<TicketState>>,
+    finished: bool,
+}
+
+impl RunningJob {
+    fn new(
+        inner: Arc<PoolInner>,
+        response: Sender<Result<InvocationReport, WorkerError>>,
+        control: Arc<Mutex<TicketState>>,
+    ) -> Self {
+        Self {
+            inner,
+            response: Some(response),
+            control,
+            finished: false,
         }
-        set_ticket_state(&job.control, TicketState::Finished);
+    }
+
+    fn finish(&mut self, result: Result<InvocationReport, WorkerError>, outcome: Completion) {
+        finish_running_job(&self.inner, &self.control, outcome);
+        let _ = self
+            .response
+            .take()
+            .expect("running job response exists until completion")
+            .send(result);
+        self.finished = true;
+    }
+}
+
+impl Drop for RunningJob {
+    fn drop(&mut self) {
+        if self.finished {
+            return;
+        }
+        if let Some(response) = self.response.take() {
+            let _ = response.send(Err(WorkerError::WorkerFaulted));
+        }
+        finish_running_job(&self.inner, &self.control, Completion::Panic);
+    }
+}
+
+fn finish_running_job(inner: &PoolInner, control: &Mutex<TicketState>, outcome: Completion) {
+    let mut state = lock_state(inner);
+    state.running = state.running.saturating_sub(1);
+    match outcome {
+        Completion::Success => state.completed = state.completed.saturating_add(1),
+        Completion::RuntimeFailure => state.failed = state.failed.saturating_add(1),
+        Completion::Panic => state.panicked = state.panicked.saturating_add(1),
+    }
+    set_ticket_state(control, TicketState::Finished);
+    inner.wake.notify_all();
+}
+
+fn stop_workers(inner: &Arc<PoolInner>, handles: &mut Vec<JoinHandle<()>>) {
+    {
+        let mut state = lock_state(inner);
+        state.lifecycle = Lifecycle::Closing;
         inner.wake.notify_all();
+    }
+    join_workers(handles);
+}
+
+fn join_workers(handles: &mut Vec<JoinHandle<()>>) {
+    for handle in handles.drain(..) {
+        let _ = handle.join();
     }
 }
 
@@ -469,4 +609,75 @@ enum Completion {
     Success,
     RuntimeFailure,
     Panic,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Engine, TenantConfig};
+
+    fn component() -> (Engine, Arc<Component>) {
+        let bytes = wat::parse_str(
+            r#"(module (func (export "identity") (param i32) (result i32) local.get 0))"#,
+        )
+        .expect("valid Core WASM fixture");
+        let engine = Engine::new().expect("engine");
+        let component = Arc::new(engine.load_component(&bytes).expect("component"));
+        (engine, component)
+    }
+
+    #[test]
+    fn controlled_panic_releases_the_worker_for_the_next_request() {
+        let (engine, component) = component();
+        let pool = WorkerPool::new(WorkerPoolConfig::new(1, 1)).expect("pool");
+        let panicking = WorkerRequest::new(
+            Arc::clone(&component),
+            engine.create_tenant(TenantConfig::new("panic").with_fuel_budget(10_000)),
+            "identity",
+            vec![Val::S32(1)],
+        )
+        .with_controlled_panic();
+        assert_eq!(
+            pool.submit(panicking).expect("accepted panic request").recv(),
+            Err(WorkerError::WorkerPanicked)
+        );
+
+        let healthy = WorkerRequest::new(
+            component,
+            engine.create_tenant(TenantConfig::new("healthy").with_fuel_budget(10_000)),
+            "identity",
+            vec![Val::S32(7)],
+        );
+        assert_eq!(
+            pool.submit(healthy)
+                .expect("worker remains available")
+                .recv()
+                .expect("healthy result")
+                .values,
+            vec![Val::S32(7)]
+        );
+        let report = pool.close(ShutdownMode::Drain);
+        assert_eq!(report.stats.panicked, 1);
+        assert_eq!(report.stats.completed, 1);
+    }
+
+    #[test]
+    fn ticket_reports_worker_unavailable_when_response_channel_is_closed() {
+        let inner = Arc::new(PoolInner {
+            state: Mutex::new(PoolState::new(1, 1)),
+            wake: Condvar::new(),
+        });
+        let control = Arc::new(Mutex::new(TicketState::Finished));
+        let (sender, receiver) = mpsc::channel();
+        drop(sender);
+
+        let ticket = WorkerTicket {
+            id: 0,
+            inner,
+            control,
+            receiver,
+        };
+
+        assert_eq!(ticket.recv(), Err(WorkerError::WorkerUnavailable));
+    }
 }

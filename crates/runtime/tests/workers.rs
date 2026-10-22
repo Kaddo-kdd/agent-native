@@ -1,12 +1,14 @@
 //! AN-065 contract tests for experimental bounded host-side workers.
 
+#![cfg(feature = "experimental-workers")]
+
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use agent_native_runtime::workers::{
     CancelError, ShutdownMode, SubmitError, WorkerError, WorkerPool, WorkerPoolConfig,
-    WorkerPoolConfigError, WorkerRequest,
+    WorkerPoolConfigError, WorkerPoolInitError, WorkerRequest,
 };
 use agent_native_runtime::{
     Component, Engine, InvocationReport, RuntimeError, Tenant, TenantConfig, Val,
@@ -64,11 +66,13 @@ fn worker_messages_are_thread_safe_without_unsafe_adapters() {
 fn worker_pool_rejects_zero_capacities() {
     assert!(matches!(
         WorkerPool::new(WorkerPoolConfig::new(0, 1)),
-        Err(WorkerPoolConfigError::ZeroWorkers)
+        Err(WorkerPoolInitError::Config(WorkerPoolConfigError::ZeroWorkers))
     ));
     assert!(matches!(
         WorkerPool::new(WorkerPoolConfig::new(1, 0)),
-        Err(WorkerPoolConfigError::ZeroQueueCapacity)
+        Err(WorkerPoolInitError::Config(
+            WorkerPoolConfigError::ZeroQueueCapacity
+        ))
     ));
 }
 

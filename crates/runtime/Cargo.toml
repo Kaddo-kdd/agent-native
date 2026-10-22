@@ -10,6 +10,11 @@ description = "Standalone runtime that loads and executes Agent-Native WASM comp
 [lints]
 workspace = true
 
+[features]
+# Host-side workers remain opt-in until AN-066 and AN-067 validate isolation
+# and operational behavior across supported platforms.
+experimental-workers = []
+
 [dependencies]
 agent-native-ir = { path = "../ir" }
 serde = { version = "1.0", features = ["derive"] }

@@ -51,10 +51,17 @@ pub enum SubmitError {
     UnsupportedRequest,
 }
 
+pub enum WorkerPoolInitError {
+    Config(WorkerPoolConfigError),
+    Spawn { worker_index: usize, workers: usize, source: std::io::Error },
+}
+
 pub enum WorkerError {
     Runtime(RuntimeError),
     Cancelled,
     WorkerPanicked,
+    WorkerUnavailable,
+    WorkerFaulted,
 }
 
 pub enum CancelError {
@@ -65,7 +72,7 @@ pub enum CancelError {
 pub enum ShutdownMode { Drain, RejectQueued }
 
 impl WorkerPool {
-    pub fn new(config: WorkerPoolConfig) -> Result<Self, WorkerPoolConfigError>;
+    pub fn new(config: WorkerPoolConfig) -> Result<Self, WorkerPoolInitError>;
     pub fn submit(&self, request: WorkerRequest) -> Result<WorkerTicket, SubmitError>;
     pub fn stats(&self) -> WorkerPoolStats;
     pub fn close(self, mode: ShutdownMode) -> ShutdownReport;
@@ -93,7 +100,9 @@ del llamador.
 
 ## Modelo de concurrencia y backpressure
 
-`WorkerPool::new` crea exactamente `workers` hilos de sistema. El estado
+`WorkerPool::new` crea exactamente `workers` hilos de sistema con
+`thread::Builder::spawn`. Si el host rechaza la creación de un hilo, devuelve
+un error tipado y detiene/espera los workers creados parcialmente. El estado
 compartido será una cola `VecDeque` protegida por `Mutex` y una `Condvar`, no una
 cola sin límite. Esta elección permite quitar un trabajo cancelado de la cola y
 liberar su cupo inmediatamente.
@@ -133,9 +142,13 @@ encolar un `Tenant` sin presupuesto de fuel finito. Un deadline o interrupción
 cooperativa de Wasmtime no se añade de forma implícita: necesitaría semántica de
 reloj y pruebas propias.
 
-Cada ejecución estará envuelta por `catch_unwind`. Un panic se comunica como
-`WorkerError::WorkerPanicked`, el trabajo no deja estado de guest persistente y
-el hilo continúa atendiendo la siguiente solicitud. Un `RuntimeError` (trap,
+Cada invocación se ejecuta dentro de `catch_unwind`; el bucle del worker también
+contiene pánicos inesperados de mantenimiento. Una guarda RAII libera el slot
+durante el desenrollado. Un panic de la invocación se comunica como
+`WorkerError::WorkerPanicked`; un fallo inesperado de mantenimiento se comunica
+como `WorkerError::WorkerFaulted`; y una desconexión del canal como
+`WorkerError::WorkerUnavailable`. El trabajo no deja estado de guest persistente
+y el hilo continúa atendiendo la siguiente solicitud. Un `RuntimeError` (trap,
 fuel, memoria, policy o argumento inválido) se conserva dentro de
 `WorkerError::Runtime`; no se transforma en éxito ni afecta a otro ticket.
 
@@ -144,7 +157,9 @@ trabajos y permite que termine la cola aceptada. `RejectQueued` responde
 `Cancelled` a todo trabajo que aún no inició y espera solo los que ya están en
 ejecución. Ambos modos realizan `join` de los hilos antes de devolver
 `ShutdownReport`. No habrá un `Drop` que bloquee de manera sorprendente; el
-prototipo exigirá cierre explícito en sus pruebas y documentación.
+prototipo exigirá cierre explícito en sus pruebas y documentación. El resultado
+del cierre es determinista, pero no existe un máximo de tiempo garantizado: una
+ejecución activa debe retornar mediante sus propios límites antes de su `join`.
 
 ## Aislamiento y precondiciones de implementación
 
@@ -182,7 +197,7 @@ AN-065 implementará solo el contrato mecánico y sus pruebas inmediatas:
 | Cancelación en cola | quita exactamente ese trabajo, entrega `Cancelled` y permite una nueva admisión. |
 | Cancelación en ejecución | devuelve `AlreadyRunning`; fuel/límites siguen siendo la contención. |
 | Cierre | `Drain` completa la cola; `RejectQueued` cancela solo las pendientes; ambos rechazan nuevos envíos. |
-| Error y panic | un `RuntimeError` y un panic comunicado no pierden el siguiente slot ni convierten el resultado en éxito. |
+| Error y panic | un `RuntimeError`, un panic Rust controlado y un fallo de canal se clasifican sin perder el siguiente slot ni convertir el resultado en éxito. |
 | Instancia fresca | dos invocaciones del fixture de global mutable devuelven el estado inicial en cada trabajo. |
 
 AN-066 ampliará estas pruebas a tenants alternados y simultáneos, policy, fuel,

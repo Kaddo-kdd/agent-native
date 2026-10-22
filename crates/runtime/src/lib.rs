@@ -51,6 +51,9 @@ pub mod tenant;
 pub mod testing;
 pub mod wasi;
 /// Experimental bounded host-side concurrency with fresh instances per request.
+///
+/// This API is opt-in and is not part of the default runtime surface.
+#[cfg(feature = "experimental-workers")]
 pub mod workers;
 
 pub use engine::{Component, Engine};
