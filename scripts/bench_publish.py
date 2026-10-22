@@ -384,6 +384,7 @@ def render_readme(publication):
               "El comando verifica hashes, procedencia, fuentes de fixtures y ambos resúmenes contra las muestras antes de generar esta publicación. No necesita red ni volver a medir.",
               "Comprueba cada mediana Criterion como mediana de tiempos/iteraciones y recalcula los percentiles individuales con nearest-rank. Los intervalos bootstrap originales Criterion se conservan como evidencia; no se vuelven a simular ni se usan como intervalos de fuel.",
               "[publication.json](publication.json) contiene todas las filas con procedencia completa; [cases.md](cases.md) detalla operación, entradas, salidas esperadas y API; [history.md](history.md) conserva grupos históricos independientes; [wasi-confirmation.md](wasi-confirmation.md) analiza las dos sesiones WASI; [certification-matrix.md](certification-matrix.md) delimita la certificación parcial y sus exclusiones.", "",
+              "[worker-aa.md](worker-aa.md) documenta la campaña A/A manual de AN-067; sus resultados se conservan separados de esta publicación Criterion.", "",
               "## Estado de las mediciones principales", ""]
     primary = [data for data in publication["datasets"] if data["role"] == "primary"]
     counts = []

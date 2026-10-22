@@ -25,26 +25,13 @@ python scripts/bench_publish.py
 python scripts/bench_publish.py --check
 ```
 
-## Workers experimentales (AN-067)
-
-La campaña A/A de workers es manual y se ejecuta solo en Linux:
-
-```text
-python scripts/worker_bench_collect.py --output worker-bench-results \
-  --workers 1,2 --queue-capacities 1,4 --concurrency 1,2,4 \
-  --repetitions 3 --warmup 1000 --requests 10000
-```
-
-Cada sesión conserva muestras por solicitud, outcomes, configuración y hashes.
-Los resultados no se mezclan con Criterion ni certifican rendimiento universal.
-Para una campaña prolongada se añade `--soak-seconds` y se registra esa duración
-en el manifiesto antes de iniciar la ejecución.
-
 inputs.json fija 18 fuentes y la ejecución principal; no selecciona repeticiones favorables. evidence/ conserva JSON crudo comprimido y hashes, sin depender de la caducidad de artefactos GitHub.
 Cada .json.gz contiene un objeto files con las rutas originales (run-XX/criterion/... y run-XX/latency/...). El compresor usa cabecera sin fecha ni nombre de máquina. Los hashes verifican integridad, no certificación ni firma de autoría.
 El comando verifica hashes, procedencia, fuentes de fixtures y ambos resúmenes contra las muestras antes de generar esta publicación. No necesita red ni volver a medir.
 Comprueba cada mediana Criterion como mediana de tiempos/iteraciones y recalcula los percentiles individuales con nearest-rank. Los intervalos bootstrap originales Criterion se conservan como evidencia; no se vuelven a simular ni se usan como intervalos de fuel.
 [publication.json](publication.json) contiene todas las filas con procedencia completa; [cases.md](cases.md) detalla operación, entradas, salidas esperadas y API; [history.md](history.md) conserva grupos históricos independientes; [wasi-confirmation.md](wasi-confirmation.md) analiza las dos sesiones WASI; [certification-matrix.md](certification-matrix.md) delimita la certificación parcial y sus exclusiones.
+
+[worker-aa.md](worker-aa.md) documenta la campaña A/A manual de AN-067; sus resultados se conservan separados de esta publicación Criterion.
 
 ## Estado de las mediciones principales
 

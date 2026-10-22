@@ -156,6 +156,7 @@ fn worker_samples(
     }
 
     let start = Instant::now();
+    let pool_ref = &pool;
     let samples = thread::scope(|scope| {
         let mut emitters = Vec::with_capacity(config.concurrency);
         for emitter in 0..config.concurrency {
@@ -165,7 +166,7 @@ fn worker_samples(
                 for index in (emitter..config.requests).step_by(config.concurrency) {
                     let request_start = Instant::now();
                     let started_offset_ns = elapsed_ns(start);
-                    let outcome = match pool.submit(worker_request(
+                    let outcome = match pool_ref.submit(worker_request(
                         Arc::clone(&component),
                         engine,
                         config.workload,
