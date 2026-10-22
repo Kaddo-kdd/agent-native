@@ -4,14 +4,13 @@
 //! Criterion: concurrent worker scheduling needs per-request outcomes,
 //! backpressure counts, and latency samples rather than aggregated iterations.
 
-#[path = "latency/fixtures.rs"]
-mod fixtures;
-
 use std::hint::black_box;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
 
+use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
 use agent_native_runtime::workers::{ShutdownMode, WorkerPool, WorkerPoolConfig, WorkerRequest};
 use agent_native_runtime::{Component, Engine, TenantConfig, Val};
 use serde::Serialize;
@@ -27,6 +26,8 @@ enum Workload {
     Identity,
     Sum,
 }
+
+const POINT_SUM_FN: &str = "an:test/ops@0.1.0#make-point-sum";
 
 #[derive(Debug)]
 struct Config {
@@ -68,15 +69,30 @@ fn fixture(workload: Workload) -> Vec<u8> {
             (func (export "identity") (param i32) (result i32) local.get 0))"#,
         )
         .expect("worker benchmark identity fixture must be valid WAT"),
-        Workload::Sum => fixtures::point_sum_wasm(),
+        Workload::Sum => point_sum_wasm(),
     }
 }
 
 fn function(workload: Workload) -> (&'static str, Vec<Val>) {
     match workload {
         Workload::Identity => ("identity", vec![Val::S32(42)]),
-        Workload::Sum => (fixtures::POINT_SUM_FN, vec![Val::S32(3), Val::S32(4)]),
+        Workload::Sum => (POINT_SUM_FN, vec![Val::S32(3), Val::S32(4)]),
     }
+}
+
+fn compiler_crate_root() -> PathBuf {
+    let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    root.pop();
+    root.push("compiler");
+    root
+}
+
+fn point_sum_wasm() -> Vec<u8> {
+    let text = include_str!("../../compiler/tests/fixtures/ir/program-005.ir.json");
+    let ir: serde_json::Value =
+        serde_json::from_str(text).expect("point-sum fixture must be valid JSON");
+    let ctx = CompileContext::new(compiler_crate_root());
+    compile_ir_to_wasm_with_context(&ir, &ctx).expect("point-sum fixture must compile")
 }
 
 fn tenant(engine: &Engine, index: usize) -> agent_native_runtime::Tenant {
@@ -139,14 +155,14 @@ fn worker_request(
 fn worker_samples(
     config: &Config,
     engine: &Engine,
-    component: Arc<Component>,
+    component: &Arc<Component>,
 ) -> Result<(Vec<Sample>, u64), String> {
     let pool = WorkerPool::new(WorkerPoolConfig::new(config.workers, config.queue_capacity))
         .map_err(|error| error.to_string())?;
     for index in 0..config.warmup {
         let ticket = pool
             .submit(worker_request(
-                Arc::clone(&component),
+                Arc::clone(component),
                 engine,
                 config.workload,
                 index,
@@ -160,7 +176,7 @@ fn worker_samples(
     let samples = thread::scope(|scope| {
         let mut emitters = Vec::with_capacity(config.concurrency);
         for emitter in 0..config.concurrency {
-            let component = Arc::clone(&component);
+            let component = Arc::clone(component);
             emitters.push(scope.spawn(move || {
                 let mut local = Vec::new();
                 for index in (emitter..config.requests).step_by(config.concurrency) {
@@ -270,7 +286,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             config.requests,
         ),
         Mode::Workers => {
-            worker_samples(&config, &engine, component).map_err(std::io::Error::other)?
+            worker_samples(&config, &engine, &component).map_err(std::io::Error::other)?
         }
     };
     let report = Report {
