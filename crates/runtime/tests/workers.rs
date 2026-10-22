@@ -168,6 +168,7 @@ fn concurrent_tenants_keep_globals_and_memory_isolated() {
     let spinning_a = pool
         .submit(request(component.clone(), tenant_a.clone(), "spin", vec![]))
         .expect("first spin accepted");
+    wait_for_running(&pool, 1);
     let spinning_b = pool
         .submit(request(component.clone(), tenant_b.clone(), "spin", vec![]))
         .expect("second spin accepted");
