@@ -110,9 +110,7 @@ impl WorkerRequest {
 
     fn invoke(&self) -> Result<InvocationReport, RuntimeError> {
         #[cfg(test)]
-        if self.panic_before_invoke {
-            panic!("controlled AN-065 worker panic");
-        }
+        assert!(!self.panic_before_invoke, "controlled AN-065 worker panic");
         self.tenant
             .invoke(&self.component, &self.function, &self.arguments)
     }
