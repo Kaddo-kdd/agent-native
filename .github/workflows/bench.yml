@@ -15,6 +15,7 @@ on:
           - wasi-confirmation
           - wasi-diagnostic
           - workers-aa
+          - workers-smoke
 
 permissions:
   contents: read
@@ -25,7 +26,7 @@ concurrency:
 
 jobs:
   bench:
-    if: inputs.scope != 'workers-aa'
+    if: inputs.scope != 'workers-aa' && inputs.scope != 'workers-smoke'
     name: Bench (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
@@ -75,7 +76,7 @@ jobs:
           retention-days: 30
 
   worker-bench:
-    if: inputs.scope == 'workers-aa'
+    if: inputs.scope == 'workers-aa' || inputs.scope == 'workers-smoke'
     name: Worker A/A benchmark (ubuntu-latest)
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -101,12 +102,22 @@ jobs:
       - name: Verify worker benchmark collector
         run: python -m unittest scripts/test_worker_bench_collect.py -v
 
-      - name: Collect worker A/A sessions
-        run: >-
-          python scripts/worker_bench_collect.py --output worker-bench-results
-          --workers 2 --queue-capacities 4 --concurrency 4
-          --repetitions 3 --warmup 1000 --requests 10000
+      - name: Build worker benchmark
+        run: cargo build --locked --release -p agent-native-runtime --features experimental-workers --example worker_bench
 
+      - name: Collect worker A/A sessions
+        shell: bash
+        run: |
+          if [ "${{ inputs.scope }}" = "workers-smoke" ]; then
+            repetitions=1; warmup=50; requests=500
+          else
+            repetitions=3; warmup=1000; requests=10000
+          fi
+          python scripts/worker_bench_collect.py --output worker-bench-results \
+            --benchmark-bin target/release/examples/worker_bench \
+            --session-timeout-seconds 600 \
+            --workers 2 --queue-capacities 4 --concurrency 4 \
+            --repetitions "$repetitions" --warmup "$warmup" --requests "$requests"
       - name: Upload worker benchmark results
         if: always()
         uses: actions/upload-artifact@v4

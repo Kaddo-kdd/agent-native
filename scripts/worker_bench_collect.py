@@ -158,7 +158,7 @@ def process_tree_rss(pid):
             "pids": sorted(descendants)}
 
 
-def run_with_rss_samples(command):
+def run_with_rss_samples(command, timeout_seconds=600):
     started = time.monotonic_ns()
     process = subprocess.Popen(command, cwd=REPO, text=True, encoding="utf-8",
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -201,14 +201,14 @@ def environment(args):
 
 
 def invoke(mode, workload, workers, queue_capacity, concurrency, args):
-    command = [
+    command = ([str(args.benchmark_bin)] if args.benchmark_bin else [
         "cargo", "run", "--locked", "--release", "-q", "-p", "agent-native-runtime",
-        "--features", "experimental-workers", "--example", "worker_bench", "--",
-        "--mode", mode, "--workload", workload, "--workers", str(workers),
+        "--features", "experimental-workers", "--example", "worker_bench", "--"])
+    command += ["--mode", mode, "--workload", workload, "--workers", str(workers),
         "--queue-capacity", str(queue_capacity), "--concurrency", str(concurrency),
         "--warmup", str(args.warmup), "--requests", str(args.requests),
     ]
-    output, samples = run_with_rss_samples(command)
+    output, samples = run_with_rss_samples(command, args.session_timeout_seconds)
     return json.loads(output), {"rss_samples": samples}
 
 
@@ -254,6 +254,7 @@ def collect(args):
                                 summary.update({"session": name, "raw": relative.as_posix(),
                                                 "resources": resources_relative.as_posix()})
                                 summaries.append(summary)
+                                print(f"finished {name}", flush=True)
             if deadline is not None and time.monotonic() >= deadline:
                 break
         if deadline is None or time.monotonic() >= deadline:
@@ -283,8 +284,10 @@ def arguments():
     parser.add_argument("--warmup", type=int, default=1_000)
     parser.add_argument("--requests", type=int, default=10_000)
     parser.add_argument("--soak-seconds", type=int)
+    parser.add_argument("--benchmark-bin", type=Path)
+    parser.add_argument("--session-timeout-seconds", type=int, default=600)
     args = parser.parse_args()
-    if args.repetitions <= 0 or args.warmup < 0 or args.requests <= 0:
+    if args.repetitions <= 0 or args.warmup < 0 or args.requests <= 0 or args.session_timeout_seconds <= 0:
         parser.error("repetitions and requests must be positive; warmup cannot be negative")
     if args.soak_seconds is not None and args.soak_seconds <= 0:
         parser.error("soak-seconds must be positive")
