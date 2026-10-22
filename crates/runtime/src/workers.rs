@@ -7,7 +7,7 @@
 
 use std::collections::VecDeque;
 use std::num::NonZeroUsize;
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
@@ -323,7 +323,10 @@ impl WorkerPool {
             control: Arc::clone(&control),
         });
         state.accepted += 1;
-        self.inner.wake.notify_one();
+        // Wake every idle worker: a burst of submissions must be able to use
+        // all configured host threads, rather than allowing one awakened
+        // worker to claim the entire burst before its peers observe it.
+        self.inner.wake.notify_all();
         Ok(WorkerTicket {
             id,
             inner: Arc::clone(&self.inner),
