@@ -159,20 +159,50 @@ def process_tree_rss(pid):
 
 
 def run_with_rss_samples(command, timeout_seconds=600):
+    """Run one session without pipe backpressure and collect temporal RSS."""
+    import tempfile
+
     started = time.monotonic_ns()
-    process = subprocess.Popen(command, cwd=REPO, text=True, encoding="utf-8",
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    samples = []
-    while process.poll() is None:
+    with tempfile.TemporaryDirectory(prefix="worker-bench-") as temporary:
+        stdout_path = Path(temporary) / "stdout.json"
+        stderr_path = Path(temporary) / "stderr.log"
+        with stdout_path.open("w", encoding="utf-8") as stdout, stderr_path.open(
+            "w", encoding="utf-8"
+        ) as stderr:
+            process = subprocess.Popen(
+                command,
+                cwd=REPO,
+                text=True,
+                encoding="utf-8",
+                stdout=stdout,
+                stderr=stderr,
+                start_new_session=(os.name == "posix"),
+            )
+            samples = []
+            deadline = time.monotonic() + timeout_seconds
+            while process.poll() is None:
+                if time.monotonic() >= deadline:
+                    if os.name == "posix":
+                        os.killpg(process.pid, 9)
+                    else:
+                        process.kill()
+                    process.wait()
+                    raise subprocess.TimeoutExpired(
+                        command,
+                        timeout_seconds,
+                        output=stdout_path.read_text(encoding="utf-8"),
+                        stderr=stderr_path.read_text(encoding="utf-8"),
+                    )
+                samples.append({"offset_ns": time.monotonic_ns() - started,
+                                "rss": process_tree_rss(process.pid)})
+                time.sleep(0.05)
         samples.append({"offset_ns": time.monotonic_ns() - started,
                         "rss": process_tree_rss(process.pid)})
-        time.sleep(0.05)
-    stdout, stderr = process.communicate()
-    samples.append({"offset_ns": time.monotonic_ns() - started,
-                    "rss": process_tree_rss(process.pid)})
+        stdout_text = stdout_path.read_text(encoding="utf-8")
+        stderr_text = stderr_path.read_text(encoding="utf-8")
     if process.returncode:
-        raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
-    return stdout, samples
+        raise subprocess.CalledProcessError(process.returncode, command, stdout_text, stderr_text)
+    return stdout_text, samples
 def environment(args):
     return {
         "schema_version": 1,
@@ -217,6 +247,21 @@ def session_name(repetition, workload, workers, queue_capacity, concurrency, mod
             f"w{workers}-q{queue_capacity}-c{concurrency}")
 
 
+def finalize_campaign(output, campaign_start, summaries):
+    write_json(output / "summary.json", {
+        "schema_version": 1,
+        "manifest": "manifest.json",
+        "campaign_elapsed_ns": time.monotonic_ns() - campaign_start,
+        "sessions": summaries,
+    })
+    hashes = []
+    for path in sorted(path for path in output.rglob("*") if path.is_file()):
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        hashes.append(f"{digest}  {path.relative_to(output).as_posix()}")
+    (output / "SHA256SUMS").write_text(
+        "\n".join(hashes) + "\n", encoding="utf-8", newline="\n")
+
+
 def collect(args):
     output = args.output.resolve()
     if output.exists():
@@ -236,13 +281,27 @@ def collect(args):
                     for queue_capacity in args.queue_capacities:
                         for concurrency in args.concurrency:
                             for mode in (("sequential", "workers") if (round_number + repetition) % 2 else ("workers", "sequential")):
-                                document, resources = invoke(
-                                    mode, workload, workers, queue_capacity, concurrency, args)
+                                name = session_name(repetition, workload, workers, queue_capacity,
+                                                    concurrency, mode, round_number)
+                                print(f"starting {mode} {workload} w{workers} q{queue_capacity} c{concurrency}", flush=True)
+                                try:
+                                    document, resources = invoke(
+                                        mode, workload, workers, queue_capacity, concurrency, args)
+                                except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+                                    failure = Path("sessions") / name / "failure.json"
+                                    write_json(output / failure, {
+                                        "session": name,
+                                        "type": type(error).__name__,
+                                        "command": error.cmd,
+                                        "timeout_seconds": getattr(error, "timeout", None),
+                                        "stdout": getattr(error, "output", None),
+                                        "stderr": getattr(error, "stderr", None),
+                                    })
+                                    finalize_campaign(output, campaign_start, summaries)
+                                    raise
                                 validate_document(
                                     document, mode, workload, workers, queue_capacity,
                                     concurrency, args)
-                                name = session_name(repetition, workload, workers, queue_capacity,
-                                                    concurrency, mode, round_number)
                                 relative = Path("sessions") / name / "requests.json"
                                 write_json(output / relative, document)
                                 resources_relative = Path("sessions") / name / "resources.ndjson"
@@ -259,18 +318,7 @@ def collect(args):
                 break
         if deadline is None or time.monotonic() >= deadline:
             break
-    summary = {
-        "schema_version": 1,
-        "manifest": "manifest.json",
-        "campaign_elapsed_ns": time.monotonic_ns() - campaign_start,
-        "sessions": summaries,
-    }
-    write_json(output / "summary.json", summary)
-    hashes = []
-    for path in sorted(path for path in output.rglob("*") if path.is_file()):
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        hashes.append(f"{digest}  {path.relative_to(output).as_posix()}")
-    (output / "SHA256SUMS").write_text("\n".join(hashes) + "\n", encoding="utf-8", newline="\n")
+    finalize_campaign(output, campaign_start, summaries)
 
 
 def arguments():

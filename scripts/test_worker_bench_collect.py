@@ -2,6 +2,7 @@ import importlib.util
 import json
 import tempfile
 import sys
+import subprocess
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -45,6 +46,16 @@ class WorkerBenchCollectTests(unittest.TestCase):
         for sample in samples:
             self.assertIn("rss", sample)
             self.assertIn("available", sample["rss"])
+
+    def test_rss_runner_handles_large_output_without_pipe_blocking(self):
+        output, _samples = worker_bench_collect.run_with_rss_samples(
+            [sys.executable, "-c", "print('x' * 200000)"], timeout_seconds=5)
+        self.assertEqual(len(output.strip()), 200000)
+
+    def test_rss_runner_enforces_timeout(self):
+        with self.assertRaises(subprocess.TimeoutExpired):
+            worker_bench_collect.run_with_rss_samples(
+                [sys.executable, "-c", "import time; time.sleep(2)"], timeout_seconds=0.05)
     def test_positive_csv_deduplicates_and_rejects_zero(self):
         self.assertEqual(worker_bench_collect.positive_csv("4,1,4", "workers"), [1, 4])
         with self.assertRaises(Exception):
@@ -97,6 +108,23 @@ class WorkerBenchCollectTests(unittest.TestCase):
             for session in summary["sessions"]:
                 self.assertTrue((output / session["raw"]).is_file())
                 self.assertTrue((output / session["resources"]).is_file())
+
+    def test_collect_preserves_failure_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "worker-results"
+            args = SimpleNamespace(
+                output=output, workers=[1], queue_capacities=[1], concurrency=[1],
+                workloads=["identity"], repetitions=1, warmup=0, requests=1,
+                soak_seconds=None,
+            )
+            failure = subprocess.TimeoutExpired(["benchmark"], 1, output="partial")
+            with patch.object(worker_bench_collect, "environment", return_value={"schema_version": 1}), \
+                    patch.object(worker_bench_collect, "invoke", side_effect=failure):
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    worker_bench_collect.collect(args)
+            self.assertTrue((output / "summary.json").is_file())
+            self.assertTrue((output / "SHA256SUMS").is_file())
+            self.assertTrue(list((output / "sessions").rglob("failure.json")))
 
 
 if __name__ == "__main__":
