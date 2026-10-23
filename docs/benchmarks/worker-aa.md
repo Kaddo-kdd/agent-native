@@ -15,6 +15,10 @@ resúmenes recalculables, señales RSS disponibles y `SHA256SUMS`. Los resultado
 no se mezclan con Criterion ni certifican rendimiento universal. Una campaña
 prolongada define su duración antes de comenzar mediante `--soak-seconds`.
 
+El workflow manual `workers-soak` fija `sum`, `w2/q4/c4` y 15 minutos. Conserva
+resúmenes y RSS de todas las sesiones, pero retiene las muestras por solicitud
+de una de cada 100 sesiones para mantener el artefacto auditable y acotado.
+
 En Linux, el recolector toma muestras RSS cada 50 ms del proceso de la sesión y
 sus descendientes, junto con el offset relativo y el máximo recalculable. La
 serie permite comparar tendencias durante un soak; no prueba la presencia o

@@ -302,15 +302,21 @@ def collect(args):
                                 validate_document(
                                     document, mode, workload, workers, queue_capacity,
                                     concurrency, args)
+                                retain_raw = (
+                                    args.soak_seconds is None
+                                    or len(summaries) % args.soak_raw_every == 0
+                                )
                                 relative = Path("sessions") / name / "requests.json"
-                                write_json(output / relative, document)
+                                if retain_raw:
+                                    write_json(output / relative, document)
                                 resources_relative = Path("sessions") / name / "resources.ndjson"
                                 (output / resources_relative).parent.mkdir(parents=True, exist_ok=True)
                                 (output / resources_relative).write_bytes(canonical({
                                     "captured_at_utc": utc_now(), "resources": resources,
                                 }))
                                 summary = summarize(document)
-                                summary.update({"session": name, "raw": relative.as_posix(),
+                                summary.update({"session": name,
+                                                "raw": relative.as_posix() if retain_raw else None,
                                                 "resources": resources_relative.as_posix()})
                                 summaries.append(summary)
                                 print(f"finished {name}", flush=True)
@@ -334,8 +340,10 @@ def arguments():
     parser.add_argument("--soak-seconds", type=int)
     parser.add_argument("--benchmark-bin", type=Path)
     parser.add_argument("--session-timeout-seconds", type=int, default=600)
+    parser.add_argument("--soak-raw-every", type=int, default=100)
     args = parser.parse_args()
-    if args.repetitions <= 0 or args.warmup < 0 or args.requests <= 0 or args.session_timeout_seconds <= 0:
+    if (args.repetitions <= 0 or args.warmup < 0 or args.requests <= 0
+            or args.session_timeout_seconds <= 0 or args.soak_raw_every <= 0):
         parser.error("repetitions and requests must be positive; warmup cannot be negative")
     if args.soak_seconds is not None and args.soak_seconds <= 0:
         parser.error("soak-seconds must be positive")

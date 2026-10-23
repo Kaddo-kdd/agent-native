@@ -16,6 +16,7 @@ on:
           - wasi-diagnostic
           - workers-aa
           - workers-smoke
+          - workers-soak
 
 permissions:
   contents: read
@@ -26,7 +27,7 @@ concurrency:
 
 jobs:
   bench:
-    if: inputs.scope != 'workers-aa' && inputs.scope != 'workers-smoke'
+    if: inputs.scope != 'workers-aa' && inputs.scope != 'workers-smoke' && inputs.scope != 'workers-soak'
     name: Bench (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
@@ -76,7 +77,7 @@ jobs:
           retention-days: 30
 
   worker-bench:
-    if: inputs.scope == 'workers-aa' || inputs.scope == 'workers-smoke'
+    if: inputs.scope == 'workers-aa' || inputs.scope == 'workers-smoke' || inputs.scope == 'workers-soak'
     name: Worker A/A benchmark (ubuntu-latest)
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -110,14 +111,19 @@ jobs:
         run: |
           if [ "${{ inputs.scope }}" = "workers-smoke" ]; then
             repetitions=1; warmup=50; requests=500
+            workload_args=""
+          elif [ "${{ inputs.scope }}" = "workers-soak" ]; then
+            repetitions=1; warmup=1000; requests=10000
+            workload_args="--workloads sum --soak-seconds 900 --soak-raw-every 100"
           else
             repetitions=3; warmup=1000; requests=10000
+            workload_args=""
           fi
           python scripts/worker_bench_collect.py --output worker-bench-results \
             --benchmark-bin target/release/examples/worker_bench \
             --session-timeout-seconds 600 \
             --workers 2 --queue-capacities 4 --concurrency 4 \
-            --repetitions "$repetitions" --warmup "$warmup" --requests "$requests"
+            --repetitions "$repetitions" --warmup "$warmup" --requests "$requests" $workload_args
       - name: Upload worker benchmark results
         if: always()
         uses: actions/upload-artifact@v4

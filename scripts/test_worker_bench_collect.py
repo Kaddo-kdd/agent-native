@@ -83,7 +83,7 @@ class WorkerBenchCollectTests(unittest.TestCase):
             args = SimpleNamespace(
                 output=output, workers=[1], queue_capacities=[1], concurrency=[1],
                 workloads=["identity"], repetitions=1, warmup=0, requests=1,
-                soak_seconds=None,
+                soak_seconds=None, soak_raw_every=100,
             )
 
             def invoke(mode, workload, workers, queue_capacity, concurrency, _args):
@@ -115,7 +115,7 @@ class WorkerBenchCollectTests(unittest.TestCase):
             args = SimpleNamespace(
                 output=output, workers=[1], queue_capacities=[1], concurrency=[1],
                 workloads=["identity"], repetitions=1, warmup=0, requests=1,
-                soak_seconds=None,
+                soak_seconds=None, soak_raw_every=100,
             )
             failure = subprocess.TimeoutExpired(["benchmark"], 1, output="partial")
             with patch.object(worker_bench_collect, "environment", return_value={"schema_version": 1}), \
