@@ -2,7 +2,7 @@
 type: initiative
 id: INI-008
 title: RM-08 — Performance & Concurrency
-status: in-progress
+status: completed
 knowledge_level: K4
 domains:
   - Performance
@@ -22,19 +22,22 @@ candidates:
   - id: INIT-08-01
     title: Harness de benchmarks reproducible
     status: completed
-    materialized_as: AN-051 (completed), AN-052 (completed)
+    materialized_as: 'AN-051 (completed), AN-052 (completed)'
   - id: INIT-08-02
     title: Línea base pública cross-OS
     status: candidate
-    materialized_as: AN-053 (completed), AN-054 (completed), AN-055 (completed), AN-061 (completed), AN-062 (completed)
+    materialized_as: >-
+      AN-053 (completed), AN-054 (completed), AN-055 (completed), AN-061
+      (completed), AN-062 (completed)
   - id: INIT-08-03
     title: Caché de componentes y warm pool
     status: completed
-    materialized_as: AN-063 (completed); AN-064 (completed, sin adopción)
+    materialized_as: 'AN-063 (completed); AN-064 (completed, sin adopción)'
   - id: INIT-08-04
     title: Concurrencia host-side (workers)
-    status: in-progress
-    materialized_as: AN-065, AN-066 y AN-067 (ready)
+    status: completed
+    materialized_as: 'AN-065, AN-066 y AN-067 (completed)'
+completed_at: '2026-10-24'
 ---
 
 # RM-08 — Performance & Concurrency

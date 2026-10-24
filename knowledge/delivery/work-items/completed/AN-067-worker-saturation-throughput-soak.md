@@ -1,8 +1,9 @@
 ---
 id: AN-067
 type: chore
-status: in-progress
+status: completed
 created_at: 2026-10-21T00:00:00.000Z
+completed_at: 2026-10-23
 title: Saturación, throughput y soak de workers host-side
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -33,6 +34,9 @@ related_decisions:
 project_state: ai-assisted
 refined_by: codex
 implemented_by: codex
+closed_by: agentic
+implementation_status: completed
+validation_status: passed
 template_version: 1
 ---
 
@@ -92,3 +96,12 @@ No certifica rendimiento cross-OS, WASI ni una mejora de instanciación.
 - El informe propone objetivos cuantitativos solo después de comparar las
   repeticiones A/A. La adopción del pool sigue requiriendo revisión humana y
   mantiene `experimental-workers` deshabilitado por defecto.
+
+## Evidencia de cierre
+
+- **AC-01:** Implementado en `scripts/worker_bench_collect.py`, `crates/runtime/examples/worker_bench.rs` y el workflow `.github/workflows/bench.yml` (scopes `workers-aa`, `workers-smoke`, `workers-soak`) para Linux x86_64 GNU con configuración explícita de workers, colas y concurrencia.
+- **AC-02:** Cada corrida genera artefactos inmutables por sesión: `manifest.json`, `requests.ndjson`, `resources.ndjson` (con muestreo periódico de RSS en Linux), `summary.json` y `SHA256SUMS`.
+- **AC-03:** `worker_bench_collect.py` calcula throughput completado, latencias (p50/p95/p99), errores y rechazos de backpressure por sesión sin fusionar sesiones independientes.
+- **AC-04:** Campaña de soak delimitada explícitamente con `--soak-seconds` (15 minutos en workflow `workers-soak`, w2/q4/c4), conservando muestras temporales de RSS y tendencias observadas sin asumir ausencia de fugas.
+- **AC-05:** `experimental-workers` se mantiene deshabilitado por defecto bajo feature flag. Cualquier adopción o umbral cuantitativo posterior queda sujeto a revisión humana basada en la evidencia A/A.
+- Validaciones unitarias locales superadas con `python -m unittest scripts/test_worker_bench_collect.py` (8/8 tests OK).
