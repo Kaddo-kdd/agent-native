@@ -1,8 +1,9 @@
 ---
 id: AN-050
 type: feature
-status: in-progress
+status: completed
 created_at: 2026-10-20T00:00:00.000Z
+completed_at: 2026-10-24
 title: Soporte de binarios reales wasm32-wasip2 bajo política deny-by-default
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -43,6 +44,11 @@ risks:
     R-WASIP2-03: el target `wasm32-wasip2` no es parte del toolchain 1.85 por
     defecto en CI. Mitigación: fixtures binarios precompilados y versionados con
     su hash, o job opcional que instale el target.
+implemented_by: codex
+closed_by: agentic
+implementation_status: completed
+validation_status: passed
+template_version: 1
 ---
 
 # AN-050 — Soporte de binarios reales `wasm32-wasip2`
@@ -159,7 +165,7 @@ presentar ese `1` como el código original del guest.
 - La documentación identifica interfaces y versión soportadas; no anuncia soporte
   general para `wasm32-wasip2`, filesystem o red.
 
-## Implementación en curso
+## Implementación
 
 `HostPolicy::allow_wasi_command_empty_fs()` concede únicamente las interfaces exactas
 del fixture. El linker añade `environment`, `exit`, `wall-clock` y filesystem solo si
@@ -169,3 +175,14 @@ el componente las importa y la política las autoriza. No se invoca `inherit_env
 Las pruebas cubren el inventario y los hashes de los dos fixtures, stdout permitido,
 stdout denegado antes de instanciar, dos llamadas aisladas y la conversión de fallo de
 comando a `RuntimeError::WasiCommandExited`.
+
+## Evidencia de cierre
+
+- **AC-01:** La prueba `real_wasip2_command_runs_with_an_empty_filesystem_and_fixed_clock` ejecuta `wasip2_hello.wasm` y captura `"hello agent-native\n"` en memoria con stdout concedido.
+- **AC-02:** La prueba `real_wasip2_command_rejects_stdout_before_instantiation` verifica rechazo previo a la instanciación con `RuntimeError::UnauthorizedImport { module: "wasi:cli/stdout@0.2.0", name: "output-stream" }`.
+- **AC-03:** La prueba `real_wasip2_hello_has_the_reviewed_import_inventory` valida el inventario exacto y acotado de interfaces (`environment`, `exit`, `wall-clock`, `preopens`, `types`, `io/streams`, `io/error`).
+- **AC-04:** La prueba `real_wasip2_command_maps_a_nonzero_exit_to_a_typed_error` comprueba la salida con error tipada `RuntimeError::WasiCommandExited { code: 1 }` sin inspección textual.
+- **AC-05:** Los límites de memoria, fuel y buffer de I/O en memoria (`IoLimitExceeded`) se aplican y respetan sobre `invoke_with_wasi`.
+- **AC-06:** La prueba `real_wasip2_command_discards_every_calls_io_state` ejecuta dos llamadas consecutivas asegurando aislamiento completo y descarte de buffers.
+- **AC-07:** Los fixtures `wasip2_hello.wasm` y `wasip2_exit7.wasm` se encuentran versionados con hashes SHA-256 auditables; los crates `ir` y `compiler` se mantienen libres de dependencias WASI.
+- Todas las pruebas de `crates/runtime/tests/wasi_real_binaries.rs` pasan (5/5 tests OK).
