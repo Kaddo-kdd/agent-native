@@ -26,3 +26,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+.kaddo/explain.md
+.kaddo/explain.json
