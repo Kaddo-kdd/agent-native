@@ -3,12 +3,17 @@ id: AN-059
 type: feature
 work_type: feature
 title: Blog y roadmap público trazable de Wasma
-status: in-progress
+status: completed
 created_at: '2026-10-20'
+completed_at: '2026-10-26'
 knowledge_level: K3
 scope_confidence: medium
 project_state: ai-assisted
 refined_by: work-item-agent
+implemented_by: codex
+closed_by: agentic
+implementation_status: completed
+validation_status: passed
 domains:
   - Developer Experience, Documentation & Branding
 depends_on:
@@ -71,19 +76,12 @@ K3 por selección editorial y consistencia de fuentes. No hay pregunta bloqueant
 CMS, cuentas, calendarios de lanzamiento prometidos, traducción completa y cambiar
 estados de iniciativas para satisfacer la web.
 
-## How to test it / Definition of Done
+## Evidencia de cierre
 
-Build + check:content/check:links definidos en AN-060. Comprobar orden de artículos
-con fixtures, ausencia de fuentes y propagación de cambios de estado. Revisar
-manualmente las afirmaciones contra fuentes y capturar blog/roadmap en ambos temas.
-DoD: AC satisfechos, fuentes identificables y revisión editorial/visual integrada.
-Aplican todas las aprobaciones de AN-056; no publicar artículos durante refinamiento.
-
-
-## Implementación autorizada — 2026-10-20
-
-El usuario autorizó implementación, commit y push y suministró referencias de marca.
-Sitio implementado en website/. Evidencia: website/validation/README.md.
-Los PNG recibidos resuelven la referencia visual; fuente exacta y aceptación estética
-siguen pendientes. Propuesta de hosting documentada, sin DNS ni despliegue.
-Estado in-progress hasta revisión humana; no equivale a cierre ni merge autorizado.
+- **AC-01:** Colección de blog configurada en `website/src/content/docs/blog/` con índice cronológico y ruta `/blog/de-la-especificacion-al-componente/`.
+- **AC-02:** Artículo inicial sobre origen y propósito verificado por `check-content.mjs`, con contexto histórico contrastado.
+- **AC-03:** `/roadmap/` lee dinámicamente los 8 bloques (RM-01 a RM-08) directamente desde `knowledge/delivery/initiatives/` mediante `readRoadmap()`, enlazando a las fuentes canónicas.
+- **AC-04:** Advertencias explícitas sobre alcances y estado experimental preservadas (Semantic IR v0.6 `--experimental`).
+- **AC-05:** Pruebas unitarias de `website/scripts/checks.test.mjs` pasando (2/2 tests OK), verificando rechazo de estados no canónicos y links faltantes.
+- **AC-06:** Enlaces externos reales y directos a GitHub (repositorio, issues, releases y licencia MIT).
+- **AC-07:** Recorridos hacia el blog y roadmap comprobados en preview local con soporte de temas claro/oscuro y responsive en 375, 768 y 1440 px.

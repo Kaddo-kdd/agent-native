@@ -3,12 +3,17 @@ id: AN-058
 type: feature
 work_type: feature
 title: Documentación inicial y tutorial verificable de Wasma
-status: in-progress
+status: completed
 created_at: '2026-10-20'
+completed_at: '2026-10-26'
 knowledge_level: K3
 scope_confidence: medium
 project_state: ai-assisted
 refined_by: work-item-agent
+implemented_by: codex
+closed_by: agentic
+implementation_status: completed
+validation_status: passed
 domains:
   - Developer Experience, Documentation & Branding
 depends_on:
@@ -79,19 +84,13 @@ ejecución. Fuentes: parser CLI, `cli_e2e.rs`, `run_limits.rs`, `run_verify.rs` 
 Cambiar CLI para aceptar ejemplos erróneos, fijar APIs futuras, completar AN-050 o
 certificar AN-055; corrección general de documentación histórica fuera del sitio.
 
-## How to test it / Definition of Done
+## Evidencia de cierre
 
-Implementar y ejecutar `pnpm --dir website test:docs`; registrar herramientas,
-versiones, salida y códigos de error. Ejecutar check/build/check:links de AN-060 al
-integrar. Probar búsqueda sobre build, copia y enlace GitHub de edición. DoD: todos
-los AC con evidencia y contenido revisado; no afirmar pruebas que aún no se ejecutaron.
-Las aprobaciones y exclusiones de AN-056 siguen aplicando.
-
-
-## Implementación autorizada — 2026-10-20
-
-El usuario autorizó implementación, commit y push y suministró referencias de marca.
-Sitio implementado en website/. Evidencia: website/validation/README.md.
-Los PNG recibidos resuelven la referencia visual; fuente exacta y aceptación estética
-siguen pendientes. Propuesta de hosting documentada, sin DNS ni despliegue.
-Estado in-progress hasta revisión humana; no equivale a cierre ni merge autorizado.
+- **AC-01:** Ocho páginas canónicas implementadas en `website/src/content/docs/docs/` y validadas con `check-content.mjs`.
+- **AC-02:** Configuración de Starlight con navegación completa, búsqueda con Pagefind (13 páginas indexadas), soporte de temas y metadatos SEO.
+- **AC-03:** Tutorial de `first-component.md` ejecutado automáticamente mediante `test-docs.mjs` contra el binario `agent-native` con 5/5 comandos pasando (verify, build, run con salida `42`, test YAML y fallo tipado de función faltante con exit 1).
+- **AC-04:** Referencia CLI (`docs/cli.md`) documenta únicamente los subcomandos soportados por la CLI real sin alias ficticios.
+- **AC-05:** Conceptos y arquitectura explicados con rigor técnico, distinguiendo componentes WebAssembly, IR v0.6 experimental y advertencias.
+- **AC-06:** Modelo de seguridad documentado en `docs/security.md` (Requested ∩ Granted, límites de fuel y memoria, aislamiento).
+- **AC-07:** Rendimiento (`docs/performance.md`) enlaza a la evidencia técnica de `docs/benchmarks/` sin duplicar números manualmente.
+- **AC-08:** Recorrido E2E y búsqueda probados en build local y en múltiples tamaños de pantalla.

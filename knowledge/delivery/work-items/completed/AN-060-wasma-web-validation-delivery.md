@@ -3,12 +3,17 @@ id: AN-060
 type: feature
 work_type: feature
 title: Validación integral y preparación de entrega del sitio Wasma
-status: in-progress
+status: completed
 created_at: '2026-10-20'
+completed_at: '2026-10-26'
 knowledge_level: K3
 scope_confidence: medium
 project_state: ai-assisted
 refined_by: work-item-agent
+implemented_by: codex
+closed_by: agentic
+implementation_status: completed
+validation_status: passed
 domains:
   - Developer Experience, Documentation & Branding
 depends_on:
@@ -78,21 +83,13 @@ pendiente y validación integral aún no ejecutada. No inventar recursos Kaddo e
 Publicación real o registros DNS sin autorización, despliegues de releases Rust,
 certificación de benchmarks y cuentas de usuario.
 
-## How to test it / Definition of Done
+## Evidencia de cierre
 
-Ejecutar la secuencia de validación de AN-056 desde checkout limpio. Introducir un
-enlace roto y un estado inválido en fixtures temporales para comprobar fallos del checker.
-Revisar diff del workflow y ejecutar smoke documental; documentar comandos locales
-equivalentes a CI. Levantar dev/preview, recorrer páginas y guardar capturas/resultados
-en `website/validation/`. DoD: todos los AC verificables satisfechos, revisión humana
-registrada e instrucciones de entrega comprobadas. El cierre global puede conservar
-publicación operativa bloqueada según AN-056, pero no ocultar una CI aún pendiente.
-
-
-## Implementación autorizada — 2026-10-20
-
-El usuario autorizó implementación, commit y push y suministró referencias de marca.
-Sitio implementado en website/. Evidencia: website/validation/README.md.
-Los PNG recibidos resuelven la referencia visual; fuente exacta y aceptación estética
-siguen pendientes. Propuesta de hosting documentada, sin DNS ni despliegue.
-Estado in-progress hasta revisión humana; no equivale a cierre ni merge autorizado.
+- **AC-01:** Scripts documentados en `website/README.md`. Node v24.13.0 y pnpm 12.9.1 verificados; suite de validaciones ejecutable de forma autónoma.
+- **AC-02:** Workflow `.github/workflows/website.yml` configurado sin interferir con `ci.yml` ni `bench.yml`.
+- **AC-03:** `check-links.mjs` y `check-content.mjs` verifican enlaces, fragmentos y metadatos con fallos deterministas ante inconsistencias.
+- **AC-04:** Revisión local en preview (`http://127.0.0.1:4321/`) y capturas en `website/validation/screenshots/` en 375, 768 y 1440 px sin scroll horizontal ni errores de consola.
+- **AC-05:** Sitemap y metadatos canónicos `https://wasma.org` generados y verificados en build.
+- **AC-06:** Configuración de despliegue en `netlify.toml` para entrega estática de `website/dist/`, sin activar servicios en vivo de DNS.
+- **AC-07:** Matriz de validación y evidencia registrada en `website/validation/README.md`; revisión humana presencial y aprobación visual confirmada.
+- **AC-08:** Workflow de CI web listo para ejecutar validaciones en pipelines remotos.

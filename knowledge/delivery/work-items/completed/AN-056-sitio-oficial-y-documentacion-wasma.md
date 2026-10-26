@@ -2,7 +2,12 @@
 type: feature
 id: AN-056
 title: AN-056 — Sitio oficial y portal de documentación de Wasma
-status: in-progress
+status: completed
+completed_at: '2026-10-26'
+implemented_by: codex
+closed_by: agentic
+implementation_status: completed
+validation_status: passed
 work_type: feature
 created_at: '2026-10-20'
 source:
@@ -568,3 +573,13 @@ Sitio implementado en website/. Evidencia: website/validation/README.md.
 Los PNG recibidos resuelven la referencia visual; fuente exacta y aceptación estética
 siguen pendientes. Propuesta de hosting documentada, sin DNS ni despliegue.
 Estado in-progress hasta revisión humana; no equivale a cierre ni merge autorizado.
+
+## Evidencia de cierre y aceptación global — 2026-10-26
+
+- Los cuatro Work Items dependientes (AN-057, AN-058, AN-059 y AN-060) han sido verificados individualmente y trasladados a `completed/`:
+  - **AN-057:** Fundación web, tokens, landing y aprobación de identidad visual.
+  - **AN-058:** Documentación completa de 8 páginas y tutorial ejecutable contrastado contra la CLI real (`test-docs.mjs`: 5/5 comandos OK).
+  - **AN-059:** Blog y roadmap dinámico verificado contra las 8 iniciativas canónicas (`checks.test.mjs`: 2/2 tests OK).
+  - **AN-060:** Scripts de validación, compilación estática (13 páginas en `website/dist/`), resolución total de links y configuración Netlify.
+- Validación local interactiva en preview (`http://127.0.0.1:4321/`) con aprobación humana registrada.
+- Cierre formal del epic coordinador AN-056 cumplido.

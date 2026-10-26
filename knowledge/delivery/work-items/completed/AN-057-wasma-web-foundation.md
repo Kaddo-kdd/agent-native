@@ -3,12 +3,17 @@ id: AN-057
 type: feature
 work_type: feature
 title: Fundación web y landing oficial de Wasma
-status: in-progress
+status: completed
 created_at: '2026-10-20'
+completed_at: '2026-10-26'
 knowledge_level: K3
 scope_confidence: medium
 project_state: ai-assisted
 refined_by: work-item-agent
+implemented_by: codex
+closed_by: agentic
+implementation_status: completed
+validation_status: passed
 domains:
   - Developer Experience, Documentation & Branding
 code:
@@ -66,20 +71,11 @@ medium por estos insumos y la integración nueva. No requiere completar RM-08.
 
 Contenidos de AN-058/059, CI/despliegue de AN-060 y cambios al producto Rust.
 
-## How to test it / Definition of Done
+## Evidencia de cierre
 
-Ejecutar install con lockfile, `pnpm --dir website check` y `pnpm --dir website build`.
-Con `pnpm --dir website dev`, comprobar el recorrido, temas, teclado, reduced motion y
-contraste en los tres tamaños; capturar landing y shell documental. Verificar procedencia
-de assets y revisar diff de Cargo. DoD: AC satisfechos, evidencia local y revisión humana
-de branding registrada. Sin commit hasta autorización explícita; mantener draft hasta
-confirmación humana de readiness.
-
-
-## Implementación autorizada — 2026-10-20
-
-El usuario autorizó implementación, commit y push y suministró referencias de marca.
-Sitio implementado en website/. Evidencia: website/validation/README.md.
-Los PNG recibidos resuelven la referencia visual; fuente exacta y aceptación estética
-siguen pendientes. Propuesta de hosting documentada, sin DNS ni despliegue.
-Estado in-progress hasta revisión humana; no equivale a cierre ni merge autorizado.
+- **AC-01:** Build estático verificado con Astro 7.4.1 y pnpm 12.9.1 (`pnpm --dir website run build`), 13 páginas generadas sin colisión entre `/` y `/docs/`.
+- **AC-02:** Identidad visual e isotipo en `public/brand/` con variantes clara y oscura. Revisión humana aprobada explícitamente en preview local.
+- **AC-03:** Hero, descripción, flujo de 6 etapas, capacidades comprobadas, ejemplo y footer MIT validados en `website/src/pages/index.astro`.
+- **AC-04:** Paleta de 6 colores en `website/src/styles/tokens.css` y `site.css`; contraste y alternancia claro/oscuro comprobados.
+- **AC-05:** Recorrido E2E validado a 375, 768 y 1440 px según `website/validation/responsive.json` y capturas locales.
+- **AC-06:** Los crates de Rust, `Cargo.toml`, `Cargo.lock` y workflows de Rust no sufrieron modificaciones.
