@@ -88,14 +88,15 @@ Fuentes:
 | INIT-07-01 | Baseline WASI preview2 + stdio autorizado | medium | INIT-06-01 | Programa con I/O autorizada y aislamiento | completed (AN-044, AN-045) |
 | INIT-07-02 | Extensión IR para `string` y errores | medium | INIT-02-01, INIT-04-05 | IR v0.6 bajo flag `--experimental`, sin romper v0.5 | completed (AN-048) |
 | INIT-07-03 | Stubs deterministas de I/O para pruebas | low | INIT-07-01, INIT-03-03 | Suite YAML con `stdin` simulado | completed (AN-049) |
-| **RM-08** | **Performance & Concurrency** | — | — | Runtime caracterizado por benchmarks | in-progress |
+| **RM-08** | **Performance & Concurrency** | — | — | Runtime caracterizado por benchmarks | completed (AN-065, AN-066, AN-067 closed) |
 | INIT-08-01 | Harness de benchmarks reproducible | medium | INIT-03-06, INIT-05-01 | Varianza acotada entre corridas; cross-OS | completed (AN-051, AN-052) |
 | INIT-08-02 | Línea base pública cross-OS | medium | INIT-08-01 | p50/p95/p99 publicados por operación | nuevo |
 | INIT-08-03 | Caché de componentes y warm pool | medium | INIT-06-03, INIT-08-02 | Decisión de no adopción documentada; Store/instancia fresca preservados | completed (AN-063, AN-064) |
-| INIT-08-04 | Concurrencia host-side (workers) | low | INIT-06-03, INIT-08-01, AN-055 | Workers acotados con aislamiento, backpressure y caracterización controlada | in-progress (AN-065/066/067 ready) |
+| INIT-08-04 | Concurrencia host-side (workers) | low | INIT-06-03, INIT-08-01, AN-055 | Workers acotados con aislamiento, backpressure y caracterización controlada | completed (AN-065, AN-066, AN-067) |
+| **INI-009** | **Public Release, Technical Identity & Developer Adoption** | high | INI-001..INI-008 | Wasma v0.1.0 publicado bajo identidad técnica coherente, distribución verificable y adopción externa validada | draft (12 WIs) |
 | **Diferido** | Interoperabilidad con componentes WIT externos | — | — | Objetivo arquitectónico; sin iniciativa activa | diferido |
 
-Total: 8 bloques, 29 iniciativas activas y 1 objetivo diferido.
+Total: 8 bloques completados (núcleo técnico), 1 iniciativa activa de adopción y release (INI-009, 12 candidatos) y 1 objetivo diferido.
 
 ## Initiatives
 
@@ -942,7 +943,33 @@ Store/instancia fresca.
 **Work Items materializados:**
 - AN-065: contrato y prototipo experimental de workers acotados (`feature`, ready).
 - AN-066: aislamiento concurrente, backpressure y fallos (`chore`, ready).
-- AN-067: saturación, throughput y soak controlados (`chore`, ready).
+- AN-067: saturación, throughput y soak controlados (`chore`, completed).
+
+---
+
+### INI-009 — Public Release, Technical Identity & Developer Adoption
+
+**Status:** draft · **Priority:** high · **K3**
+
+**Iniciativa canónica:** [`knowledge/delivery/initiatives/INI-009-public-release-developer-adoption.md`](initiatives/INI-009-public-release-developer-adoption.md)
+
+**Source signals:** Culminación del núcleo técnico (INI-001..INI-008, 67 Work Items completados); necesidad de unificar la identidad pública Wasma (`wasma.org`) con las interfaces técnicas internas y distribuir v0.1.0 con adopción externa validada.
+
+**Problem / opportunity:** El producto cuenta con presencia pública en `wasma.org` pero los binarios, crates y repositorio continúan con nombres heredados de Agent Native. La primera release oficial v0.1.0 es el momento de consolidar la identidad técnica, establecer versionamiento, firma y distribución reproducible, y comprobar mediante un piloto externo que desarrolladores ajenos al proyecto pueden adoptar Wasma de forma autónoma.
+
+**Work Items candidatos materializados (12 WIs):**
+- AN-077: Evaluación de identidad técnica, disponibilidad de nombres y estrategia de migración (`spike`, P0, K3, draft)
+- AN-078: Migración técnica de Agent Native a Wasma (`feature`, P0, K4, draft, dep: AN-077)
+- AN-079: Migración de repositorio GitHub y continuidad de integraciones (`chore`, P0, K4, draft, dep: AN-078)
+- AN-068: Auditoría de preparación de release y contrato de versionamiento (`chore`, P0, K3, draft, deps: AN-078, AN-079)
+- AN-069: Firma oficial, integridad y controles del pipeline de publicación (`feature`, P0, K4, draft, dep: AN-068)
+- AN-070: Empaquetado, instalación y prerelease multiplataforma (`feature`, P0, K3, draft, dep: AN-069)
+- AN-071: Sección de autor e identidad editorial del proyecto (`feature`, P1, K2, draft, dep: AN-077)
+- AN-072: Versión, commit y procedencia del despliegue en el footer (`feature`, P1, K2, draft, dep: AN-079)
+- AN-073: Onboarding, quickstart y reconciliación de documentación (`docs`, P0, K3, draft, deps: AN-068, AN-070)
+- AN-074: Aplicaciones de referencia y pruebas E2E (`feature`, P1, K3, draft, dep: AN-070)
+- AN-075: Validación con desarrolladores externos y reporte de fricciones (`spike`, P1, K3, draft, deps: AN-073, AN-074)
+- AN-076: Publicación oficial v0.1.0 y cierre de INI-009 (`chore`, P0, K4, draft, deps: AN-069, AN-070, AN-071, AN-072, AN-073, AN-075)
 
 ---
 
@@ -997,6 +1024,13 @@ INIT-07-01 → INIT-07-02 → INIT-07-03.
 **Ola H — RM-08 (Rendimiento y concurrencia):**
 INIT-08-01 → INIT-08-02; INIT-08-03 se completa por no adopción; INIT-08-04 avanza con workers de instancia fresca.
 **Hito M8:** runtime caracterizado por benchmarks reproducibles.
+
+**Ola I — INI-009 (Public Release, Technical Identity & Developer Adoption):**
+Fase 0 (Identidad): AN-077 → AN-078 → AN-079
+Fase 1 (Preparación): AN-068, AN-071, AN-072
+Fase 2 (Distribución): AN-069 → AN-070 → AN-073 / AN-074
+Fase 3 (Validación y Release): AN-075 → AN-076
+**Hito M9 (Objetivo):** Wasma v0.1.0 distribuido con identidad técnica unificada, verificación criptográfica y adopción externa validada.
 
 ## Dependency Map
 
@@ -1096,6 +1130,7 @@ flowchart LR
 | M6 — Runtime seguro | Ola F | Policy, fuel/limits, aislamiento, verificación de integridad |
 | M7 — Programas con I/O | Ola G | Hello world WASI real bajo policy |
 | M8 — Caracterizado | Ola H | Línea base pública, decisión trazable sobre instanciación y concurrencia aislada |
+| M9 — Wasma v0.1.0 Release Oficial | Ola I | Identidad unificada, paquetes firmados para 3 OS, onboarding validado por terceros y cierre formal de INI-009 |
 
 Los hitos son **propuesta**; versiones comerciales se declaran solo tras aprobación formal.
 

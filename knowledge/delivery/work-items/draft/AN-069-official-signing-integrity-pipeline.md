@@ -17,7 +17,7 @@ domains:
   - Security
 expected_value: >-
   Configurar la generación de SHA-256 y firma Minisign en el pipeline de GitHub Actions
-  con custodia segura de claves y validación offline de artefactos.
+  con verificación de nombres definitivos de artefactos, repositorio migrado y custodia segura de claves.
 project_state: ai-assisted
 template_version: 1
 ---
@@ -26,15 +26,17 @@ template_version: 1
 
 ## Contexto y problema
 
-El workflow `.github/workflows/release.yml` actualmente cuenta con un bloqueo explícito para publicación desatendida. Para una release pública oficial v0.1.0, se requiere un mecanismo estricto de firma Minisign y catálogo de hashes SHA-256 verificables de forma independiente.
+El workflow `.github/workflows/release.yml` actualmente cuenta con un bloqueo explícito para publicación desatendida. Para una release pública oficial v0.1.0 bajo la identidad definitiva de Wasma, se requiere un mecanismo estricto de firma Minisign y catálogo de hashes SHA-256 verificables de forma independiente, asegurando la concordancia entre los nombres definitivos de artefactos, los metadatos de release y la nueva ubicación del repositorio.
 
 ## Criterios de aceptación
 
-- AC-01: El workflow de release genera un archivo `SHA256SUMS` con los hashes criptográficos de todos los paquetes binarios producidos.
-- AC-02: Se integra firma Minisign de `SHA256SUMS` utilizando GitHub Secrets para la clave privada (sin claves en el repositorio).
-- AC-03: Se documenta la clave pública oficial y el procedimiento de verificación para los usuarios (`minisign -Vm ... -p ...`).
-- AC-04: La publicación requiere un gate de aprobación humana explícita antes de liberar el tag o release en GitHub Releases.
+- AC-01: El workflow de release genera un archivo `SHA256SUMS` con los hashes criptográficos de todos los paquetes binarios producidos bajo la nomenclatura definitiva de Wasma.
+- AC-02: Se verifica que los nombres de artefactos, metadatos del paquete y la URL del repositorio coincidan estrictamente con la identidad técnica y repositorio migrado en AN-078 y AN-079.
+- AC-03: Se integra firma Minisign de `SHA256SUMS` utilizando GitHub Secrets para la clave privada (sin claves en el repositorio).
+- AC-04: Se documenta la clave pública oficial y el procedimiento de verificación para los usuarios (`minisign -Vm ... -p ...`).
+- AC-05: La publicación requiere un gate de aprobación humana explícita antes de liberar el tag o release en GitHub Releases.
 
 ## Fuera de alcance
 
 - Distribución en gestores de paquetes externos (Homebrew, Cargo crates.io, winget).
+- Modificación de infraestructura DNS o hosting.

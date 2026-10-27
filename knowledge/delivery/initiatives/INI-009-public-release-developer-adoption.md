@@ -1,7 +1,7 @@
 ---
 type: initiative
 id: INI-009
-title: INI-009 — Public Release & Developer Adoption
+title: INI-009 — Public Release, Technical Identity & Developer Adoption
 status: draft
 knowledge_level: K3
 priority: high
@@ -21,16 +21,17 @@ candidates:
     type: chore
     priority: P0
     suggested_knowledge_level: K3
-    expected_value: Versionamiento coherente de crates, CLI y tags sin inconsistencias históricas
+    expected_value: Versionamiento coherente de crates definitivos a 0.1.0, CLI y tags sin inconsistencias históricas
     materialized_as: AN-068 (candidate)
     dependencies:
-      - INI-001...008
+      - AN-078
+      - AN-079
   - id: INIT-09-02
     title: Firma oficial, integridad y controles del pipeline de publicación
     type: feature
     priority: P0
     suggested_knowledge_level: K4
-    expected_value: Catálogo SHA-256 y firma Minisign con clave oficial en GitHub Actions
+    expected_value: Catálogo SHA-256 y firma Minisign con clave oficial en GitHub Actions y verificación de artefactos finales
     materialized_as: AN-069 (candidate)
     dependencies:
       - AN-068
@@ -39,7 +40,7 @@ candidates:
     type: feature
     priority: P0
     suggested_knowledge_level: K3
-    expected_value: Binarios reproducibles para Linux x86_64 GNU, Windows x86_64 MSVC y macOS ARM64
+    expected_value: Binarios reproducibles para Linux x86_64 GNU, Windows x86_64 MSVC y macOS ARM64 bajo identidad Wasma
     materialized_as: AN-070 (candidate)
     dependencies:
       - AN-069
@@ -48,25 +49,25 @@ candidates:
     type: feature
     priority: P1
     suggested_knowledge_level: K2
-    expected_value: Sección editorial «Sobre el autor» en la landing con contexto profesional
+    expected_value: Sección editorial «Sobre el autor» en la landing con contexto profesional y origen de Wasma
     materialized_as: AN-071 (candidate)
     dependencies:
-      - Portal actual
+      - AN-077
   - id: INIT-09-05
     title: Versión, commit y procedencia del despliegue en el footer
     type: feature
     priority: P1
     suggested_knowledge_level: K2
-    expected_value: Metadatos generados en build (versión web, SHA corto trazable a commit de GitHub)
+    expected_value: Metadatos generados en build (versión web, SHA corto trazable a commit en repo canónico)
     materialized_as: AN-072 (candidate)
     dependencies:
-      - Portal actual
+      - AN-079
   - id: INIT-09-06
     title: Onboarding, quickstart y reconciliación de documentación
     type: docs
     priority: P0
     suggested_knowledge_level: K3
-    expected_value: Ruta de inicio rápido para desarrolladores sin fricción inicial
+    expected_value: Ruta de inicio rápido para desarrolladores utilizando únicamente la CLI y rutas definitivas
     materialized_as: AN-073 (candidate)
     dependencies:
       - AN-068
@@ -76,7 +77,7 @@ candidates:
     type: feature
     priority: P1
     suggested_knowledge_level: K3
-    expected_value: Dos aplicaciones de referencia (motor de reglas de negocio e integración host)
+    expected_value: Dos aplicaciones de referencia (motor de reglas de negocio e integración host) bajo identidad Wasma
     materialized_as: AN-074 (candidate)
     dependencies:
       - AN-070
@@ -85,7 +86,7 @@ candidates:
     type: spike
     priority: P1
     suggested_knowledge_level: K3
-    expected_value: Prueba piloto con 5-10 desarrolladores externos con métricas de fricción
+    expected_value: Prueba piloto con 5-10 desarrolladores externos con métricas de descubrimiento, instalación y fricción
     materialized_as: AN-075 (candidate)
     dependencies:
       - AN-073
@@ -95,194 +96,230 @@ candidates:
     type: chore
     priority: P0
     suggested_knowledge_level: K4
-    expected_value: Entrega formal de la versión pública v0.1.0 con artefactos firmados y portal actualizado
+    expected_value: Entrega formal de la versión pública v0.1.0 con artefactos firmados, portal y cierre de INI-009
     materialized_as: AN-076 (candidate)
     dependencies:
       - AN-069
       - AN-070
+      - AN-071
+      - AN-072
       - AN-073
       - AN-075
+  - id: INIT-09-10
+    title: Evaluación de identidad técnica, disponibilidad de nombres y estrategia de migración
+    type: spike
+    priority: P0
+    suggested_knowledge_level: K3
+    expected_value: Inventario de referencias técnicas a agent-native, disponibilidad de nombres Wasma y estrategia de migración
+    materialized_as: AN-077 (candidate)
+    dependencies: []
+  - id: INIT-09-11
+    title: Migración técnica de Agent Native a Wasma
+    type: feature
+    priority: P0
+    suggested_knowledge_level: K4
+    expected_value: Migración consistente de manifests Cargo, lockfile, CLI binaria, imports, tests y CI a Wasma
+    materialized_as: AN-078 (candidate)
+    dependencies:
+      - AN-077
+  - id: INIT-09-12
+    title: Migración de repositorio GitHub y continuidad de integraciones
+    type: chore
+    priority: P0
+    suggested_knowledge_level: K4
+    expected_value: Migración auditada del repositorio GitHub a Wasma con continuidad en CI/CD, hosting wasma.org y redirecciones
+    materialized_as: AN-079 (candidate)
+    dependencies:
+      - AN-078
 ---
 
-# INI-009 — Public Release & Developer Adoption
+# INI-009 — Public Release, Technical Identity & Developer Adoption
 
 **Tipo:** Iniciativa de producto y adopción  
 **Estado propuesto:** Draft  
 **Prioridad:** Alta  
 **Dependencias:** INI-001 a INI-008 completadas  
 **Producto:** Wasma / Agent Native  
-**Hito objetivo:** Primera versión pública v0.1.0
+**Hito objetivo:** Primera versión pública v0.1.0  
+**Repositorio actual:** `Kaddo-kdd/agent-native`  
+**Base de referencia:** commit `403e9fd` / `main`
 
 ## 1. Contexto y oportunidad
 
-Wasma completó su roadmap técnico inicial con 67 Work Items y ocho iniciativas entregadas. El proyecto cuenta con un compilador basado en Semantic IR, un runtime WebAssembly independiente, mecanismos de validación y seguridad, herramientas de desarrollo, documentación y evidencia experimental de rendimiento.
+El núcleo técnico de Agent Native completó sus primeras ocho iniciativas y 67 Work Items. La identidad comercial del producto ya es Wasma, con presencia pública en `wasma.org`, pero la identidad técnica continúa utilizando nombres `agent-native`.
 
-La siguiente etapa no debería centrarse exclusivamente en añadir capacidades técnicas. La principal oportunidad consiste en reducir las barreras de adopción y comprobar que personas externas al desarrollo pueden utilizar Wasma para resolver problemas reales.
+Actualmente existen discrepancias entre:
 
-**Hipótesis de la iniciativa:** si Wasma dispone de una distribución confiable, una experiencia de aprendizaje sencilla y ejemplos prácticos reproducibles, los desarrolladores podrán evaluar sus capacidades sin necesitar asistencia directa del autor.
+- Marca pública: Wasma (`wasma.org`).
+- Binario CLI: `agent-native`.
+- Paquete CLI de Cargo: `agent-native`.
+- Crates de biblioteca: `agent-native-ir`, `agent-native-compiler` y `agent-native-runtime`.
+- Repositorio GitHub: `Kaddo-kdd/agent-native`.
+- Workspace Rust: versión `0.0.0`.
+- Sitio web: versión independiente `0.1.0`.
 
-## 2. Objetivo general
+La primera release oficial v0.1.0 es el momento oportuno para consolidar la identidad técnica del producto, antes de que usuarios externos empiecen a depender de comandos, nombres de paquetes y rutas definitivas.
 
-Publicar la primera versión distribuible de Wasma, ofrecer una experiencia de instalación y aprendizaje accesible, y validar su utilidad mediante aplicaciones de referencia y pruebas con desarrolladores externos.
+No se debe realizar una sustitución indiscriminada de textos. La migración tiene que conservar las decisiones arquitectónicas, interfaces, garantías de seguridad y evidencia histórica existentes.
 
-### Objetivos específicos
+**Hipótesis de la iniciativa:** si Wasma consolida una identidad técnica coherente, dispone de una distribución confiable, una experiencia de aprendizaje sencilla y ejemplos prácticos reproducibles, los desarrolladores podrán evaluar sus capacidades sin necesitar asistencia directa del autor.
 
-**Distribución y confianza.** Producir binarios oficiales para las plataformas soportadas, acompañados de mecanismos de verificación criptográfica, trazabilidad, notas de versión y procedimientos de publicación seguros.
+## 2. Nuevo objetivo general
 
-**Developer Experience.** Facilitar que una persona sin conocimiento previo de la arquitectura pueda instalar la CLI, comprender los conceptos principales y construir, verificar y ejecutar su primer componente siguiendo la documentación.
+Publicar la primera versión pública de Wasma bajo una identidad técnica coherente, con distribución verificable, documentación accesible y evidencia de utilización por desarrolladores externos.
 
-**Adopción y validación.** Construir casos de uso representativos, observar la experiencia de usuarios externos e identificar problemas técnicos, funcionales y de documentación para orientar la evolución del producto.
+La iniciativa se organiza en cinco líneas de trabajo:
 
-**Identidad y transparencia.** Fortalecer el portal público mediante una sección del autor y metadatos que permitan identificar exactamente qué versión está desplegada.
+1. **Identidad y migración técnica:** consolidar el nombre Wasma en las interfaces públicas, resolver conflictos y preservar compatibilidad.
+2. **Release y distribución:** establecer versionamiento, firma, empaquetado y publicación controlada.
+3. **Developer Experience:** simplificar instalación, aprendizaje y primeros casos de uso.
+4. **Portal e identidad editorial:** presentar el autor y exponer la versión exacta del sitio desplegado.
+5. **Validación externa:** comprobar la experiencia de desarrolladores y definir las siguientes prioridades a partir de evidencia.
 
----
-
-## 3. Alcance de la iniciativa
-
-### Línea A — Public Release v0.1.0
-
-La primera versión pública debe ser una entrega reproducible y verificable, sin presentarla como una certificación general para producción.
-
-Se debe incluir:
-
-- Versionamiento coherente de los crates, CLI, tags y artefactos.
-- Binarios para Linux x86_64 GNU, Windows x86_64 MSVC y macOS ARM64.
-- Paquetes comprimidos por plataforma y arquitectura.
-- Catálogo SHA-256 y firma Minisign con clave oficial.
-- Publicación controlada en GitHub Releases.
-- Instrucciones de instalación, actualización y verificación.
-- Changelog, notas de versión, limitaciones y compatibilidad declarada.
-- Pruebas de instalación desde los paquetes finales, en entornos limpios.
-
-La activación de firma y publicación oficial requiere una decisión humana que sustituya el bloqueo existente en el workflow. Las claves privadas nunca deben incorporarse al repositorio.
-
-### Línea B — Developer Experience
-
-La experiencia inicial debe permitir que el desarrollador complete el siguiente recorrido:
-
-**Descubrir Wasma → Instalar → Comprender → Construir → Verificar → Ejecutar → Integrar.**
-
-El portal debe incluir una ruta de inicio rápido para personas que solo desean ejecutar su primer componente, sin obligarlas a conocer previamente Rust, Wasmtime, Semantic IR o WIT.
-
-Se diferenciarán los requisitos del desarrollador que compila el propio proyecto de los del usuario que simplemente instala la CLI distribuida.
-
-También se actualizarán los ejemplos, se eliminarán referencias a estados técnicos históricos que ya no correspondan y se mantendrán visibles las limitaciones experimentales.
-
-### Línea C — Aplicaciones de referencia y validación
-
-Construir inicialmente dos ejemplos representativos:
-
-**Ejemplo 1: Motor de reglas de negocio.** Un componente WebAssembly que evalúe reglas deterministas, como descuentos, elegibilidad o puntuaciones. Debe evidenciar generación, verificación, ejecución y pruebas de aceptación.
-
-**Ejemplo 2: Integración desde una aplicación host.** Una aplicación que consuma un componente Wasma desde el runtime y demuestre aislamiento, límites y contratos definidos. Las dependencias externas, si existen, deberán usar interfaces y capacidades expresamente soportadas; no se prometerá acceso general a red o archivos.
-
-Después se desarrollará una prueba piloto con miembros de la comunidad que no hayan participado en la implementación del proyecto.
-
-Se medirá la facilidad de instalación, el tiempo hasta obtener el primer resultado, la finalización de tareas, los errores encontrados, la claridad documental y los casos de uso sugeridos.
+La versión `v0.1.0` es el objetivo propuesto, pero su publicación queda condicionada a la revisión de nombres, seguridad de distribución y aceptación humana.
 
 ---
 
-## 4. Mejoras del portal web
+## 3. Alcance de las líneas de trabajo
 
-### Sección «Sobre el autor»
+### Línea 1 — Identidad técnica y migración de Wasma
 
-Incorporar una sección de autor en la página principal, idealmente después de explicar las capacidades del producto y antes del cierre de la landing.
+Consolidar la identidad técnica mediante una secuencia ordenada:
 
-**Contenido propuesto:**
+- **AN-077 (Spike P0):** Inventario de referencias técnicas a `agent-native`, análisis de disponibilidad y colisiones en registros (`crates.io`, GitHub), evaluación de riesgos y definición formal de nombres objetivos y estrategia de migración/alias transitorios.
+- **AN-078 (Feature P0):** Implementación técnica consistente en manifests Cargo (`Cargo.toml`), lockfile, ejecutable binario, rutas `use`, suites de tests y workflows de CI, preservando contratos Semantic IR y WIT.
+- **AN-079 (Chore P0):** Planificación y ejecución auditada del renombramiento del repositorio GitHub `Kaddo-kdd/agent-native`, verificando redirecciones, CI/CD, webhooks y la integración del despliegue del portal `wasma.org`.
 
-- Nombre del creador: Julián Darío Luna Patiño, sujeto a aprobación editorial.
-- Breve presentación profesional.
-- Motivación y origen de Wasma.
-- Relación con la investigación, el desarrollo de software y la creación de herramientas open source.
-- Fotografía o recurso visual aprobado, si se proporciona.
-- Enlaces verificables a perfiles profesionales, comunidad y repositorios.
-- Reconocimiento a quienes contribuyen al proyecto.
+### Línea 2 — Release y distribución v0.1.0
 
-La sección debe aportar confianza y contexto sin convertir el producto en una página personal. Puede ampliarse posteriormente con una página `/autor/`.
+La primera versión pública debe ser una entrega reproducible y verificable:
 
-### Versión desplegada en el footer
+- **AN-068 (Chore P0):** Auditoría de release, contrato de versionamiento SemVer unificando paquetes a `0.1.0` (preservando versionamiento independiente de Semantic IR y WIT) y estructuración del `CHANGELOG.md` base.
+- **AN-069 (Feature P0):** Pipeline de firma con catálogo SHA-256 y firma Minisign con clave oficial protegida en GitHub Secrets y verificación de nombres definitivos.
+- **AN-070 (Feature P0):** Empaquetado multiplataforma (.tar.gz / .zip) para Linux x86_64 GNU, Windows x86_64 MSVC y macOS ARM64, con smoke tests del comando definitivo `wasma`.
+- **AN-076 (Chore P0):** Publicación formal en GitHub Releases tras aprobación humana y validación integral.
 
-Agregar al footer global información generada automáticamente durante el proceso de build.
+### Línea 3 — Developer Experience y Onboarding
 
-Ejemplo de presentación:
+Facilitar el recorrido completo del desarrollador:
 
-**Wasma Web v0.1.0 · Build `<SHA corto>` · Ver código fuente**
+- **AN-073 (Docs P0):** Guía de inicio rápido (5 minutos) orientada al consumo del binario precompilado y la CLI definitiva, reconciliando la documentación del portal.
+- **AN-074 (Feature P1):** Dos aplicaciones de referencia reproducibles en `examples/` (motor de reglas de negocio deterministas e integración host embebida) bajo la identidad Wasma.
 
-La implementación deberá distinguir:
+### Línea 4 — Portal e identidad editorial
 
-- **Versión del sitio:** obtenida de la versión propia de `website/`.
-- **Build desplegado:** commit Git exacto utilizado para generar los archivos estáticos.
-- **Versión de Wasma CLI:** mostrada separadamente cuando exista una release distribuida, sin inferirla de la versión del sitio.
+Fortalecer la confianza y transparencia en `wasma.org`:
 
-El SHA deberá enlazar al commit correspondiente. En producción no se permitirá publicar un identificador inventado ni asumir que HEAD de `main` coincide siempre con el deploy vigente.
+- **AN-071 (Feature P1):** Sección «Sobre el autor» en la landing page principal con información profesional, motivación y origen del proyecto Wasma y su relación histórica con Agent Native.
+- **AN-072 (Feature P1):** Metadatos automáticos en el footer (versión web, SHA corto de commit enlazado al repositorio canónico definitivo tras AN-079), distinguiendo formalmente versión web de CLI.
 
-Los builds locales sin información de despliegue deben identificar explícitamente su carácter de desarrollo. La solución deberá funcionar también con los previews de Netlify y conservar la presentación responsive y accesible.
+### Línea 5 — Validación externa
 
----
+Comprobación empírica con usuarios reales:
 
-## 5. Work Items propuestos
-
-| ID | Work Item | Prioridad | Dependencias |
-|---|---|---|---|
-| AN-068 | Auditoría de preparación de release y contrato de versionamiento | P0 | INI-001…008 |
-| AN-069 | Firma oficial, integridad y controles del pipeline de publicación | P0 | AN-068 |
-| AN-070 | Empaquetado, instalación y prerelease multiplataforma | P0 | AN-069 |
-| AN-071 | Sección de autor e identidad editorial del proyecto | P1 | Portal actual |
-| AN-072 | Versión, commit y procedencia del despliegue en el footer | P1 | Portal actual |
-| AN-073 | Onboarding, quickstart y reconciliación de documentación | P0 | AN-068, AN-070 |
-| AN-074 | Aplicaciones de referencia y pruebas E2E | P1 | AN-070 |
-| AN-075 | Validación con desarrolladores externos y reporte de fricciones | P1 | AN-073, AN-074 |
-| AN-076 | Publicación oficial v0.1.0 y cierre de INI-009 | P0 | AN-069, AN-070, AN-073, AN-075 |
-
-Los identificadores son propuestas nuevas y deben reservarse mediante Kaddo antes de materializar los Work Items.
-
-## 6. Estrategia de ejecución
-
-**Fase 1 — Preparación y transparencia.** Completar la auditoría de distribución (AN-068), incorporar la sección del autor (AN-071), mostrar metadatos reales del despliegue (AN-072) y reconciliar la documentación del sitio con las capacidades existentes.
-
-**Fase 2 — Distribución y experiencia inicial.** Completar firma y empaquetado (AN-069/070), publicar una versión candidata de prueba y validar instalación, quickstart y ejemplos desde paquetes reales (AN-073/074). Esta fase todavía no autoriza la publicación oficial.
-
-**Fase 3 — Validación y publicación.** Invitar inicialmente a entre cinco y diez desarrolladores externos para probar el recorrido sin asistencia directa. Documentar resultados y defectos, resolver los problemas bloqueantes, aprobar la release y publicar v0.1.0 (AN-075/076).
-
-Las tres fases podrán tener tareas en paralelo cuando sus dependencias lo permitan.
+- **AN-075 (Spike P1):** Prueba piloto con 5 a 10 desarrolladores externos para medir facilidad de localización, instalación, uso del comando `wasma`, comprensión del tutorial y recopilación de reporte de fricciones.
 
 ---
 
-## 7. Métricas de éxito
+## 4. Work Items de la iniciativa (12 WIs)
+
+| ID | Work Item | Tipo | Prioridad | Dependencias |
+|---|---|---|---|---|
+| **AN-077** | Evaluación de identidad técnica, disponibilidad de nombres y estrategia de migración | spike | P0 | — |
+| **AN-078** | Migración técnica de Agent Native a Wasma | feature | P0 | AN-077 |
+| **AN-079** | Migración de repositorio GitHub y continuidad de integraciones | chore | P0 | AN-078 |
+| **AN-068** | Auditoría de preparación de release y contrato de versionamiento | chore | P0 | AN-078, AN-079 |
+| **AN-069** | Firma oficial, integridad y controles del pipeline de publicación | feature | P0 | AN-068 |
+| **AN-070** | Empaquetado, instalación y prerelease multiplataforma | feature | P0 | AN-069 |
+| **AN-071** | Sección de autor e identidad editorial del proyecto | feature | P1 | AN-077 |
+| **AN-072** | Versión, commit y procedencia del despliegue en el footer | feature | P1 | AN-079 |
+| **AN-073** | Onboarding, quickstart y reconciliación de documentación | docs | P0 | AN-068, AN-070 |
+| **AN-074** | Aplicaciones de referencia y pruebas E2E | feature | P1 | AN-070 |
+| **AN-075** | Validación con desarrolladores externos y reporte de fricciones | spike | P1 | AN-073, AN-074 |
+| **AN-076** | Publicación oficial v0.1.0 y cierre de INI-009 | chore | P0 | AN-069, AN-070, AN-071, AN-072, AN-073, AN-075 |
+
+---
+
+## 5. Dependencias y estrategia de ejecución
+
+El orden de los identificadores numéricos no define la secuencia de ejecución. La iniciativa se estructura en cuatro fases estrictamente acíclicas:
+
+```mermaid
+flowchart TD
+    A["AN-077 - Nombres y estrategia"] --> B["AN-078 - Migración técnica"]
+    B --> C["AN-079 - Repositorio e integraciones"]
+    C --> D["AN-068 - Versionamiento"]
+    D --> E["AN-069 - Firma"]
+    E --> F["AN-070 - Paquetes"]
+    F --> G["AN-073 - Onboarding"]
+    F --> H["AN-074 - Ejemplos"]
+    G --> I["AN-075 - Piloto"]
+    H --> I
+    A --> J["AN-071 - Autor"]
+    C --> K["AN-072 - Footer"]
+    I --> L["AN-076 - Release oficial"]
+    J --> L
+    K --> L
+```
+
+### Fase 0 — Consolidación de identidad técnica
+
+**Secuencia:** AN-077 → AN-078 → AN-079.  
+**Puerta de salida:** Identidad técnica aprobada, migración en workspace Rust validada sin regresiones y repositorio GitHub e integraciones operativas.
+
+### Fase 1 — Preparación y transparencia
+
+**Secuencia:** AN-068, AN-071 y AN-072.  
+**Puerta de salida:** Versión objetivo `0.1.0` y changelog consistentes en paquetes definitivos, sección del autor validada y metadatos del despliegue verificables en footer. (AN-071 puede avanzar en paralelo tras AN-077; AN-072 tras AN-079).
+
+### Fase 2 — Distribución y experiencia inicial
+
+**Secuencia:** AN-069 → AN-070 → AN-073 / AN-074.  
+**Puerta de salida:** Release candidata instalable en 3 plataformas, firma Minisign verificable, documentación de onboarding y dos ejemplos de referencia funcionales.
+
+### Fase 3 — Validación y publicación
+
+**Secuencia:** AN-075 → AN-076.  
+**Puerta de salida:** Piloto con desarrolladores externos completado, reporte de fricciones analizado, defectos bloqueantes resueltos, autorización humana explícita y release oficial v0.1.0 publicada.
+
+---
+
+## 6. Métricas de éxito
 
 | Dimensión | Indicador | Evidencia |
 |---|---|---|
+| Identidad técnica | Cero colisiones y resolución limpia de nombres y dependencias | Matriz AN-077 y compilación AN-078 |
+| Integraciones | Continuidad operativa de GitHub Actions, hosting y despliegues | Logs CI y comprobación de URLs tras AN-079 |
 | Distribución | Instalación satisfactoria en las 3 plataformas objetivo | Pruebas desde paquetes publicados |
-| Seguridad | Hashes y firma oficial verificables | Artefactos y CI de release |
-| Developer Experience | Tiempo hasta el primer componente ejecutado | Sesiones piloto |
-| Autonomía | Proporción de participantes que completan el tutorial sin ayuda | Observación y registro |
-| Calidad documental | Bloqueos, errores y pasos ambiguos identificados y resueltos | Issues y pruebas de documentación |
+| Seguridad | Hashes SHA-256 y firma Minisign oficial verificables | Artefactos y CI de release |
+| Developer Experience | Tiempo hasta el primer componente ejecutado con `wasma` | Sesiones piloto |
+| Autonomía | Proporción de participantes que completan el tutorial sin ayuda | Observación y registro en AN-075 |
+| Calidad documental | Ausencia de rutas o nombres obsoletos en guías públicas | Issues y pruebas de documentación |
 | Casos prácticos | Dos aplicaciones de referencia reproducibles | Repositorio, tests y tutoriales |
-| Transparencia web | Versión y SHA del deploy coinciden con producción | Validación del sitio desplegado |
+| Transparencia web | Versión y SHA del deploy coinciden con el commit de producción | Validación del footer en sitio desplegado |
 | Adopción inicial | Participación y feedback de desarrolladores externos | Reporte piloto |
 
-Los objetivos cuantitativos de adopción se establecerán antes del piloto y se contrastarán con los resultados observados. No se atribuirá éxito a descargas, visitas o estrellas de GitHub sin evidencia de utilización.
+---
 
-## 8. Condiciones de cierre
+## 7. Condiciones de cierre de INI-009
 
-INI-009 podrá cerrarse cuando:
+INI-009 podrá cerrarse formalmente cuando:
 
-1. La v0.1.0 haya sido publicada con autorización humana, artefactos descargables, integridad y firmas verificables.
-2. La instalación y el recorrido inicial funcionen desde los paquetes distribuidos en las plataformas declaradas.
-3. Los dos ejemplos de referencia estén documentados y probados.
-4. El portal muestre la sección del autor y el identificador exacto de la versión web desplegada.
-5. La prueba piloto haya producido evidencia de uso, hallazgos y decisiones de mejora.
-6. Se hayan documentado los límites conocidos, sin afirmar compatibilidad universal ni certificación de producción.
-7. Se haya aprobado una propuesta de siguiente roadmap basada en los resultados.
+1. La identidad técnica definitiva esté aprobada y sin conflictos conocidos que bloqueen su distribución.
+2. La migración de CLI, crates, scripts, CI y documentación esté implementada y validada sin regresiones en Semantic IR, WIT ni contratos de aislamiento.
+3. Se haya verificado la continuidad de GitHub y de las integraciones del portal `wasma.org` tras el cambio de nombre.
+4. La trazabilidad histórica permanezca preservada en Kaddo, Git y evidencia experimental de benchmarks.
+5. Los paquetes binarios oficiales v0.1.0 para las 3 plataformas hayan sido publicados con autorización humana explícita, hashes y firmas Minisign verificables.
+6. La instalación y el recorrido inicial funcionen desde los paquetes distribuidos utilizando los comandos definitivos.
+7. Los dos ejemplos de referencia estén documentados y probados.
+8. El portal muestre la sección del autor y los metadatos exactos de la versión web desplegada en el footer.
+9. La prueba piloto haya producido evidencia de uso, reporte de fricciones y decisiones de mejora.
+10. Se hayan documentado los límites conocidos y compatibilidad declarada, sin afirmar certificación universal para producción.
 
-## 9. Fuera del alcance
+## 8. Fuera del alcance
 
-Esta iniciativa no compromete nuevos tipos de Semantic IR, un servicio HTTP persistente, compatibilidad general con cualquier componente WebAssembly, infraestructura de múltiples tenants como servicio administrado, ni integraciones externas todavía no soportadas.
-
-Las solicitudes surgidas durante la validación deberán registrarse y priorizarse. No se incorporarán automáticamente al alcance de la release.
-
-## 10. Resultado esperado
-
-Al finalizar INI-009, Wasma deberá dejar de ser únicamente un proyecto con un núcleo tecnológico completo y convertirse en una herramienta open source distribuible, documentada y evaluada por desarrolladores externos.
-
-El éxito de esta etapa no será simplemente publicar v0.1.0: será demostrar que una persona nueva puede comenzar a utilizar Wasma y entender sus capacidades reales sin depender del equipo que lo construyó.
+- Certificación general para producción de misión crítica (v0.1.0 es una release de adopción y evaluación).
+- Nuevos tipos de Semantic IR o features arquitectónicas adicionales no contempladas en las 8 iniciativas previas.
+- Servicio HTTP persistente en el runtime.
+- Multi-tenancy gestionado como servicio cloud.
+- Reescritura del historial Git previo ni de los identificadores de Work Items completados AN-001..AN-067.

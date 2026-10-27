@@ -16,8 +16,8 @@ depends_on:
 domains:
   - Developer Experience, Documentation & Branding
 expected_value: >-
-  Crear una ruta de inicio rápido para desarrolladores sin conocimientos previos de Rust o Wasmtime,
-  actualizando la documentación del portal con los paquetes reales v0.1.0.
+  Crear una ruta de inicio rápido para desarrolladores utilizando únicamente la CLI y rutas definitivas de Wasma,
+  probando el tutorial desde la release candidata y documentando cualquier alias transitorio.
 project_state: ai-assisted
 template_version: 1
 ---
@@ -26,11 +26,17 @@ template_version: 1
 
 ## Contexto y problema
 
-La documentación actual incluye referencias a compilación local desde fuentes. Se requiere una ruta clara para usuarios que solo descargan la CLI distribuida, separando los requisitos de desarrollo de los de uso.
+La documentación actual incluye referencias a compilación local desde fuentes y nombres heredados. Se requiere una ruta clara para usuarios que descargan el binario oficial precompilado de Wasma, separando los requisitos de desarrollo de los de uso, empleando exclusivamente los comandos y rutas definitivos.
 
 ## Criterios de aceptación
 
-- AC-01: Se publica una guía «Quickstart / Inicio rápido» de 5 minutos en el portal orientada al consumo del binario precompilado.
-- AC-02: Se actualiza la página `/docs/installation/` con los enlaces a los paquetes oficiales de GitHub Releases v0.1.0.
-- AC-03: Se eliminan menciones a estados técnicos previos en la documentación pública, manteniendo explícitas las advertencias experimentales vigentes.
-- AC-04: Todos los ejemplos del quickstart son ejecutables sin claves de API ni dependencias adicionales.
+- AC-01: Se publica una guía «Quickstart / Inicio rápido» de 5 minutos en el portal orientada exclusivamente al uso del binario precompilado y la CLI definitiva (`wasma`).
+- AC-02: Se actualiza la página `/docs/installation/` con los enlaces a los paquetes oficiales de GitHub Releases v0.1.0 y verificación de sumas criptográficas.
+- AC-03: Se eliminan menciones a nombres o rutas heredadas no aprobadas en la documentación pública, documentando de forma clara cualquier alias transitorio aprobado en AN-077.
+- AC-04: El tutorial de onboarding es probado y validado de punta a punta a partir de la release candidata producida en AN-070.
+- AC-05: Todos los ejemplos del quickstart son ejecutables sin requerir claves de API ni dependencias adicionales no estándar.
+
+## Fuera de alcance
+
+- Documentación avanzada de contribución interna al runtime.
+- Nuevos vídeos o material multimedia fuera del portal web.
