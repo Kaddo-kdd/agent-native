@@ -13,9 +13,9 @@
 use std::fmt::Display;
 use std::time::Duration;
 
-use agent_native_ir::Diagnostic;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use wasma_ir::Diagnostic;
 
 use crate::agent::error::AgentError;
 use crate::spec::model::SystemSpec;
@@ -110,19 +110,35 @@ impl Default for LlmConfig {
     }
 }
 
+fn read_env_var(canonical: &str, legacy: &str) -> Option<String> {
+    if let Ok(val) = std::env::var(canonical) {
+        let trimmed = val.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+    if let Ok(val) = std::env::var(legacy) {
+        let trimmed = val.trim();
+        if !trimmed.is_empty() {
+            eprintln!("[WARN] Se detectó la variable obsoleta '{legacy}'. Migre a '{canonical}'.");
+            return Some(trimmed.to_string());
+        }
+    }
+    None
+}
+
 impl LlmConfig {
     /// Loads configuration from standard environment variables with fallbacks.
     #[must_use]
     pub fn from_env() -> Self {
-        let provider =
-            std::env::var("AGENT_NATIVE_LLM_PROVIDER").unwrap_or_else(|_| "anthropic".to_string());
-        let endpoint = std::env::var("AGENT_NATIVE_LLM_ENDPOINT")
-            .unwrap_or_else(|_| "https://api.anthropic.com/v1/messages".to_string());
-        let model = std::env::var("AGENT_NATIVE_LLM_MODEL")
-            .unwrap_or_else(|_| "claude-3-7-sonnet-20250219".to_string());
-        let api_key = std::env::var("AGENT_NATIVE_LLM_KEY").ok();
-        let timeout_secs = std::env::var("AGENT_NATIVE_LLM_TIMEOUT")
-            .ok()
+        let provider = read_env_var("WASMA_LLM_PROVIDER", "AGENT_NATIVE_LLM_PROVIDER")
+            .unwrap_or_else(|| "anthropic".to_string());
+        let endpoint = read_env_var("WASMA_LLM_ENDPOINT", "AGENT_NATIVE_LLM_ENDPOINT")
+            .unwrap_or_else(|| "https://api.anthropic.com/v1/messages".to_string());
+        let model = read_env_var("WASMA_LLM_MODEL", "AGENT_NATIVE_LLM_MODEL")
+            .unwrap_or_else(|| "claude-3-7-sonnet-20250219".to_string());
+        let api_key = read_env_var("WASMA_LLM_KEY", "AGENT_NATIVE_LLM_KEY");
+        let timeout_secs = read_env_var("WASMA_LLM_TIMEOUT", "AGENT_NATIVE_LLM_TIMEOUT")
             .and_then(|s| s.parse::<u64>().ok())
             .unwrap_or(30);
 

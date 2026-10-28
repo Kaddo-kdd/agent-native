@@ -58,7 +58,7 @@ jobs:
         run: python -m unittest discover -s scripts -p "test_bench_*.py" -v
 
       - name: Verify individual latency percentile method
-        run: cargo test --locked -p agent-native-runtime --example bench_latency
+        run: cargo test --locked -p wasma-runtime --example bench_latency
 
       - name: Three full repetitions on this runner
         run: python scripts/bench_collect.py --scope "${{ inputs.scope }}"
@@ -104,7 +104,7 @@ jobs:
         run: python -m unittest scripts/test_worker_bench_collect.py -v
 
       - name: Build worker benchmark
-        run: cargo build --locked --release -p agent-native-runtime --features experimental-workers --example worker_bench
+        run: cargo build --locked --release -p wasma-runtime --features experimental-workers --example worker_bench
 
       - name: Collect worker A/A sessions
         shell: bash

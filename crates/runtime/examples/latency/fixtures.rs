@@ -1,9 +1,9 @@
 //! Same deterministic fixtures as baseline.rs and extended.rs; no measured compilation.
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
-use agent_native_runtime::HostPolicy;
 use serde_json::json;
 use std::path::PathBuf;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
+use wasma_runtime::HostPolicy;
 
 const WASI_ECHO_WAT: &str = include_str!("../../benches/fixtures/wasi_console_echo.wat");
 

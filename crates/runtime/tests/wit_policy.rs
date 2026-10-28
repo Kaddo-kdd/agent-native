@@ -15,9 +15,9 @@
 //!   - Deny-by-default is intact — the probe fixture (which looks "internal"
 //!     because it uses the same package) still requires explicit allow.
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{Engine, HostPolicy, RuntimeError, Val};
 use std::path::PathBuf;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context};
+use wasma_runtime::{Engine, HostPolicy, RuntimeError, Val};
 
 fn compiler_crate_ctx() -> CompileContext {
     let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

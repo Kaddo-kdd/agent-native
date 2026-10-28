@@ -5,8 +5,8 @@
 //! is a smoke test, not the full regression suite — the complete 8-test POC
 //! suite migrates in AN-007.
 
-use agent_native_compiler::{compile_ir_to_wasm, sha256_hex, validate_wasm_bytes};
 use serde_json::json;
+use wasma_compiler::{compile_ir_to_wasm, sha256_hex, validate_wasm_bytes};
 
 #[test]
 fn same_ir_produces_byte_identical_wasm_and_hash() {

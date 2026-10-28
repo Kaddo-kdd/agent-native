@@ -959,7 +959,7 @@ Store/instancia fresca.
 
 **Work Items candidatos materializados (12 WIs):**
 - AN-077: Evaluación de identidad técnica, disponibilidad de nombres y estrategia de migración (`spike`, P0, K3, completed)
-- AN-078: Migración técnica de Agent Native a Wasma (`feature`, P0, K4, draft, dep: AN-077)
+- AN-078: Migración técnica de Agent Native a Wasma (`feature`, P0, K4, completed, dep: AN-077)
 - AN-079: Migración de repositorio GitHub y continuidad de integraciones (`chore`, P0, K4, draft, dep: AN-078)
 - AN-068: Auditoría de preparación de release y contrato de versionamiento (`chore`, P0, K3, draft, deps: AN-078, AN-079)
 - AN-069: Firma oficial, integridad y controles del pipeline de publicación (`feature`, P0, K4, draft, dep: AN-068)

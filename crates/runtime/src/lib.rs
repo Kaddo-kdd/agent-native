@@ -26,7 +26,7 @@
 //! # Usage Example
 //!
 //! ```no_run
-//! use agent_native_runtime::{Engine, HostPolicy, RuntimeError, Val};
+//! use wasma_runtime::{Engine, HostPolicy, RuntimeError, Val};
 //!
 //! fn run_artifact(wasm_bytes: &[u8]) -> Result<Vec<Val>, RuntimeError> {
 //!     let engine = Engine::new()?;

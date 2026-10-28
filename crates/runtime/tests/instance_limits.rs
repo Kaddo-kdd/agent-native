@@ -1,10 +1,10 @@
 //! AN-036: Instance limits and `ResourceLimiter` verification tests.
 
-use agent_native_runtime::{Engine, ExecutionLimits, InstanceLimits, RuntimeError, Val};
 use wasm_encoder::{
     BlockType, CodeSection, ExportKind, ExportSection, Function, FunctionSection, Instruction,
     MemorySection, MemoryType, Module, TypeSection, ValType,
 };
+use wasma_runtime::{Engine, ExecutionLimits, InstanceLimits, RuntimeError, Val};
 
 fn wasm_module_with_initial_memory(min_pages: u64, max_pages: Option<u64>) -> Vec<u8> {
     let mut module = Module::new();

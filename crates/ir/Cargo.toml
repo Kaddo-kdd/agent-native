@@ -1,11 +1,11 @@
 [package]
-name = "agent-native-ir"
+name = "wasma-ir"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Semantic IR model, verifier and schemas for Agent-Native."
+description = "Semantic IR model, verifier and schemas for Wasma."
 
 [lints]
 workspace = true

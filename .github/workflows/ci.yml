@@ -72,11 +72,11 @@ jobs:
         shell: bash
         run: |
           set -e
-          if cargo tree -p agent-native-runtime --prefix none --edges normal 2>/dev/null | grep -i "agent-native-compiler"; then
+          if cargo tree -p wasma-runtime --prefix none --edges normal 2>/dev/null | grep -i "wasma-compiler"; then
             echo "ADR-002 violation: runtime depends on compiler" >&2
             exit 1
           fi
-          if cargo tree -p agent-native-compiler --prefix none --edges normal 2>/dev/null | grep -i "agent-native-runtime"; then
+          if cargo tree -p wasma-compiler --prefix none --edges normal 2>/dev/null | grep -i "wasma-runtime"; then
             echo "ADR-001/002 violation: compiler depends on runtime" >&2
             exit 1
           fi

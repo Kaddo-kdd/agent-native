@@ -31,7 +31,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use agent_native_runtime::{Engine, HostPolicy, Resolver, RuntimeError, Val};
+use wasma_runtime::{Engine, HostPolicy, Resolver, RuntimeError, Val};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Agent-Native Runtime Embedding Example ===\n");
@@ -172,7 +172,7 @@ fn get_or_compile_wasm() -> Result<(Vec<u8>, bool), Box<dyn std::error::Error>> 
 /// In an external consumer project, pre-compiled `.wasm` binaries are used directly,
 /// eliminating the need for `agent-native-compiler`.
 fn compile_fixture_component_model() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
+    use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context};
 
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let mut compiler_dir = manifest_dir;

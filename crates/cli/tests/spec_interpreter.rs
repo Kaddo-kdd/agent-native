@@ -2,7 +2,7 @@
 //!
 //! Validates AC-01 through AC-05 of AN-023 completely offline.
 
-use agent_native::spec::{
+use wasma_cli::spec::{
     MarkdownRequirementsInterpreter, RequirementsInterpreter, SpecError, SystemSpec,
 };
 

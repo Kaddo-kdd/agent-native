@@ -6,13 +6,11 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use agent_native_runtime::workers::{
+use wasma_runtime::workers::{
     CancelError, ShutdownMode, SubmitError, WorkerError, WorkerPool, WorkerPoolConfig,
     WorkerPoolConfigError, WorkerPoolInitError, WorkerRequest,
 };
-use agent_native_runtime::{
-    Component, Engine, InvocationReport, RuntimeError, Tenant, TenantConfig, Val,
-};
+use wasma_runtime::{Component, Engine, InvocationReport, RuntimeError, Tenant, TenantConfig, Val};
 
 fn fixture() -> Vec<u8> {
     wat::parse_str(

@@ -11,11 +11,11 @@
 //! - `warm_run_core_identity_fuel`: fuel-metered invocation (AN-035..AN-038),
 //!   to quantify the cost of metering against `warm_run_core_identity`.
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{Engine, ExecutionLimits, HostPolicy, Val, WasiIoConfig};
 use criterion::{Criterion, criterion_group, criterion_main};
 use serde_json::json;
 use std::hint::black_box;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
+use wasma_runtime::{Engine, ExecutionLimits, HostPolicy, Val, WasiIoConfig};
 
 const WASI_ECHO_WAT: &str = include_str!("fixtures/wasi_console_echo.wat");
 

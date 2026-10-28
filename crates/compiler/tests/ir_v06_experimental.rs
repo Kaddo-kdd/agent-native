@@ -1,11 +1,11 @@
 //! Verification and compilation tests for experimental Semantic IR v0.6 (AN-048).
 
-use agent_native_compiler::{
+use serde_json::{Value, json};
+use wasma_compiler::{
     CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context, sha256_hex,
     validate_wasm_bytes,
 };
-use agent_native_ir::{VerifyOptions, verify_ir, verify_ir_with_options};
-use serde_json::{Value, json};
+use wasma_ir::{VerifyOptions, verify_ir, verify_ir_with_options};
 
 #[allow(clippy::too_many_lines)]
 fn sample_v06_ir() -> Value {

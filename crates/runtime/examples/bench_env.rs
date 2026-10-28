@@ -1,7 +1,7 @@
 //! Prints a reproducible environment sheet (AN-051 / INIT-08-01) as JSON.
 //!
 //! Run before a benchmark session so results can be tied to the machine and
-//! toolchain that produced them: `cargo run -p agent-native-runtime --example bench_env`.
+//! toolchain that produced them: `cargo run -p wasma-runtime --example bench_env`.
 //! No external crates and no hardware identifiers (serial numbers, hostnames).
 
 use std::process::Command;

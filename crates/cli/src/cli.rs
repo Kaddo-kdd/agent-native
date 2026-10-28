@@ -14,11 +14,11 @@ use crate::commands::{
 };
 use crate::output::{CliExitCode, OutputFormat};
 
-/// Agent-Native CLI primary interface.
+/// Wasma CLI primary interface.
 #[derive(Debug, Parser)]
 #[command(
-    name = "agent-native",
-    about = "Agent-Native CLI — compile, verify, test, run and publish WebAssembly components",
+    name = "wasma",
+    about = "Wasma CLI — compile, verify, test, run and publish WebAssembly components",
     version
 )]
 pub struct Cli {

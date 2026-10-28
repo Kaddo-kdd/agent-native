@@ -1,27 +1,36 @@
 [package]
-name = "agent-native"
+name = "wasma-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Agent-Native CLI — primary interface for build, verify, test, run and publish."
+description = "Wasma CLI — primary interface for build, verify, test, run and publish."
 
 [lib]
-name = "agent_native"
+name = "wasma_cli"
 path = "src/lib.rs"
 
 [[bin]]
-name = "agent-native"
+name = "wasma"
 path = "src/main.rs"
+
+[[bin]]
+name = "agent-native"
+path = "src/bin/agent_native_alias.rs"
+required-features = ["legacy-alias"]
+
+[features]
+default = []
+legacy-alias = []
 
 [lints]
 workspace = true
 
 [dependencies]
-agent-native-ir = { path = "../ir" }
-agent-native-compiler = { path = "../compiler" }
-agent-native-runtime = { path = "../runtime" }
+wasma-ir = { path = "../ir" }
+wasma-compiler = { path = "../compiler" }
+wasma-runtime = { path = "../runtime" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

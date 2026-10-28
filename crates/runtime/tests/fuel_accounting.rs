@@ -1,9 +1,9 @@
 //! AN-035: Fuel accounting and CPU budget tests.
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{Engine, ExecutionLimits, HostPolicy, RuntimeError, Val};
 use serde_json::json;
 use std::path::PathBuf;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
+use wasma_runtime::{Engine, ExecutionLimits, HostPolicy, RuntimeError, Val};
 
 fn sample_math_wasm() -> Vec<u8> {
     let ir = json!({

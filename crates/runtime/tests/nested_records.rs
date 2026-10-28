@@ -3,7 +3,7 @@
 //! exterior".
 //!
 //! **Finding (reproduced):** the hypothesis is NOT reachable from
-//! Semantic IR v0.5. The verifier (`agent_native_ir::verify_ir`) rejects
+//! Semantic IR v0.5. The verifier (`wasma_ir::verify_ir`) rejects
 //! records whose fields reference another record type: the grammar only
 //! accepts `i32 | bool` as field types. Any attempt to build a
 //! `record.construct` inside another `record.construct` is caught at
@@ -15,7 +15,7 @@
 //! test must be revisited and extended to verify execution, not only
 //! verification.
 
-use agent_native_compiler::compile_ir_to_wasm;
+use wasma_compiler::compile_ir_to_wasm;
 
 fn nested_record_ir() -> serde_json::Value {
     let text = include_str!("../../compiler/tests/fixtures/ir/nested-records.ir.json");

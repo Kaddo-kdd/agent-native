@@ -1,11 +1,11 @@
 ---
 title: Referencia CLI
-description: Los cinco subcomandos reales de agent-native, sus opciones y los modos de generación.
+description: Los cinco subcomandos reales de wasma, sus opciones y los modos de generación.
 ---
 
 La referencia se contrasta con
 [`crates/cli/src/cli.rs`](https://github.com/Kaddo-kdd/agent-native/blob/main/crates/cli/src/cli.rs).
-Usa `agent-native --help` y `agent-native <comando> --help` para tu checkout concreto.
+Usa `wasma --help` y `wasma <comando> --help` para tu checkout concreto.
 
 ## Comandos
 
@@ -18,7 +18,7 @@ Usa `agent-native --help` y `agent-native <comando> --help` para tu checkout con
 | `publish`        | Publica en almacén local versionado | `--spec`, `--dist-dir`, `--source-wi`, `--git-commit`, `--mode` |
 
 `build` recibe el archivo como argumento posicional. La opción `--spec` pertenece a
-`publish`, no a `build`. No hay comandos `wasma init` ni `agent-native spec`.
+`publish`, no a `build`. No hay comandos `wasma init` ni `wasma spec`.
 
 ## Modos de construcción
 
@@ -26,10 +26,10 @@ Usa `agent-native --help` y `agent-native <comando> --help` para tu checkout con
 | ------------- | ----------------------------------------------------- | ------------------------------------------------------------- |
 | `synthesizer` | Transformaciones heurísticas deterministas, limitadas | Especificación compatible; no interpreta narrativa arbitraria |
 | `fixtures`    | Artefactos predefinidos para casos soportados         | Fixture reconocido                                            |
-| `real`        | Generación mediante proveedor LLM y validación del IR | Configuración del proveedor y `AGENT_NATIVE_LLM_KEY`          |
+| `real`        | Generación mediante proveedor LLM y validación del IR | Configuración del proveedor y `WASMA_LLM_KEY (o AGENT_NATIVE_LLM_KEY)`          |
 
-El adaptador real también utiliza `AGENT_NATIVE_LLM_ENDPOINT` y
-`AGENT_NATIVE_LLM_MODEL` según configuración. No introduzcas claves en esta web,
+El adaptador real también utiliza `WASMA_LLM_ENDPOINT` y
+`WASMA_LLM_MODEL` según configuración. No introduzcas claves en esta web,
 capturas o archivos versionados. El runtime no requiere esas credenciales.
 
 ## Ejemplo ejecutable
@@ -37,8 +37,8 @@ capturas o archivos versionados. El runtime no requiere esas credenciales.
 El [tutorial](/docs/first-component/) proporciona los archivos de entrada completos:
 
 ```sh
-agent-native build identity.json --output identity.wasm
-agent-native run --component identity.wasm --function identity --fuel 100000 42
+wasma build identity.json --output identity.wasm
+wasma run --component identity.wasm --function identity --fuel 100000 42
 ```
 
 ## Opciones de ejecución

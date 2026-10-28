@@ -37,12 +37,12 @@
 //! Numbers published in `knowledge/tech/baselines/runtime-baseline.md`
 //! use the names below verbatim.
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{Engine, Resolver, Val};
 use criterion::{Criterion, criterion_group, criterion_main};
 use serde_json::json;
 use std::hint::black_box;
 use std::path::PathBuf;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
+use wasma_runtime::{Engine, Resolver, Val};
 
 // -------- Fixtures --------
 

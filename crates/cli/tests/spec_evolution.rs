@@ -2,15 +2,15 @@
 //!
 //! Validates AC-01 through AC-04 of AN-025 completely offline.
 
-use agent_native::spec::RequirementsInterpreter;
-use agent_native::spec::diff::compute_spec_diff;
-use agent_native::spec::error::SpecError;
-use agent_native::spec::interpreter::MarkdownRequirementsInterpreter;
-use agent_native::spec::model::{
+use wasma_cli::spec::RequirementsInterpreter;
+use wasma_cli::spec::diff::compute_spec_diff;
+use wasma_cli::spec::error::SpecError;
+use wasma_cli::spec::interpreter::MarkdownRequirementsInterpreter;
+use wasma_cli::spec::model::{
     ComponentSpec, EntityField, EntitySpec, OperationParam, OperationSpec, RequirementSource,
     RequirementSpec, SpecMetadata, SystemSpec,
 };
-use agent_native::spec::reconciler::reconcile_spec;
+use wasma_cli::spec::reconciler::reconcile_spec;
 
 #[allow(clippy::too_many_lines)]
 fn create_base_spec() -> SystemSpec {

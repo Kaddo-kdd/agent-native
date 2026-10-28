@@ -9,69 +9,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
-name = "agent-native"
-version = "0.0.0"
-dependencies = [
- "agent-native-compiler",
- "agent-native-ir",
- "agent-native-runtime",
- "clap",
- "flate2",
- "minisign",
- "minisign-verify",
- "serde",
- "serde_json",
- "sha2",
- "tar",
- "thiserror 2.0.21",
- "ureq",
- "wasm-encoder 0.221.3",
-]
-
-[[package]]
-name = "agent-native-compiler"
-version = "0.0.0"
-dependencies = [
- "agent-native-ir",
- "serde_json",
- "sha2",
- "wasm-encoder 0.221.3",
- "wasmparser 0.221.3",
- "wasmprinter",
- "wit-component",
- "wit-parser 0.219.2",
-]
-
-[[package]]
-name = "agent-native-ir"
-version = "0.0.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "agent-native-runtime"
-version = "0.0.0"
-dependencies = [
- "agent-native-compiler",
- "agent-native-ir",
- "bytes",
- "criterion",
- "serde",
- "serde_json",
- "serde_yaml2",
- "sha2",
- "thiserror 2.0.21",
- "wasm-encoder 0.221.3",
- "wasmtime",
- "wasmtime-wasi",
- "wat",
- "wit-component",
- "wit-parser 0.219.2",
-]
-
-[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2257,6 +2194,69 @@ dependencies = [
  "spdx",
  "wasm-encoder 0.219.2",
  "wasmparser 0.219.2",
+]
+
+[[package]]
+name = "wasma-cli"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "flate2",
+ "minisign",
+ "minisign-verify",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tar",
+ "thiserror 2.0.21",
+ "ureq",
+ "wasm-encoder 0.221.3",
+ "wasma-compiler",
+ "wasma-ir",
+ "wasma-runtime",
+]
+
+[[package]]
+name = "wasma-compiler"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+ "sha2",
+ "wasm-encoder 0.221.3",
+ "wasma-ir",
+ "wasmparser 0.221.3",
+ "wasmprinter",
+ "wit-component",
+ "wit-parser 0.219.2",
+]
+
+[[package]]
+name = "wasma-ir"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "wasma-runtime"
+version = "0.0.0"
+dependencies = [
+ "bytes",
+ "criterion",
+ "serde",
+ "serde_json",
+ "serde_yaml2",
+ "sha2",
+ "thiserror 2.0.21",
+ "wasm-encoder 0.221.3",
+ "wasma-compiler",
+ "wasma-ir",
+ "wasmtime",
+ "wasmtime-wasi",
+ "wat",
+ "wit-component",
+ "wit-parser 0.219.2",
 ]
 
 [[package]]

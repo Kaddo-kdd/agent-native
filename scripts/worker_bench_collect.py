@@ -232,7 +232,7 @@ def environment(args):
 
 def invoke(mode, workload, workers, queue_capacity, concurrency, args):
     command = ([str(args.benchmark_bin)] if args.benchmark_bin else [
-        "cargo", "run", "--locked", "--release", "-q", "-p", "agent-native-runtime",
+        "cargo", "run", "--locked", "--release", "-q", "-p", "wasma-runtime",
         "--features", "experimental-workers", "--example", "worker_bench", "--"])
     command += ["--mode", mode, "--workload", workload, "--workers", str(workers),
         "--queue-capacity", str(queue_capacity), "--concurrency", str(concurrency),

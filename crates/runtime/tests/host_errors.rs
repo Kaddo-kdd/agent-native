@@ -2,9 +2,9 @@
 //! mismatches surface typed `RuntimeError` variants without executing
 //! guest code (ADR-004).
 
-use agent_native_compiler::compile_ir_to_wasm;
-use agent_native_runtime::{Engine, RuntimeError, Val};
 use serde_json::json;
+use wasma_compiler::compile_ir_to_wasm;
+use wasma_runtime::{Engine, RuntimeError, Val};
 
 /// IR v0.3 program with declared host imports. The compiler lowers it to a
 /// Core WASM module whose `imports` section lists `host::kv_get` et al.

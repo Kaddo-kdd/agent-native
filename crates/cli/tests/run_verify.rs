@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn cli_binary_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_agent-native"))
+    PathBuf::from(env!("CARGO_BIN_EXE_wasma"))
 }
 
 struct TestDir {

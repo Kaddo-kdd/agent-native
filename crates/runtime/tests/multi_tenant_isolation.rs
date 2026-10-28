@@ -7,13 +7,13 @@
 //! - E4: Rapid alternating interleaved executions (A-B-A-B) maintain 100% isolation.
 //! - E5: Concurrent multi-threaded execution preserves isolation without data races or panics.
 
-use agent_native_runtime::{Engine, HostPolicy, InstanceLimits, RuntimeError, TenantConfig, Val};
 use std::sync::Arc;
 use std::thread;
 use wasm_encoder::{
     BlockType, CodeSection, ExportKind, ExportSection, Function, FunctionSection, ImportSection,
     Instruction, MemorySection, MemoryType, Module, TypeSection, ValType,
 };
+use wasma_runtime::{Engine, HostPolicy, InstanceLimits, RuntimeError, TenantConfig, Val};
 
 /// Emits a WASM module with an infinite loop: `infinite_loop() -> i32`.
 fn wasm_module_with_infinite_loop() -> Vec<u8> {

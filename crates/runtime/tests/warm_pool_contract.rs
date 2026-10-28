@@ -5,7 +5,7 @@
 //! exercise mutable guest globals and memory, a trap, fuel exhaustion, and tenant
 //! policy. AN-063 introduces no pool or production reuse path.
 
-use agent_native_runtime::{Engine, HostPolicy, RuntimeError, TenantConfig, Val};
+use wasma_runtime::{Engine, HostPolicy, RuntimeError, TenantConfig, Val};
 
 fn stateful_wasm() -> Vec<u8> {
     wat::parse_str(

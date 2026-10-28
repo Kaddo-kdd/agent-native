@@ -6,7 +6,7 @@
 use serde::Serialize;
 use std::path::Path;
 
-use agent_native_ir::{Diagnostic, VerifyOptions, verify_ir_with_options};
+use wasma_ir::{Diagnostic, VerifyOptions, verify_ir_with_options};
 
 use crate::agent::{FixtureLlmProvider, HttpLlmProvider, LlmProvider, SynthesizerLlmProvider};
 use crate::output::{CliExitCode, OutputFormat, emit_error, emit_result};
@@ -195,15 +195,15 @@ pub fn execute_build_with_options(
     }
 
     // Compile IR to WASM with targeted WIT fallback
-    let base_ctx = agent_native_compiler::CompileContext::default().with_experimental(experimental);
-    let compile_res = agent_native_compiler::compile_ir_to_wasm_with_context(&ir_value, &base_ctx)
+    let base_ctx = wasma_compiler::CompileContext::default().with_experimental(experimental);
+    let compile_res = wasma_compiler::compile_ir_to_wasm_with_context(&ir_value, &base_ctx)
         .or_else(|initial_diags| {
             // Activate fallback ONLY when compilation failure is specifically due to a missing WIT file
             let is_wit_missing = initial_diags.iter().any(|d| d.code == "E_WIT_NOT_FOUND");
             if is_wit_missing {
                 if let Some(spec) = spec_opt.as_ref() {
                     let temp_dir = std::env::temp_dir().join(format!(
-                        "agent_native_cli_wit_{}_{}",
+                        "wasma_cli_wit_{}_{}",
                         comp_name,
                         std::process::id()
                     ));
@@ -239,12 +239,10 @@ pub fn execute_build_with_options(
                         });
                         return Err(combined);
                     }
-                    let fallback_ctx = agent_native_compiler::CompileContext::new(&temp_dir)
+                    let fallback_ctx = wasma_compiler::CompileContext::new(&temp_dir)
                         .with_experimental(experimental);
-                    let fallback_res = agent_native_compiler::compile_ir_to_wasm_with_context(
-                        &ir_value,
-                        &fallback_ctx,
-                    );
+                    let fallback_res =
+                        wasma_compiler::compile_ir_to_wasm_with_context(&ir_value, &fallback_ctx);
                     let _ = std::fs::remove_dir_all(&temp_dir);
                     match fallback_res {
                         Ok(bytes) => Ok(bytes),
@@ -293,7 +291,7 @@ pub fn execute_build_with_options(
         }
     };
 
-    let sha256 = agent_native_compiler::sha256_hex(&wasm_bytes);
+    let sha256 = wasma_compiler::sha256_hex(&wasm_bytes);
     let output_path_str = if let Some(out) = output {
         if let Some(parent) = out.parent() {
             if !parent.as_os_str().is_empty() {

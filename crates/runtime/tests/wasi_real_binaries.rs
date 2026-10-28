@@ -10,7 +10,7 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use wasmtime::component::Component;
 
-use agent_native_runtime::{Engine, ExecutionLimits, HostPolicy, WasiIoConfig};
+use wasma_runtime::{Engine, ExecutionLimits, HostPolicy, WasiIoConfig};
 
 const HELLO: &[u8] = include_bytes!("fixtures/wasip2_hello.wasm");
 const EXIT_SEVEN: &[u8] = include_bytes!("fixtures/wasip2_exit7.wasm");
@@ -128,7 +128,7 @@ fn real_wasip2_command_rejects_stdout_before_instantiation() {
 
     assert_eq!(
         error,
-        agent_native_runtime::RuntimeError::UnauthorizedImport {
+        wasma_runtime::RuntimeError::UnauthorizedImport {
             module: "wasi:cli/stdout@0.2.0".to_string(),
             name: "output-stream".to_string(),
         }
@@ -188,6 +188,6 @@ fn real_wasip2_command_maps_a_nonzero_exit_to_a_typed_error() {
         .expect_err("nonzero command exit must fail");
     assert_eq!(
         error,
-        agent_native_runtime::RuntimeError::WasiCommandExited { code: 1 }
+        wasma_runtime::RuntimeError::WasiCommandExited { code: 1 }
     );
 }

@@ -5,16 +5,16 @@
 
 use std::time::Duration;
 
-use agent_native::agent::{
+use serde_json::json;
+use wasma_cli::agent::{
     AgentError, FallbackLlmProvider, FixtureLlmProvider, GenerationMode, HttpLlmProvider,
     LlmConfig, LlmProvider, SynthesizerLlmProvider,
 };
-use agent_native::spec::RequirementsInterpreter;
-use agent_native::spec::interpreter::MarkdownRequirementsInterpreter;
-use agent_native::spec::model::{
+use wasma_cli::spec::RequirementsInterpreter;
+use wasma_cli::spec::interpreter::MarkdownRequirementsInterpreter;
+use wasma_cli::spec::model::{
     ComponentSpec, EntityField, EntitySpec, OperationParam, OperationSpec, SpecMetadata, SystemSpec,
 };
-use serde_json::json;
 
 fn create_sample_spec() -> SystemSpec {
     SystemSpec {
@@ -189,7 +189,7 @@ fn test_synthesizer_llm_provider_generates_valid_ir() {
     assert_eq!(fns[1]["name"], "make_point_sum");
 
     // Semantic IR v0.5 verifier must confirm zero diagnostic errors
-    let diags = agent_native_ir::verify_ir(&ir_value);
+    let diags = wasma_ir::verify_ir(&ir_value);
     let errors: Vec<_> = diags.iter().filter(|d| d.code.starts_with('E')).collect();
     assert!(errors.is_empty(), "Verifier reported errors: {errors:?}");
 
@@ -234,7 +234,7 @@ interface ops {
     let ir = synth.propose_ir("profile-manager", &spec, &[]).unwrap();
     assert_eq!(ir["ir_version"], "0.5");
 
-    let diags = agent_native_ir::verify_ir(&ir);
+    let diags = wasma_ir::verify_ir(&ir);
     let errors: Vec<_> = diags.iter().filter(|d| d.code.starts_with('E')).collect();
     assert!(errors.is_empty(), "Verifier errors: {errors:?}");
 }

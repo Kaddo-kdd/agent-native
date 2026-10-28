@@ -7,8 +7,8 @@
 //! replaces the chain with an explicit [`CompileContext`] that resolves
 //! paths against a declared root — this test exercises the invariant.
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context, sha256_hex};
 use std::path::PathBuf;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context, sha256_hex};
 
 fn program_005_ir() -> serde_json::Value {
     let text = include_str!("fixtures/ir/program-005.ir.json");

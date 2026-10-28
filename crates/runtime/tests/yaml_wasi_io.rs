@@ -1,10 +1,10 @@
 //! Integration tests for deterministic WASI 0.2 console I/O stubs and IR v0.6 types
 //! in the YAML acceptance executor (AN-049 / INIT-07-03).
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
-use agent_native_runtime::testing::{CaseStatus, parse_suite, run_suite};
-use agent_native_runtime::{Engine, HostPolicy};
 use serde_json::json;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context};
+use wasma_runtime::testing::{CaseStatus, parse_suite, run_suite};
+use wasma_runtime::{Engine, HostPolicy};
 
 #[allow(clippy::too_many_lines)]
 fn build_wasi_console_component() -> Vec<u8> {

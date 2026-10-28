@@ -10,7 +10,9 @@ pub enum AgentError {
     #[error("No pre-recorded fixture found for component '{0}' in fixtures mode")]
     FixtureNotFound(String),
 
-    #[error("Missing API key for LLM provider '{0}'. Set AGENT_NATIVE_LLM_KEY")]
+    #[error(
+        "Missing API key for LLM provider '{0}'. Set WASMA_LLM_KEY (or legacy AGENT_NATIVE_LLM_KEY)"
+    )]
     MissingApiKey(String),
 
     #[error("HTTP transport error: {0}")]

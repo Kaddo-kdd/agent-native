@@ -67,7 +67,7 @@ def capture(command):
 
 
 def environment(run=None):
-    env = json.loads(capture(["cargo", "run", "--locked", "-q", "-p", "agent-native-runtime", "--example", "bench_env"]))
+    env = json.loads(capture(["cargo", "run", "--locked", "-q", "-p", "wasma-runtime", "--example", "bench_env"]))
     runtime_hashes = source_hashes(runtime_sources())
     env.update({
         "commit": capture(["git", "rev-parse", "HEAD"]),
@@ -105,13 +105,13 @@ def collect(output, benchmarks=None, collect_latency=True, filters=None):
         write_json(output / "environment.json", environment())
         # Compile once outside the measured repetitions; never use --quick.
         suites = tuple(sorted({value[0] for value in benchmarks.values()}))
-        compile_command = ["cargo", "bench", "--locked", "-p", "agent-native-runtime"]
+        compile_command = ["cargo", "bench", "--locked", "-p", "wasma-runtime"]
         for suite in suites:
             compile_command.extend(("--bench", suite))
         subprocess.run([*compile_command, "--no-run"], cwd=REPO, check=True)
         if collect_latency:
             subprocess.run([
-                "cargo", "build", "--release", "--locked", "-p", "agent-native-runtime",
+                "cargo", "build", "--release", "--locked", "-p", "wasma-runtime",
                 "--example", "bench_latency",
             ], cwd=REPO, check=True)
         for run in RUNS:
@@ -129,7 +129,7 @@ def collect(output, benchmarks=None, collect_latency=True, filters=None):
                 # cargo-criterion's optional socket must not redirect evidence.
                 child_env.pop("CARGO_CRITERION_PORT", None)
                 for suite in suites:
-                    command = ["cargo", "bench", "--locked", "-p", "agent-native-runtime", "--bench", suite]
+                    command = ["cargo", "bench", "--locked", "-p", "wasma-runtime", "--bench", suite]
                     selected = [name for name, value in benchmarks.items() if value[0] == suite]
                     if len(benchmarks) != len(BENCHMARKS):
                         command.extend(("--", (filters or {}).get(suite, selected[0])))
@@ -140,7 +140,7 @@ def collect(output, benchmarks=None, collect_latency=True, filters=None):
                     write_json(directory / "collection.json", status)
                 status["criterion_complete"] = all(status["commands"].get(suite) == 0 for suite in suites)
                 if collect_latency:
-                    command = ["cargo", "run", "--release", "--locked", "-q", "-p", "agent-native-runtime",
+                    command = ["cargo", "run", "--release", "--locked", "-q", "-p", "wasma-runtime",
                                "--example", "bench_latency", "--", "--environment", str(directory / "environment.json")]
                     print(run + ": individual invocation latencies", flush=True)
                     with (directory / "latency/measurements.json").open("w", encoding="utf-8") as output_stream, \

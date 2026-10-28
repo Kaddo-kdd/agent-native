@@ -1,11 +1,11 @@
 [package]
-name = "agent-native-runtime"
+name = "wasma-runtime"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Standalone runtime that loads and executes Agent-Native WASM components."
+description = "Standalone runtime that loads and executes Wasma WASM components."
 
 [lints]
 workspace = true
@@ -16,7 +16,7 @@ workspace = true
 experimental-workers = []
 
 [dependencies]
-agent-native-ir = { path = "../ir" }
+wasma-ir = { path = "../ir" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml2 = "0.1"
@@ -36,8 +36,8 @@ bytes = "1"
 [dev-dependencies]
 # Compiler used only to produce WASM artifacts for smoke tests. ADR-002
 # forbids this dependency in [dependencies]; dev-dependencies do not reach
-# downstream consumers of agent-native-runtime.
-agent-native-compiler = { path = "../compiler" }
+# downstream consumers of wasma-runtime.
+wasma-compiler = { path = "../compiler" }
 criterion = "0.5"
 wasm-encoder = "=0.221.3"
 # WASI fixtures (AN-044): minimal Component Model artifacts that import exact

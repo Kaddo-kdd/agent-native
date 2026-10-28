@@ -1,12 +1,12 @@
-use agent_native_runtime::{Engine, ExecutionLimits, RuntimeError, Val};
 use std::process::Command;
 use std::time::Instant;
 use wasm_encoder::{
     BlockType, CodeSection, ExportKind, ExportSection, Function, FunctionSection, Instruction,
     Module, TypeSection, ValType,
 };
+use wasma_runtime::{Engine, ExecutionLimits, RuntimeError, Val};
 
-const CHILD_ENV_VAR: &str = "AGENT_NATIVE_RUN_FUEL_CHILD";
+const CHILD_ENV_VAR: &str = "WASMA_RUN_FUEL_CHILD";
 
 /// Helper function to build a minimal WASM module with an infinite loop:
 /// `(module (func (export "spin") (result i32) (loop br 0) (i32.const 0)))`

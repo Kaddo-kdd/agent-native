@@ -1,17 +1,17 @@
 [package]
-name = "agent-native-compiler"
+name = "wasma-compiler"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "IR to WASM Component Model compiler for Agent-Native."
+description = "IR to WASM Component Model compiler for Wasma."
 
 [lints]
 workspace = true
 
 [dependencies]
-agent-native-ir = { path = "../ir" }
+wasma-ir = { path = "../ir" }
 serde_json = "1.0"
 sha2 = "0.10"
 wasm-encoder = "0.221.0"

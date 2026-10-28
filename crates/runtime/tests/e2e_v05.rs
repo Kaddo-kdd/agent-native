@@ -13,10 +13,10 @@
 //! 4. Negative path: an IR declaring an inexistent `wit_contract.wit_file`
 //!    is rejected during compilation with a diagnostic.
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{Engine, RuntimeError, Val};
 use serde_json::Value;
 use std::path::PathBuf;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context};
+use wasma_runtime::{Engine, RuntimeError, Val};
 
 fn program_005_ir() -> Value {
     let text = include_str!("../../compiler/tests/fixtures/ir/program-005.ir.json");

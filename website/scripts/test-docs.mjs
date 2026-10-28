@@ -4,10 +4,11 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 
-const executable = process.env.AGENT_NATIVE_BIN
-  ? resolve(process.env.AGENT_NATIVE_BIN)
+const envBin = process.env.WASMA_BIN || process.env.AGENT_NATIVE_BIN;
+const executable = envBin
+  ? resolve(envBin)
   : resolve(
-      "../target/release/agent-native" +
+      "../target/release/wasma" +
         (process.platform === "win32" ? ".exe" : ""),
     );
 const tutorial = readFileSync(
@@ -23,10 +24,10 @@ try {
     if (language !== "sh") continue;
     for (const command of body.trim().split("\n")) {
       assert.ok(
-        command.startsWith("agent-native "),
+        command.startsWith("wasma "),
         "Only CLI tutorial commands are executable",
       );
-      const args = command.slice("agent-native ".length).trim().split(/\s+/);
+      const args = command.slice("wasma ".length).trim().split(/\s+/);
       const result = spawnSync(executable, args, {
         cwd: dir,
         encoding: "utf8",

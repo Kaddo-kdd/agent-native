@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use agent_native_runtime::{Component, Engine, RuntimeError, Val};
+use wasma_runtime::{Component, Engine, RuntimeError, Val};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 

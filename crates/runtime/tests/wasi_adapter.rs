@@ -8,7 +8,7 @@
 //!   per-interface registration in `wasmtime-wasi 29.0.1`, non-textual `IoOverflow` propagation,
 //!   non-blocking `check-write` / `blocking-write-and-flush`).
 
-use agent_native_runtime::{
+use wasma_runtime::{
     Engine, ExecutionLimits, HostPolicy, IoStream, RuntimeError, Tenant, TenantConfig, Val,
     WasiIoConfig,
 };

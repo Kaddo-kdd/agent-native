@@ -40,15 +40,15 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            binary_name: agent-native
+            binary_name: wasma
             archive_ext: tar.gz
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            binary_name: agent-native.exe
+            binary_name: wasma.exe
             archive_ext: zip
           - os: macos-latest
             target: aarch64-apple-darwin
-            binary_name: agent-native
+            binary_name: wasma
             archive_ext: tar.gz
 
     steps:
@@ -67,7 +67,7 @@ jobs:
           key: ${{ matrix.target }}
 
       - name: Build CLI release binary
-        run: cargo build --release -p agent-native --bin agent-native --target ${{ matrix.target }}
+        run: cargo build --release -p wasma-cli --bin wasma --target ${{ matrix.target }}
 
       - name: Determine Version
         id: version
@@ -91,7 +91,7 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.version.outputs.tag }}"
           TARGET="${{ matrix.target }}"
-          STAGE_DIR="agent-native-${TAG}-${TARGET}"
+          STAGE_DIR="wasma-${TAG}-${TARGET}"
           mkdir -p "${STAGE_DIR}"
 
           BIN_PATH="target/${TARGET}/release/${{ matrix.binary_name }}"
@@ -141,7 +141,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           $Tag = "${{ steps.version.outputs.tag }}"
           $Target = "${{ matrix.target }}"
-          $StageDir = "agent-native-$Tag-$Target"
+          $StageDir = "wasma-$Tag-$Target"
           New-Item -ItemType Directory -Path $StageDir | Out-Null
 
           $BinPath = "target\$Target\release\${{ matrix.binary_name }}"
@@ -164,7 +164,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: package-${{ matrix.target }}
-          path: agent-native-*.*
+          path: wasma-*.*
           if-no-files-found: error
           retention-days: 7
 
@@ -190,7 +190,7 @@ jobs:
           cd dist
           ls -la
           # Generar catálogo SHA-256 determinista ordenado por nombre de archivo
-          sha256sum agent-native-* | LC_ALL=C sort -k 2 > SHA256SUMS
+          sha256sum wasma-* | LC_ALL=C sort -k 2 > SHA256SUMS
           echo "=== SHA256SUMS Catalog ==="
           cat SHA256SUMS
 
@@ -239,9 +239,9 @@ jobs:
 
             echo "Signing SHA256SUMS with official release key..."
             if [ -n "${MINISIGN_PASSWORD:-}" ]; then
-              echo "${MINISIGN_PASSWORD}" | minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "agent-native release ${{ github.ref_name }}"
+              echo "${MINISIGN_PASSWORD}" | minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "wasma release ${{ github.ref_name }}"
             else
-              minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "agent-native release ${{ github.ref_name }}" -W
+              minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "wasma release ${{ github.ref_name }}" -W
             fi
 
             echo "Verifying official signature against repository public key..."
@@ -260,7 +260,7 @@ jobs:
             minisign -G -p "${EPHEMERAL_DIR}/test-minisign.pub" -s "${EPHEMERAL_DIR}/test.key" -W
 
             # Firmar catálogo como artefacto de prueba explícito
-            minisign -S -s "${EPHEMERAL_DIR}/test.key" -m SHA256SUMS -x SHA256SUMS.test-minisig -t "agent-native TEST DRY-RUN signature (NOT FOR OFFICIAL DISTRIBUTION)"
+            minisign -S -s "${EPHEMERAL_DIR}/test.key" -m SHA256SUMS -x SHA256SUMS.test-minisig -t "wasma TEST DRY-RUN signature (NOT FOR OFFICIAL DISTRIBUTION)"
 
             # Verificar firma con la clave pública de prueba
             minisign -Vm SHA256SUMS -p "${EPHEMERAL_DIR}/test-minisign.pub" -x SHA256SUMS.test-minisig

@@ -1,7 +1,7 @@
 //! `HostPolicy` tests — deny-by-default and selective allow-listing.
 
-use agent_native_compiler::compile_ir_to_wasm;
-use agent_native_runtime::{Engine, HostPolicy, RuntimeError, Val};
+use wasma_compiler::compile_ir_to_wasm;
+use wasma_runtime::{Engine, HostPolicy, RuntimeError, Val};
 
 fn program_003_wasm() -> Vec<u8> {
     let ir_text = include_str!("../../compiler/tests/fixtures/ir/program-003.ir.json");

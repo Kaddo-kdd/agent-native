@@ -119,7 +119,7 @@ candidates:
     priority: P0
     suggested_knowledge_level: K4
     expected_value: Migración consistente de manifests Cargo, lockfile, CLI binaria, imports, tests y CI a Wasma
-    materialized_as: AN-078 (candidate)
+    materialized_as: AN-078 (completed)
     dependencies:
       - AN-077
   - id: INIT-09-12

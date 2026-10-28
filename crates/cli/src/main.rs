@@ -1,7 +1,7 @@
-//! Agent-Native CLI binary entry point.
+//! Wasma CLI binary entry point.
 //!
 //! Per ADR-001, this binary wires together the public APIs of
-//! `agent-native-ir`, `agent-native-compiler` and `agent-native-runtime`;
+//! `wasma-ir`, `wasma-compiler` and `wasma-runtime`;
 //! it never concentrates domain logic. Orchestration (narrative → spec,
 //! LLM adapter, publishing) lives as internal modules.
 //!
@@ -10,5 +10,5 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    agent_native::run().into()
+    wasma_cli::run().into()
 }

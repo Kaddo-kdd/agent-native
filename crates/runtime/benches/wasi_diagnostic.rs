@@ -6,9 +6,9 @@
 //! measurements are separate observations that localise variability; their
 //! values must not be added together or used to rewrite historical evidence.
 
-use agent_native_runtime::{Engine, ExecutionLimits, HostPolicy, Val, WasiIoConfig};
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
+use wasma_runtime::{Engine, ExecutionLimits, HostPolicy, Val, WasiIoConfig};
 
 const WASI_ECHO_WAT: &str = include_str!("fixtures/wasi_console_echo.wat");
 

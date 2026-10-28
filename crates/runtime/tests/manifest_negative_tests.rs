@@ -11,10 +11,10 @@
 //! 6. Self-granting defeat: untrusted manifest requesting permissions denied
 //!    by host policy yields an empty effective policy and fails.
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{ComponentManifest, Engine, HostPolicy, Resolver, RuntimeError, Val};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
+use wasma_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
+use wasma_runtime::{ComponentManifest, Engine, HostPolicy, Resolver, RuntimeError, Val};
 
 fn compiler_crate_ctx() -> CompileContext {
     let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

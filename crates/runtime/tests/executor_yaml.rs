@@ -7,12 +7,12 @@
 
 use std::path::PathBuf;
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
-use agent_native_runtime::testing::{
+use serde_json::json;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm, compile_ir_to_wasm_with_context};
+use wasma_runtime::testing::{
     CaseStatus, ExecutorError, HostStubRegistry, StubKind, parse_suite, run_suite,
 };
-use agent_native_runtime::{Component, Engine, HostPolicy, RuntimeError, Val};
-use serde_json::json;
+use wasma_runtime::{Component, Engine, HostPolicy, RuntimeError, Val};
 
 // ---------- IR factories ---------------------------------------------------
 

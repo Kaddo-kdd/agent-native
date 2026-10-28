@@ -1,16 +1,16 @@
 //! Comprehensive public API audit test suite for `agent-native-runtime`.
 //!
 //! Validates:
-//! - Only root exports of `agent_native_runtime` are needed by external consumers.
+//! - Only root exports of `wasma_runtime` are needed by external consumers.
 //! - The 6 canonical types (`Engine`, `Component`, `HostPolicy`, `RuntimeError`, `Val`, `Resolver`)
 //!   operate without requiring compiler or LLM dependencies.
 //! - Invariants: Deny-by-default, fail-explicit on missing exports, deterministic caching.
 
-use agent_native_compiler::compile_ir_to_wasm;
-use agent_native_runtime::{
+use serde_json::json;
+use wasma_compiler::compile_ir_to_wasm;
+use wasma_runtime::{
     Component, Engine, HostPolicy, Resolver, RuntimeError, Tenant, TenantConfig, TenantId, Val,
 };
-use serde_json::json;
 
 fn sample_math_wasm() -> Vec<u8> {
     let ir = json!({

@@ -17,11 +17,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use agent_native::agent::{AgentError, HttpLlmProvider, LlmConfig, LlmProvider};
-use agent_native::spec::model::{ComponentSpec, SpecMetadata, SystemSpec};
+use wasma_cli::agent::{AgentError, HttpLlmProvider, LlmConfig, LlmProvider};
+use wasma_cli::spec::model::{ComponentSpec, SpecMetadata, SystemSpec};
 
 fn cli_binary_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_agent-native"))
+    PathBuf::from(env!("CARGO_BIN_EXE_wasma"))
 }
 
 fn create_sample_spec() -> SystemSpec {

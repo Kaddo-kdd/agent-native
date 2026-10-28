@@ -6,7 +6,7 @@
 use serde::Serialize;
 use std::path::Path;
 
-use agent_native_ir::{Diagnostic, VerifyOptions, verify_ir_with_options};
+use wasma_ir::{Diagnostic, VerifyOptions, verify_ir_with_options};
 
 use crate::output::{CliExitCode, OutputFormat, emit_error, emit_result};
 use crate::spec::{MarkdownRequirementsInterpreter, RequirementsInterpreter};

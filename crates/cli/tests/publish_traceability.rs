@@ -5,12 +5,12 @@
 use std::fs;
 use std::path::PathBuf;
 
-use agent_native::agent::FixtureLlmProvider;
-use agent_native::publish::{build_and_publish_components, recover_and_verify_dist_state};
-use agent_native::spec::model::{
+use serde_json::json;
+use wasma_cli::agent::FixtureLlmProvider;
+use wasma_cli::publish::{build_and_publish_components, recover_and_verify_dist_state};
+use wasma_cli::spec::model::{
     ComponentSpec, RequirementSource, RequirementSpec, SpecMetadata, SystemSpec,
 };
-use serde_json::json;
 
 fn compiler_wit_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -163,14 +163,14 @@ fn test_traceability_metadata_in_manifest_and_active() {
     let provider = create_fixture_provider();
     let wit_root = compiler_wit_root();
 
-    let options = agent_native::publish::PublishOptions {
+    let options = wasma_cli::publish::PublishOptions {
         wit_root: Some(&wit_root),
         git_commit: Some("abcdef1234567890".to_string()),
         fail_point: None,
         extra_source_wi: Vec::new(),
     };
 
-    let summary = agent_native::publish::build_and_publish_components_with_options(
+    let summary = wasma_cli::publish::build_and_publish_components_with_options(
         &provider, &spec, &dist_dir, &options,
     )
     .expect("build and publish");

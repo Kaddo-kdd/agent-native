@@ -1,9 +1,9 @@
 //! `Resolver` tests — content-addressed cache, policy independence and
 //! reset semantics.
 
-use agent_native_compiler::compile_ir_to_wasm;
-use agent_native_runtime::{HostPolicy, Resolver, RuntimeError, Val};
 use serde_json::json;
+use wasma_compiler::compile_ir_to_wasm;
+use wasma_runtime::{HostPolicy, Resolver, RuntimeError, Val};
 
 fn identity_wasm_a() -> Vec<u8> {
     let ir = json!({

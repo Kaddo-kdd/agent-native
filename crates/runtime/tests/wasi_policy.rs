@@ -13,7 +13,7 @@
 //!   `allow_wasi_stdout()` never grant or link `wasi:cli/stdin`.
 //! - AC-07: Exact WIT version matching (`@0.2.0` granted vs `@0.2.3` / `@0.3.0` rejected).
 
-use agent_native_runtime::{
+use wasma_runtime::{
     ComponentManifest, Engine, ExecutionLimits, HostPolicy, RuntimeError, Tenant, TenantConfig,
     Val, WASI_CLI_STDERR_0_2_0, WASI_CLI_STDIN_0_2_0, WASI_CLI_STDOUT_0_2_0, WASI_IO_ERROR_0_2_0,
     WASI_IO_POLL_0_2_0, WASI_IO_STREAMS_0_2_0, WasiIoConfig,

@@ -68,6 +68,6 @@ jobs:
           node-version: 24.13.0
       - uses: dtolnay/rust-toolchain@1.85.0
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --locked --release -p agent-native
+      - run: cargo build --locked --release -p wasma-cli --bin wasma
       - run: node scripts/test-docs.mjs
         working-directory: website

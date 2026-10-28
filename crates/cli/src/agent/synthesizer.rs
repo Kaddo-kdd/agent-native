@@ -10,8 +10,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use agent_native_ir::{Diagnostic, verify_ir};
 use serde_json::{Value, json};
+use wasma_ir::{Diagnostic, verify_ir};
 
 use crate::agent::error::AgentError;
 use crate::agent::provider::{AgentExecutionMetrics, GenerationMode, LlmProvider};

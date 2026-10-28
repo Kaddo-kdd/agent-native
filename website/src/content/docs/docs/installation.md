@@ -1,6 +1,6 @@
 ---
 title: Instalación
-description: Compila la CLI agent-native desde fuente y comprueba sus cinco comandos reales.
+description: Compila la CLI wasma desde fuente y comprueba sus cinco comandos reales.
 ---
 
 ## Requisitos
@@ -26,19 +26,19 @@ limitaciones de rendimiento permanecen documentadas.
 ```sh
 git clone https://github.com/Kaddo-kdd/agent-native.git
 cd agent-native
-cargo build --locked --release -p agent-native
+cargo build --locked --release -p wasma-cli --bin wasma
 ```
 
-El binario queda en `target/release/agent-native` (o `agent-native.exe` en Windows).
+El binario queda en `target/release/wasma` (o `agent-native.exe` en Windows).
 Puedes añadir ese directorio a tu PATH o invocarlo con la ruta completa.
 
 ```sh
-./target/release/agent-native --help
-./target/release/agent-native --version
+./target/release/wasma --help
+./target/release/wasma --version
 git rev-parse HEAD
 ```
 
-En PowerShell puedes usar `./target/release/agent-native.exe`. Registra el SHA de Git
+En PowerShell puedes usar `./target/release/wasma.exe`. Registra el SHA de Git
 además de `--version`: la versión del workspace puede no identificar por sí sola el hito.
 
 ## Comprobar la instalación

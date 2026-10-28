@@ -38,8 +38,8 @@ Ejecuta desde el mismo directorio. Estos comandos funcionan sin continuaciones d
 línea tanto en PowerShell como en shells Unix.
 
 ```sh
-agent-native verify identity.json
-agent-native build identity.json --output identity.wasm
+wasma verify identity.json
+wasma build identity.json --output identity.wasm
 ```
 
 Ambos deben terminar con código de salida `0`; el segundo crea `identity.wasm`.
@@ -48,7 +48,7 @@ Ambos deben terminar con código de salida `0`; el segundo crea `identity.wasm`.
 ## 3. Ejecuta
 
 ```sh
-agent-native run --component identity.wasm --function identity --fuel 100000 42
+wasma run --component identity.wasm --function identity --fuel 100000 42
 ```
 
 El resultado esperado es el entero **42** y código de salida `0`. El presupuesto de
@@ -70,14 +70,14 @@ cases:
 ```
 
 ```sh
-agent-native test --suite identity.yaml --component identity.wasm
+wasma test --suite identity.yaml --component identity.wasm
 ```
 
 La suite debe pasar con código `0`. Para observar un error de contrato, solicita una
 exportación que no existe:
 
 ```sh
-agent-native run --component identity.wasm --function missing 42
+wasma run --component identity.wasm --function missing 42
 ```
 
 Este último comando debe fallar con código `1`. Un error explícito es preferible a

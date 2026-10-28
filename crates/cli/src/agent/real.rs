@@ -10,8 +10,8 @@ use std::io::Read;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use agent_native_ir::Diagnostic;
 use serde_json::Value;
+use wasma_ir::Diagnostic;
 
 use crate::agent::error::AgentError;
 use crate::agent::provider::{AgentExecutionMetrics, GenerationMode, LlmConfig, LlmProvider};
@@ -223,7 +223,7 @@ impl LlmProvider for HttpLlmProvider {
                 self.record_metrics(start.elapsed(), None, None, diagnostics.len(), false);
                 if code == 401 || code == 403 {
                     return Err(AgentError::Http(format!(
-                        "Authentication failed (HTTP {code}): verify AGENT_NATIVE_LLM_KEY"
+                        "Authentication failed (HTTP {code}): verify WASMA_LLM_KEY"
                     )));
                 }
                 let mut err_body = String::new();
@@ -324,7 +324,7 @@ impl LlmProvider for HttpLlmProvider {
         };
 
         // Validate Semantic IR structure using official verifier
-        let verifier_diags = agent_native_ir::verify_ir(&ir_value);
+        let verifier_diags = wasma_ir::verify_ir(&ir_value);
         let error_diags: Vec<_> = verifier_diags
             .iter()
             .filter(|d| d.code.starts_with('E'))

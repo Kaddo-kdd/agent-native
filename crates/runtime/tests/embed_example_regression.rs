@@ -7,13 +7,7 @@ use std::process::Command;
 fn embed_runtime_example_runs_successfully() {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let output = Command::new(cargo)
-        .args([
-            "run",
-            "--example",
-            "embed_runtime",
-            "-p",
-            "agent-native-runtime",
-        ])
+        .args(["run", "--example", "embed_runtime", "-p", "wasma-runtime"])
         .output()
         .expect("cargo run --example embed_runtime must execute");
 

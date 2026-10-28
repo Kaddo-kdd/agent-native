@@ -2,7 +2,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
+use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context};
 
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());

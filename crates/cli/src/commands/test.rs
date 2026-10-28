@@ -6,8 +6,8 @@
 use serde::Serialize;
 use std::path::Path;
 
-use agent_native_runtime::Engine;
-use agent_native_runtime::testing::{SuiteReport, parse_suite, run_suite};
+use wasma_runtime::Engine;
+use wasma_runtime::testing::{SuiteReport, parse_suite, run_suite};
 
 use crate::output::{CliExitCode, OutputFormat, emit_error, emit_result};
 

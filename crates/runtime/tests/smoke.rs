@@ -5,9 +5,9 @@
 //! The compiler is a dev-dependency only (ADR-002); the production runtime
 //! never links to it.
 
-use agent_native_compiler::compile_ir_to_wasm;
-use agent_native_runtime::{Engine, RuntimeError, Val};
 use serde_json::json;
+use wasma_compiler::compile_ir_to_wasm;
+use wasma_runtime::{Engine, RuntimeError, Val};
 
 fn identity_wasm() -> Vec<u8> {
     let ir = json!({

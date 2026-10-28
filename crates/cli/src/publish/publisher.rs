@@ -8,8 +8,8 @@
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context, sha256_hex};
-use agent_native_ir::verify_ir;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context, sha256_hex};
+use wasma_ir::verify_ir;
 
 use crate::agent::provider::LlmProvider;
 use crate::publish::atomic::atomic_replace_file;
@@ -183,7 +183,7 @@ pub fn build_and_publish_components_with_options<P: LlmProvider>(
                 if is_wit_missing {
                     let staging_wit = temp_staging.join("wit");
                     std::fs::create_dir_all(&staging_wit).map_err(|e| {
-                        vec![agent_native_ir::Diagnostic {
+                        vec![wasma_ir::Diagnostic {
                             code: "E_WIT_STAGING_IO".to_string(),
                             function: None,
                             path: "$.wit_contract".to_string(),
@@ -197,7 +197,7 @@ pub fn build_and_publish_components_with_options<P: LlmProvider>(
                     let fallback_file = staging_wit.join(format!("{comp_id}.wit"));
                     let content = crate::spec::generate_wit_for_component(spec, comp_id);
                     std::fs::write(&fallback_file, content).map_err(|e| {
-                        vec![agent_native_ir::Diagnostic {
+                        vec![wasma_ir::Diagnostic {
                             code: "E_WIT_STAGING_IO".to_string(),
                             function: None,
                             path: "$.wit_contract".to_string(),
@@ -311,10 +311,11 @@ pub fn build_and_publish_components_with_options<P: LlmProvider>(
     source_wi.sort();
     source_wi.dedup();
 
-    let source_git_commit = options
-        .git_commit
-        .clone()
-        .or_else(|| std::env::var("AGENT_NATIVE_GIT_COMMIT").ok());
+    let source_git_commit = options.git_commit.clone().or_else(|| {
+        std::env::var("WASMA_GIT_COMMIT")
+            .ok()
+            .or_else(|| std::env::var("AGENT_NATIVE_GIT_COMMIT").ok())
+    });
 
     let traceability = crate::publish::store::SpecTraceability {
         source_wi,

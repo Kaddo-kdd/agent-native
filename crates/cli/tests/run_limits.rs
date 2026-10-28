@@ -20,7 +20,7 @@ use wasm_encoder::{
 };
 
 fn cli_binary_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_agent-native"))
+    PathBuf::from(env!("CARGO_BIN_EXE_wasma"))
 }
 
 struct TestDir {

@@ -10,10 +10,10 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
-use agent_native_runtime::workers::{ShutdownMode, WorkerPool, WorkerPoolConfig, WorkerRequest};
-use agent_native_runtime::{Component, Engine, TenantConfig, Val};
 use serde::Serialize;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context};
+use wasma_runtime::workers::{ShutdownMode, WorkerPool, WorkerPoolConfig, WorkerRequest};
+use wasma_runtime::{Component, Engine, TenantConfig, Val};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Mode {
@@ -95,7 +95,7 @@ fn point_sum_wasm() -> Vec<u8> {
     compile_ir_to_wasm_with_context(&ir, &ctx).expect("point-sum fixture must compile")
 }
 
-fn tenant(engine: &Engine, index: usize) -> agent_native_runtime::Tenant {
+fn tenant(engine: &Engine, index: usize) -> wasma_runtime::Tenant {
     engine
         .create_tenant(TenantConfig::new(format!("worker-bench-{index}")).with_fuel_budget(100_000))
 }
@@ -208,7 +208,7 @@ fn worker_samples(
                             }
                             Err(_) => "runtime_error",
                         },
-                        Err(agent_native_runtime::workers::SubmitError::QueueFull { .. }) => {
+                        Err(wasma_runtime::workers::SubmitError::QueueFull { .. }) => {
                             "backpressure"
                         }
                         Err(_) => "submit_error",

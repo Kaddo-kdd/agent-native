@@ -1,8 +1,8 @@
 //! End-to-end execution tests for Semantic IR v0.6 `string` and `result<T, E>` (AN-048).
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{Engine, Val};
 use serde_json::{Value, json};
+use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context};
+use wasma_runtime::{Engine, Val};
 
 #[allow(clippy::too_many_lines)]
 fn sample_v06_ir() -> Value {

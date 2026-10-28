@@ -7,9 +7,9 @@
 
 #![allow(clippy::too_many_lines, clippy::doc_markdown)]
 
-use agent_native_compiler::{compile_ir_to_wasm, sha256_hex, validate_wasm_bytes};
-use agent_native_ir::verify_ir;
 use serde_json::{Value, json};
+use wasma_compiler::{compile_ir_to_wasm, sha256_hex, validate_wasm_bytes};
+use wasma_ir::verify_ir;
 
 #[test]
 fn valid_smoke_ir_passes_and_compiles_reproducibly() {

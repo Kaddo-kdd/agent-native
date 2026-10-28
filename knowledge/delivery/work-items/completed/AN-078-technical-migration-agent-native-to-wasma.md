@@ -1,8 +1,10 @@
 ---
 id: AN-078
 type: feature
-status: draft
+status: completed
 created_at: 2026-10-27T00:00:00.000Z
+ready_at: '2026-10-28'
+completed_at: '2026-10-28'
 title: Migración técnica de Agent Native a Wasma
 knowledge_level: K4
 suggested_knowledge_level: K4
@@ -14,7 +16,7 @@ depends_on:
   - AN-077
 domains:
   - Core Runtime & Tooling
-  - Developer Experience, Documentation & Branding
+  - 'Developer Experience, Documentation & Branding'
 code:
   - Cargo.toml
   - Cargo.lock
@@ -25,10 +27,12 @@ code:
   - .github/workflows/**
   - website/scripts/test-docs.mjs
 expected_value: >-
-  Alineación consistente de manifests Cargo, lockfile, CLI binaria, imports, tests y CI con la identidad
-  aprobada de Wasma (ADR-008), preservando contratos Semantic IR/WIT, garantías de seguridad y trazabilidad.
+  Alineación consistente de manifests Cargo, lockfile, CLI binaria, imports,
+  tests y CI con la identidad aprobada de Wasma (ADR-008), preservando contratos
+  Semantic IR/WIT, garantías de seguridad y trazabilidad.
 project_state: ai-assisted
 template_version: 1
+ready_at: '2026-10-28'
 ---
 
 # AN-078 — Migración técnica de Agent Native a Wasma
@@ -92,3 +96,18 @@ Aplicar exclusivamente los nombres y decisiones aprobados en el **ADR-008** sobr
 ## Entregable
 
 Migración técnica reproducible y validada en el workspace Rust, con evidencia de regresión y suite de pruebas en verde.
+
+## Evidencia y verificación
+
+- **AC-01 a AC-09:** Verificados con estado `passed` (9/9).
+- **Decisión Kaddo:** `READY_TO_COMPLETE`.
+- **Validaciones:**
+  - `cargo fmt --all -- --check`: passed.
+  - `cargo clippy --workspace --all-targets --all-features -- -D warnings`: passed.
+  - `cargo test --workspace --all-features`: passed (100% pruebas de unit, integration, CLI y doc-tests).
+  - `cargo build --workspace --release`: passed (binario `wasma.exe` generado).
+  - `pnpm --dir website test`: passed (2/2).
+  - `pnpm --dir website run test:docs`: passed (5/5 comandos del tutorial con `wasma.exe`).
+  - `pnpm --dir website build`: passed (13 páginas estáticas).
+  - `cargo test --locked -p wasma-runtime --example bench_latency`: passed (3/3).
+  - `cargo run --locked -p wasma-runtime --example bench_env`: passed (telemetría JSON reproducible).

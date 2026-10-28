@@ -5,13 +5,13 @@
 use std::fs;
 use std::path::PathBuf;
 
-use agent_native::agent::FixtureLlmProvider;
-use agent_native::publish::{
+use serde_json::json;
+use wasma_cli::agent::FixtureLlmProvider;
+use wasma_cli::publish::{
     BuildFailPoint, PublishError, build_and_publish_components, recover_and_verify_dist_state,
     resolve_active_component_artifact,
 };
-use agent_native::spec::model::{ComponentSpec, SpecMetadata, SystemSpec};
-use serde_json::json;
+use wasma_cli::spec::model::{ComponentSpec, SpecMetadata, SystemSpec};
 
 fn create_test_spec() -> SystemSpec {
     SystemSpec {

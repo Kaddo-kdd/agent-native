@@ -27,7 +27,7 @@ const capabilities = [
   [
     "04",
     "Una CLI, todo el recorrido",
-    "Verifica, compila, prueba, ejecuta y publica en un almacén local. Los comandos actuales usan el nombre agent-native.",
+    "Verifica, compila, prueba, ejecuta y publica en un almacén local. Verifica, compila, prueba, ejecuta y publica con la CLI oficial de Wasma.",
     "/docs/cli/",
     "Consultar los comandos",
   ],
@@ -47,7 +47,7 @@ const capabilities = [
   ],
 ];
 const code =
-  "agent-native verify identity.json\nagent-native build identity.json --output identity.wasm\nagent-native run --component identity.wasm \\\n  --function identity --fuel 100000 42";
+  "wasma verify identity.json\nwasma build identity.json --output identity.wasm\nwasma run --component identity.wasm \\\n  --function identity --fuel 100000 42";
 ---
 
 <Site
@@ -183,7 +183,7 @@ const code =
           <span class="dot"></span>
           <span class="dot"></span>
           <span class="dot"></span>
-          <span>terminal · agent-native</span>
+          <span>terminal · wasma</span>
           <button data-copy="quick-code" aria-live="polite">
             Copiar
           </button>

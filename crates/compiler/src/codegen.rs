@@ -2,7 +2,7 @@
 //!
 //! Migrated verbatim from `_reference/poc-agent-native/crates/irtool/src/lib.rs`
 //! (lines 1699-2348), per matriz de extracción C-01 and ADR-001/003/004.
-//! The compiler verifies the IR via `agent_native_ir::verify_ir` first and
+//! The compiler verifies the IR via `wasma_ir::verify_ir` first and
 //! emits deterministic WASM Component Model bytes.
 //!
 //! Clippy pedantic is suppressed for this ported module (see verifier for
@@ -37,16 +37,16 @@
 
 use std::collections::{HashMap, HashSet};
 
-use agent_native_ir::context::Context;
-use agent_native_ir::diagnostic::Diagnostic;
-use agent_native_ir::model::{FuncSignature, ImportSignature, IrType, RecordDef, WitContractDef};
-use agent_native_ir::{VerifyOptions, verify_ir_with_options};
 use serde_json::Value;
 use wasm_encoder::{
     BlockType, CodeSection, ConstExpr, CustomSection, EntityType, ExportKind, ExportSection,
     Function, FunctionSection, GlobalSection, GlobalType, ImportSection, Instruction, MemArg,
     MemorySection, MemoryType, Module, TypeSection, ValType,
 };
+use wasma_ir::context::Context;
+use wasma_ir::diagnostic::Diagnostic;
+use wasma_ir::model::{FuncSignature, ImportSignature, IrType, RecordDef, WitContractDef};
+use wasma_ir::{VerifyOptions, verify_ir_with_options};
 
 use crate::context::{CompileContext, ResolveOutcome};
 

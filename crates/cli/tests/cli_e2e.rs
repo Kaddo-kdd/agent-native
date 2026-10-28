@@ -1,4 +1,4 @@
-//! End-to-end process integration tests for `agent-native` CLI.
+//! End-to-end process integration tests for `wasma` CLI.
 //!
 //! Validates:
 //! - All 5 canonical subcommands: `build`, `verify`, `test`, `run`, `publish`.
@@ -11,9 +11,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Returns the path to the compiled `agent-native` binary.
+/// Returns the path to the compiled `wasma` binary.
 fn cli_binary_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_agent-native"))
+    PathBuf::from(env!("CARGO_BIN_EXE_wasma"))
 }
 
 /// Helper to create an isolated temporary directory for test artifacts.
@@ -125,7 +125,7 @@ fn test_cli_version_flag() {
 
     assert!(output.status.success(), "version must exit with 0");
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("agent-native"), "must print binary name");
+    assert!(stdout.contains("wasma"), "must print binary name");
 }
 
 #[test]
@@ -724,7 +724,7 @@ cases:
         pub_bytes, local_bytes,
         "published artifact bytes must be identical to built WASM bytes"
     );
-    assert_eq!(agent_native_compiler::sha256_hex(&local_bytes), build_sha);
+    assert_eq!(wasma_compiler::sha256_hex(&local_bytes), build_sha);
 }
 
 #[test]

@@ -1,11 +1,11 @@
 //! AN-037: Comprehensive stress, limits, and regression test suite.
 
-use agent_native_runtime::{Engine, ExecutionLimits, InstanceLimits, RuntimeError, Val};
 use wasm_encoder::{
     BlockType, CodeSection, ElementSection, Elements, ExportKind, ExportSection, Function,
     FunctionSection, Instruction, MemorySection, MemoryType, Module, RefType, TableSection,
     TableType, TypeSection, ValType,
 };
+use wasma_runtime::{Engine, ExecutionLimits, InstanceLimits, RuntimeError, Val};
 
 /// Emits a WASM module with an infinite loop: `(loop (br 0))`.
 fn wasm_module_with_infinite_loop() -> Vec<u8> {

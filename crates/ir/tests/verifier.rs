@@ -7,8 +7,8 @@
 //! determinism lives in AN-007, after `agent-native-compiler` exists
 //! (INIT-02-02).
 
-use agent_native_ir::verify_ir;
 use serde_json::json;
+use wasma_ir::verify_ir;
 
 #[test]
 fn minimal_v0_1_ir_has_no_diagnostics() {

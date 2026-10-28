@@ -1,8 +1,8 @@
 //! AN-033: Declarative capability manifests and intersection policy tests.
 
-use agent_native_compiler::{CompileContext, compile_ir_to_wasm_with_context};
-use agent_native_runtime::{ComponentManifest, Engine, HostPolicy, PolicyError, RuntimeError, Val};
 use std::path::PathBuf;
+use wasma_compiler::{CompileContext, compile_ir_to_wasm_with_context};
+use wasma_runtime::{ComponentManifest, Engine, HostPolicy, PolicyError, RuntimeError, Val};
 
 fn compiler_crate_ctx() -> CompileContext {
     let mut root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -252,7 +252,7 @@ capabilities:
 
 #[test]
 fn test_programmatic_manifest_validation_enforced_at_runtime_entry_points() {
-    use agent_native_runtime::ManifestCapabilities;
+    use wasma_runtime::ManifestCapabilities;
 
     let wasm = probe_wasm();
     let engine = Engine::new().expect("engine");
@@ -290,7 +290,7 @@ fn test_programmatic_manifest_validation_enforced_at_runtime_entry_points() {
     );
 
     // 3. Resolver entry point must validate in-memory manifest
-    let mut resolver = agent_native_runtime::Resolver::new().expect("resolver");
+    let mut resolver = wasma_runtime::Resolver::new().expect("resolver");
     let err_resolver = resolver
         .load_with_manifest(&wasm, &bad_manifest, &policy)
         .expect_err("resolver must validate programmatic manifest");

@@ -1,12 +1,12 @@
 //! AN-039: Tenant API, governance, and unified execution lifecycle under homogeneous limits.
 
-use agent_native_runtime::{
-    Engine, ExecutionLimits, HostPolicy, InstanceLimits, RuntimeError, Tenant, TenantConfig,
-    TenantId, Val,
-};
 use wasm_encoder::{
     BlockType, CodeSection, ExportKind, ExportSection, Function, FunctionSection, ImportSection,
     Instruction, MemorySection, MemoryType, Module, TypeSection, ValType,
+};
+use wasma_runtime::{
+    Engine, ExecutionLimits, HostPolicy, InstanceLimits, RuntimeError, Tenant, TenantConfig,
+    TenantId, Val,
 };
 
 /// Emits a simple math module with `add(a, b) -> a + b`.

@@ -9,7 +9,7 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
-use agent_native_runtime::{Engine, ExecutionLimits, RuntimeError, Val};
+use wasma_runtime::{Engine, ExecutionLimits, RuntimeError, Val};
 
 use crate::output::{CliExitCode, OutputFormat, emit_error, emit_result};
 

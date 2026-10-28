@@ -6,7 +6,6 @@
 #[path = "latency/fixtures.rs"]
 mod fixtures;
 
-use agent_native_runtime::{Engine, ExecutionLimits, Val, WasiIoConfig};
 use serde::Serialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -14,6 +13,7 @@ use std::fmt::Debug;
 use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
+use wasma_runtime::{Engine, ExecutionLimits, Val, WasiIoConfig};
 
 #[derive(Clone, Copy)]
 struct Sampling {
@@ -151,7 +151,7 @@ fn collect(sampling: Sampling) -> Value {
     let greet_args = [Val::String("world".to_string())];
     let div_args = [Val::S32(42), Val::S32(6)];
     let echo_args = [Val::S32(64), Val::S32(0)];
-    let mut resolver = agent_native_runtime::Resolver::new().expect("resolver");
+    let mut resolver = wasma_runtime::Resolver::new().expect("resolver");
     resolver.load(&identity).expect("prime core");
     resolver.load(&point).expect("prime point");
 
