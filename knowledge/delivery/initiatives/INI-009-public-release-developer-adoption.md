@@ -111,7 +111,7 @@ candidates:
     priority: P0
     suggested_knowledge_level: K3
     expected_value: Inventario de referencias técnicas a agent-native, disponibilidad de nombres Wasma y estrategia de migración
-    materialized_as: AN-077 (candidate)
+    materialized_as: AN-077 (completed)
     dependencies: []
   - id: INIT-09-11
     title: Migración técnica de Agent Native a Wasma

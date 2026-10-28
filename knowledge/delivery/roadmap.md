@@ -958,7 +958,7 @@ Store/instancia fresca.
 **Problem / opportunity:** El producto cuenta con presencia pública en `wasma.org` pero los binarios, crates y repositorio continúan con nombres heredados de Agent Native. La primera release oficial v0.1.0 es el momento de consolidar la identidad técnica, establecer versionamiento, firma y distribución reproducible, y comprobar mediante un piloto externo que desarrolladores ajenos al proyecto pueden adoptar Wasma de forma autónoma.
 
 **Work Items candidatos materializados (12 WIs):**
-- AN-077: Evaluación de identidad técnica, disponibilidad de nombres y estrategia de migración (`spike`, P0, K3, draft)
+- AN-077: Evaluación de identidad técnica, disponibilidad de nombres y estrategia de migración (`spike`, P0, K3, completed)
 - AN-078: Migración técnica de Agent Native a Wasma (`feature`, P0, K4, draft, dep: AN-077)
 - AN-079: Migración de repositorio GitHub y continuidad de integraciones (`chore`, P0, K4, draft, dep: AN-078)
 - AN-068: Auditoría de preparación de release y contrato de versionamiento (`chore`, P0, K3, draft, deps: AN-078, AN-079)
