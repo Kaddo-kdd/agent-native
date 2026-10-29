@@ -4,7 +4,7 @@ description: Los cinco subcomandos reales de wasma, sus opciones y los modos de 
 ---
 
 La referencia se contrasta con
-[`crates/cli/src/cli.rs`](https://github.com/Kaddo-kdd/agent-native/blob/main/crates/cli/src/cli.rs).
+[`crates/cli/src/cli.rs`](https://github.com/Kaddo-kdd/wasma/blob/main/crates/cli/src/cli.rs).
 Usa `wasma --help` y `wasma <comando> --help` para tu checkout concreto.
 
 ## Comandos

@@ -46,6 +46,6 @@ operativo, procesos host o servicios externos no cubiertos.
 
 ## Evidencia del proyecto
 
-Las pruebas de [límites](https://github.com/Kaddo-kdd/agent-native/blob/main/crates/cli/tests/run_limits.rs)
-y [verificación](https://github.com/Kaddo-kdd/agent-native/blob/main/crates/cli/tests/run_verify.rs)
+Las pruebas de [límites](https://github.com/Kaddo-kdd/wasma/blob/main/crates/cli/tests/run_limits.rs)
+y [verificación](https://github.com/Kaddo-kdd/wasma/blob/main/crates/cli/tests/run_verify.rs)
 documentan casos concretos. Revisa la versión del checkout antes de aplicar sus contratos.

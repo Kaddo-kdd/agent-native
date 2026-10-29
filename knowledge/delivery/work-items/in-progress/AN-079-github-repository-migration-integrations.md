@@ -1,7 +1,7 @@
 ---
 id: AN-079
 type: chore
-status: draft
+status: in-progress
 created_at: 2026-10-27T00:00:00.000Z
 title: Migración de repositorio GitHub y continuidad de integraciones
 knowledge_level: K4
@@ -14,12 +14,21 @@ depends_on:
   - AN-078
 domains:
   - Distribution & Release
-  - Developer Experience, Documentation & Branding
+  - 'Developer Experience, Documentation & Branding'
+code:
+  - Cargo.toml
+  - crates/**/Cargo.toml
+  - .github/workflows/**
+  - website/**
+  - README.md
+  - docs/**
 expected_value: >-
-  Migración auditada del repositorio GitHub de agent-native a Wasma, garantizando continuidad en CI/CD,
-  redirecciones, despliegue del portal web wasma.org y trazabilidad histórica.
+  Migración auditada del repositorio GitHub de agent-native a Wasma,
+  garantizando continuidad en CI/CD, redirecciones, despliegue del portal web
+  wasma.org y trazabilidad histórica.
 project_state: ai-assisted
 template_version: 1
+ready_at: '2026-10-29'
 ---
 
 # AN-079 — Migración de repositorio GitHub y continuidad de integraciones
@@ -57,6 +66,14 @@ El repositorio remoto de GitHub continúa identificado como `Kaddo-kdd/agent-nat
 - Trasladar el proyecto a otra organización de GitHub.
 - Cambiar el dominio público `wasma.org`.
 - Publicar la release oficial v0.1.0 (cubierto en AN-076).
+
+## Validación
+
+1. Verificación de accesibilidad del nuevo remote con `git ls-remote https://github.com/Kaddo-kdd/wasma.git`.
+2. Validación de build y tests en CI de GitHub Actions bajo la nueva URL.
+3. Validación de despliegue en Netlify de `wasma.org` conectado al repositorio renombrado.
+4. Verificación de redirecciones automáticas de GitHub desde `Kaddo-kdd/agent-native`.
+5. Ejecución limpia de `pnpm --dir website test` y `pnpm --dir website run test:docs`.
 
 ## Entregable
 

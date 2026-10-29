@@ -16,13 +16,13 @@ export default defineConfig({
       disable404Route: true,
       favicon: "/brand/favicon.svg",
       editLink: {
-        baseUrl: "https://github.com/Kaddo-kdd/agent-native/edit/main/website/",
+        baseUrl: "https://github.com/Kaddo-kdd/wasma/edit/main/website/",
       },
       social: [
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/Kaddo-kdd/agent-native",
+          href: "https://github.com/Kaddo-kdd/wasma",
         },
       ],
       customCss: ["./src/styles/docs.css"],

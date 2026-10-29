@@ -5,7 +5,7 @@ description: Cómo interpretar la línea base candidata de Wasma y consultar su 
 
 ## Evidencia candidata, no certificación
 
-La [publicación canónica de benchmarks](https://github.com/Kaddo-kdd/agent-native/blob/main/docs/benchmarks/README.md)
+La [publicación canónica de benchmarks](https://github.com/Kaddo-kdd/wasma/blob/main/docs/benchmarks/README.md)
 conserva metodología, procedencia, advertencias y resultados. **Ninguna fila se presenta
 aquí como certificada.** Un workflow verde confirma recolección, no estabilidad ni SLA.
 
@@ -22,9 +22,9 @@ Esta página no duplica cifras para evitar divergencia con la evidencia mantenid
 
 ## Fuentes reproducibles
 
-Consulta [publication.json](https://github.com/Kaddo-kdd/agent-native/blob/main/docs/benchmarks/publication.json)
-para filas y procedencia, [cases.md](https://github.com/Kaddo-kdd/agent-native/blob/main/docs/benchmarks/cases.md)
-para contratos y [history.md](https://github.com/Kaddo-kdd/agent-native/blob/main/docs/benchmarks/history.md)
+Consulta [publication.json](https://github.com/Kaddo-kdd/wasma/blob/main/docs/benchmarks/publication.json)
+para filas y procedencia, [cases.md](https://github.com/Kaddo-kdd/wasma/blob/main/docs/benchmarks/cases.md)
+para contratos y [history.md](https://github.com/Kaddo-kdd/wasma/blob/main/docs/benchmarks/history.md)
 para grupos históricos. La regeneración offline usa `scripts/bench_publish.py`; no es
 necesario ejecutarla para construir este sitio.
 

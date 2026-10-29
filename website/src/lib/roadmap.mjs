@@ -41,7 +41,7 @@ export function readRoadmap(root = initiativeRoot) {
         title: data.title.replace(/^RM-\d+\s*[—-]\s*/, ""),
         status: data.status,
         label: statusLabels[data.status],
-        source: `https://github.com/Kaddo-kdd/agent-native/blob/main/knowledge/delivery/initiatives/${name}`,
+        source: `https://github.com/Kaddo-kdd/wasma/blob/main/knowledge/delivery/initiatives/${name}`,
       };
     })
     .sort((a, b) => a.block.localeCompare(b.block));

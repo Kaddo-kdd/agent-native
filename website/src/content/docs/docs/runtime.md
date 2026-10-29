@@ -16,7 +16,7 @@ llamada. Esta regla evita asumir reutilización segura de memoria guest entre te
 La reutilización de componentes compilados no equivale a reutilizar instancias vivas.
 
 La decisión se documenta en
-[ADR-005](https://github.com/Kaddo-kdd/agent-native/blob/main/knowledge/tech/decisions/ADR-005-store-efimero-invariantes-aislamiento.md).
+[ADR-005](https://github.com/Kaddo-kdd/wasma/blob/main/knowledge/tech/decisions/ADR-005-store-efimero-invariantes-aislamiento.md).
 
 ## Entradas, salidas y errores
 

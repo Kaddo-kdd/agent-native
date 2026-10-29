@@ -38,6 +38,6 @@ Consulta el [roadmap](/roadmap/) para distinguir hitos y ampliaciones pendientes
 
 ## Fuentes y contribuciones
 
-El código vive en [GitHub](https://github.com/Kaddo-kdd/agent-native). Las issues,
-releases y la [guía de contribución](https://github.com/Kaddo-kdd/agent-native#contribuir)
+El código vive en [GitHub](https://github.com/Kaddo-kdd/wasma). Las issues,
+releases y la [guía de contribución](https://github.com/Kaddo-kdd/wasma#contribuir)
 son los canales del proyecto. No necesitas una cuenta en este sitio para leer o probar.

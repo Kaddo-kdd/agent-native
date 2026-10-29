@@ -10,10 +10,10 @@ sus entradas y entender bajo qué condiciones se ejecuta. Esa es la dirección d
 
 ## Una identidad para un proyecto en construcción
 
-Wasma es el nombre público del proyecto que técnicamente sigue viviendo en
-[`Kaddo-kdd/agent-native`](https://github.com/Kaddo-kdd/agent-native).
-El ejecutable se llama `agent-native`; los crates y las variables de entorno conservan
-su nombre. Este artículo presenta el proyecto, no anuncia una nueva release.
+Wasma es la identidad pública y técnica del proyecto nacido como Agent Native, alojado en
+[`Kaddo-kdd/wasma`](https://github.com/Kaddo-kdd/wasma).
+El ejecutable principal es `wasma` y sus crates componen el runtime, compilador y modelo intermedio.
+Este artículo presenta el proyecto, no anuncia una nueva release.
 
 ## De la intención a un contrato
 

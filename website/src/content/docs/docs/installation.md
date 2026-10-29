@@ -24,12 +24,12 @@ limitaciones de rendimiento permanecen documentadas.
 ## Compilar desde fuente
 
 ```sh
-git clone https://github.com/Kaddo-kdd/agent-native.git
-cd agent-native
+git clone https://github.com/Kaddo-kdd/wasma.git
+cd wasma
 cargo build --locked --release -p wasma-cli --bin wasma
 ```
 
-El binario queda en `target/release/wasma` (o `agent-native.exe` en Windows).
+El binario queda en `target/release/wasma` (o `wasma.exe` en Windows).
 Puedes añadir ese directorio a tu PATH o invocarlo con la ruta completa.
 
 ```sh
@@ -46,18 +46,18 @@ además de `--version`: la versión del workspace puede no identificar por sí s
 La ayuda debe listar `build`, `verify`, `test`, `run` y `publish`. No existe un
 subcomando `spec` en el parser usado por esta documentación.
 
-Los siguientes ejemplos asumen que `agent-native` está en el PATH. Si no lo está,
+Los siguientes ejemplos asumen que `wasma` está en el PATH. Si no lo está,
 sustituye ese prefijo por la ruta absoluta al binario compilado.
 
 ## Releases y artefactos
 
-Consulta las [releases del repositorio](https://github.com/Kaddo-kdd/agent-native/releases)
+Consulta las [releases del repositorio](https://github.com/Kaddo-kdd/wasma/releases)
 para conocer el estado publicado. No asumas que cada tag incluye un binario descargable:
 al revisar `v0.0.7-m7` no había assets adjuntos. Los artefactos de CI pueden requerir
 acceso a GitHub y expirar; por eso este tutorial utiliza instalación desde fuente.
 
 La evidencia de ejecución de esta web se mantiene en
-[website/validation](https://github.com/Kaddo-kdd/agent-native/tree/main/website/validation),
+[website/validation](https://github.com/Kaddo-kdd/wasma/tree/main/website/validation),
 con SHA, plataforma y procedencia del ejecutable empleado.
 
 ## Continúa

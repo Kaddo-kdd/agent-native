@@ -11,7 +11,7 @@ members = [
 version = "0.0.0"
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/Kaddo-kdd/agent-native"
+repository = "https://github.com/Kaddo-kdd/wasma"
 rust-version = "1.85"
 
 [workspace.lints.rust]

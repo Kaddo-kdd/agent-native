@@ -6,25 +6,25 @@
 
 > Sistema open source para convertir especificaciones funcionales y cambios incrementales en **componentes WebAssembly ejecutables, verificables y versionados** — con IA en tiempo de construcción y ejecución determinista sin LLM.
 
-[![CI](https://github.com/Kaddo-kdd/agent-native/actions/workflows/ci.yml/badge.svg)](https://github.com/Kaddo-kdd/agent-native/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/Kaddo-kdd/agent-native?color=blue)](https://github.com/Kaddo-kdd/agent-native/releases)
+[![CI](https://github.com/Kaddo-kdd/wasma/actions/workflows/ci.yml/badge.svg)](https://github.com/Kaddo-kdd/wasma/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Kaddo-kdd/wasma?color=blue)](https://github.com/Kaddo-kdd/wasma/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Estado del proyecto
 
-🟢 **M7 alcanzado (2026-10-20) — En desarrollo activo hacia M8.** Hitos publicados:
+🟢 **Núcleo técnico completado (RM-01..RM-08) — En desarrollo hacia v0.1.0 (INI-009).** Hitos publicados:
 
-- [`v0.0.7-m7`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.7-m7) — **M7 Console I/O & WASI** (RM-07 completo). Adaptador WASI Preview 2 determinista en memoria con streams acotados (`RuntimeError::IoLimitExceeded`, AN-044), autorización granular e independiente de interfaces `wasi:cli/*` e `io/*` bajo `Requested ∩ Granted` (AN-045), Semantic IR v0.6 experimental (`string` y `result<T, E>` bajo `--experimental`, AN-048), y stubs deterministas de consola (`stdin`, `expected_stdout`, `expected_stderr`) en el executor YAML sin TTY (AN-049).
-- [`v0.0.6-m6`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.6-m6) — **M6 Runtime Security & Memory** (RM-06 completo). Límites de fuel deterministas y memoria (`ResourceLimiter`), contención en Windows MSVC (Wasmtime 29.0.1), aislamiento multi-tenant con Store efímero (ADR-005), verificación de procedencia (SHA-256) y firmas criptográficas Minisign Ed25519 100% offline, y suite de fixtures extremos.
-- [`v0.0.4-m3`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.4-m3) — **M3 Runtime autónomo con cobertura regresiva + línea base** (RM-03 completo). Cierre de INI-003 bajo los 7 criterios reformulados por decisión humana (D1/D2/D3).
-- [`v0.0.3-hardening`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.3-hardening) — **Hardening pass** post Technical Review (AN-014 end-to-end v0.5 Component Model + AN-015 políticas WIT granulares + AN-016 `CompileContext` sin dependencia del cwd).
-- [`v0.0.2-m1`](https://github.com/Kaddo-kdd/agent-native/releases/tag/v0.0.2-m1) — **M1 Baseline arquitectónico** (RM-01 completo).
+- [`v0.0.7-m7`](https://github.com/Kaddo-kdd/wasma/releases/tag/v0.0.7-m7) — **M7 Console I/O & WASI** (RM-07 completo). Adaptador WASI Preview 2 determinista en memoria con streams acotados (`RuntimeError::IoLimitExceeded`, AN-044), autorización granular e independiente de interfaces `wasi:cli/*` e `io/*` bajo `Requested ∩ Granted` (AN-045), Semantic IR v0.6 experimental (`string` y `result<T, E>` bajo `--experimental`, AN-048), y stubs deterministas de consola (`stdin`, `expected_stdout`, `expected_stderr`) en el executor YAML sin TTY (AN-049).
+- [`v0.0.6-m6`](https://github.com/Kaddo-kdd/wasma/releases/tag/v0.0.6-m6) — **M6 Runtime Security & Memory** (RM-06 completo). Límites de fuel deterministas y memoria (`ResourceLimiter`), contención en Windows MSVC (Wasmtime 29.0.1), aislamiento multi-tenant con Store efímero (ADR-005), verificación de procedencia (SHA-256) y firmas criptográficas Minisign Ed25519 100% offline, y suite de fixtures extremos.
+- [`v0.0.4-m3`](https://github.com/Kaddo-kdd/wasma/releases/tag/v0.0.4-m3) — **M3 Runtime autónomo con cobertura regresiva + línea base** (RM-03 completo). Cierre de INI-003 bajo los 7 criterios reformulados por decisión humana (D1/D2/D3).
+- [`v0.0.3-hardening`](https://github.com/Kaddo-kdd/wasma/releases/tag/v0.0.3-hardening) — **Hardening pass** post Technical Review (AN-014 end-to-end v0.5 Component Model + AN-015 políticas WIT granulares + AN-016 `CompileContext` sin dependencia del cwd).
+- [`v0.0.2-m1`](https://github.com/Kaddo-kdd/wasma/releases/tag/v0.0.2-m1) — **M1 Baseline arquitectónico** (RM-01 completo).
 
 Lo que ya funciona:
 
 - **Workspace Rust robusto (4 crates)** + CI matrix en Linux/Windows/macOS (**162 tests** verdes).
 - **Soporte inicial de plataformas:** Linux x86_64 GNU es el entorno recomendado para primeras integraciones; Windows x86_64 y macOS ARM64 se mantienen compatibles y validados por CI. Esta prioridad operativa no certifica rendimiento ni WASI ([ADR-007](knowledge/tech/decisions/ADR-007-plataforma-operativa-inicial-wasma.md)).
-- **CLI Unificado `agent-native` (RM-05):** Subcomandos funcionales `spec`, `build`, `verify`, `test`, `run`, `publish`.
+- **CLI Unificado `wasma` (RM-05 / AN-078):** Subcomandos funcionales `build`, `verify`, `test`, `run`, `publish`.
 - **Integración LLM en tiempo de construcción (RM-04 / AN-046):** Generación asistida con modos `fixtures`, `synthesizer` y `real` (adaptador HTTP síncrono para Anthropic y OpenAI con validación estricta de Semantic IR v0.5 y sanitización de credenciales).
 - **Control de Recursos y Límites en CLI (RM-06 / AN-047):** Invocación con `--fuel`, `--max-memory-bytes` y `--max-table-elements`, con reporte de `fuel_consumed` en JSON/texto y captura limpia de errores tipados.
 - **Verificación Criptográfica y Procedencia (RM-06 / AN-041, AN-042):** Validación de integridad mediante hashes SHA-256 (`--manifest`, `--expected-sha256`) y verificación de firmas Minisign Ed25519 offline (`--signature`, `--public-key`).
@@ -36,8 +36,8 @@ Lo que ya funciona:
 
 Bloques del roadmap:
 
-- ✅ **RM-01 a RM-07 Completados:** Baseline arquitectónico, compilador determinista, runtime autónomo, pipeline generativo con LLMs, CLI unificada, seguridad de recursos y Console I/O WASI Preview 2.
-- 🟡 **RM-08 (Performance & Concurrency) — EN CURSO:** Harness y recolección cross-OS implementados. La [publicación medida candidata](docs/benchmarks/README.md) separa medianas y percentiles individuales, conserva resultados inestables y espera certificación humana. Caché / warm pool y concurrencia host-side siguen en el [roadmap](knowledge/delivery/roadmap.md).
+- ✅ **RM-01 a RM-08 Completados:** Baseline arquitectónico, compilador determinista, runtime autónomo, pipeline generativo con LLMs, CLI unificada, seguridad de recursos, Console I/O WASI Preview 2 y caracterización experimental de rendimiento.
+- 🟡 **INI-009 (Public Release & Technical Identity) — EN CURSO:** Consolidación de identidad Wasma, distribución verificable, documentación y preparación de release v0.1.0 en el [roadmap](knowledge/delivery/roadmap.md). La [publicación de benchmarks](docs/benchmarks/README.md) mantiene la evidencia experimental histórica.
 
 > La POC histórica vive en [`Trycatch-tv/poc-agent-native`](https://github.com/Trycatch-tv/poc-agent-native) (commit `26b6a18`) y bajo `_reference/`. Es **sólo lectura** — ver [`knowledge/tech/reference-policy.md`](knowledge/tech/reference-policy.md).
 
@@ -62,8 +62,8 @@ Un LLM puede escribir código, pero esa salida no es un **contrato ejecutable** 
 Requisitos: `cargo` 1.85+ (`rust-toolchain.toml` lo pinnea).
 
 ```bash
-git clone https://github.com/Kaddo-kdd/agent-native
-cd agent-native
+git clone https://github.com/Kaddo-kdd/wasma
+cd wasma
 
 cargo build --workspace
 cargo test --workspace     # 162 tests verdes (18 ir + 17 compiler + 73 runtime + 54 cli)
