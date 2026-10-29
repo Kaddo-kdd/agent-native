@@ -6,9 +6,9 @@
 
 use std::sync::Arc;
 
-use wasma_runtime::{Component, Engine, RuntimeError, Val};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use wasma_runtime::{Component, Engine, RuntimeError, Val};
 
 pub const EMBEDDED_WASM: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/program-005.wasm"));
 
