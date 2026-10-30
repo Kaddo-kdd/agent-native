@@ -128,7 +128,7 @@ candidates:
     priority: P0
     suggested_knowledge_level: K4
     expected_value: Migración auditada del repositorio GitHub a Wasma con continuidad en CI/CD, hosting wasma.org y redirecciones
-    materialized_as: AN-079 (candidate)
+    materialized_as: AN-079 (completed)
     dependencies:
       - AN-078
 ---
@@ -141,7 +141,7 @@ candidates:
 **Dependencias:** INI-001 a INI-008 completadas  
 **Producto:** Wasma / Agent Native  
 **Hito objetivo:** Primera versión pública v0.1.0  
-**Repositorio actual:** `Kaddo-kdd/agent-native`  
+**Repositorio actual:** `Kaddo-kdd/wasma` (migrado formalmente desde `Kaddo-kdd/agent-native` en AN-079)  
 **Base de referencia:** commit `403e9fd` / `main`
 
 ## 1. Contexto y oportunidad
@@ -262,10 +262,10 @@ flowchart TD
     K --> L
 ```
 
-### Fase 0 — Consolidación de identidad técnica
+### Fase 0 — Consolidación de identidad técnica (Completada)
 
-**Secuencia:** AN-077 → AN-078 → AN-079.  
-**Puerta de salida:** Identidad técnica aprobada, migración en workspace Rust validada sin regresiones y repositorio GitHub e integraciones operativas.
+**Secuencia:** AN-077 (completado) → AN-078 (completado) → AN-079 (completado).  
+**Puerta de salida:** Identidad técnica aprobada (ADR-008), migración en workspace Rust validada sin regresiones (commit `dae2b5a` / `cc9ee0d`) y repositorio GitHub renombrado a `Kaddo-kdd/wasma` con integraciones operativas (commit `0cd2801`). Fase 100% finalizada.
 
 ### Fase 1 — Preparación y transparencia
 

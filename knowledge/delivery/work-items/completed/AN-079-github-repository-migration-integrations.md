@@ -1,11 +1,13 @@
 ---
 id: AN-079
 type: chore
-status: in-progress
+status: completed
 created_at: 2026-10-27T00:00:00.000Z
+ready_at: '2026-10-29'
+completed_at: '2026-10-30'
 title: Migración de repositorio GitHub y continuidad de integraciones
 knowledge_level: K4
-suggest_knowledge_level: K4
+suggested_knowledge_level: K4
 scope_confidence: high
 initiative: INI-009
 source_roadmap_initiative: INIT-09-12
@@ -28,7 +30,6 @@ expected_value: >-
   wasma.org y trazabilidad histórica.
 project_state: ai-assisted
 template_version: 1
-ready_at: '2026-10-29'
 ---
 
 # AN-079 — Migración de repositorio GitHub y continuidad de integraciones
@@ -78,3 +79,16 @@ El repositorio remoto de GitHub continúa identificado como `Kaddo-kdd/agent-nat
 ## Entregable
 
 Repositorio migrado formalmente, integraciones verificadas y reporte de evidencia de continuidad operativa.
+
+## Evidencia y verificación
+
+- **AC-01 a AC-09:** Verificados con estado `passed` (9/9).
+- **Decisión Kaddo:** `READY_TO_COMPLETE`.
+- **Operaciones realizadas:**
+  - Renombramiento remoto en GitHub: `Kaddo-kdd/agent-native` → `Kaddo-kdd/wasma` preservando ID numérico `1422457804`, GraphQL ID `R_kgDOVMj7zA`, commits, tags (`v0.0.1`..`v0.0.8`) y ramas.
+  - Redirecciones verificadas: HTTP 301 permanente en web/API y redirección de Git protocol operativa.
+  - Remoto local actualizado a `https://github.com/Kaddo-kdd/wasma.git` y sincronizado.
+  - Commit canónico: `0cd2801` (`chore(repo): update canonical repository urls to Kaddo-kdd/wasma (AN-079)`).
+  - CI de GitHub Actions: Workflow `Website` (`40907311618`) y Workflow `CI` (`40907311615`) 100% aprobados en Linux, Windows y macOS.
+  - Despliegue en Netlify: Nuevo despliegue automático generado tras push (ETag `"d181f3d710f6886de1bc414c78e35894-ssl"`), sirviendo enlaces y navegación a `Kaddo-kdd/wasma` con `HTTP 200 OK`.
+  - Referencias históricas (ADRs 001..008, WIs previos AN-001..AN-078, benchmarks y `.kaddo/config.yml`) preservadas intactas.

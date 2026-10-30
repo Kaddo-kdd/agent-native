@@ -93,10 +93,10 @@ Fuentes:
 | INIT-08-02 | Línea base pública cross-OS | medium | INIT-08-01 | p50/p95/p99 publicados por operación | nuevo |
 | INIT-08-03 | Caché de componentes y warm pool | medium | INIT-06-03, INIT-08-02 | Decisión de no adopción documentada; Store/instancia fresca preservados | completed (AN-063, AN-064) |
 | INIT-08-04 | Concurrencia host-side (workers) | low | INIT-06-03, INIT-08-01, AN-055 | Workers acotados con aislamiento, backpressure y caracterización controlada | completed (AN-065, AN-066, AN-067) |
-| **INI-009** | **Public Release, Technical Identity & Developer Adoption** | high | INI-001..INI-008 | Wasma v0.1.0 publicado bajo identidad técnica coherente, distribución verificable y adopción externa validada | draft (12 WIs) |
+| **INI-009** | **Public Release, Technical Identity & Developer Adoption** | high | INI-001..INI-008 | Wasma v0.1.0 publicado bajo identidad técnica coherente, distribución verificable y adopción externa validada | draft (3 de 12 completados, Fase 0 cerrada) |
 | **Diferido** | Interoperabilidad con componentes WIT externos | — | — | Objetivo arquitectónico; sin iniciativa activa | diferido |
 
-Total: 8 bloques completados (núcleo técnico), 1 iniciativa activa de adopción y release (INI-009, 12 candidatos) y 1 objetivo diferido.
+Total: 8 bloques completados (núcleo técnico), 1 iniciativa activa de adopción y release (INI-009: 3 completados, 9 candidatos) y 1 objetivo diferido.
 
 ## Initiatives
 
@@ -653,7 +653,7 @@ Los dos últimos **no deben presentarse** como la capacidad generativa del agent
 ### RM-05 — Standalone CLI & Runtime API
 
 Convierte el pipeline interno en herramienta distribuible.
-**Restricción de Identidad (Decisión D3, 2026-10-19):** Se mantiene temporalmente el nombre interno `agent-native` en crates, binarios y rutas internas. Queda congelada toda publicación en crates.io, release público con branding definitivo y cambios de nombres de paquetes hasta recibir decisión humana de identidad.
+**Restricción de Identidad (Decisión D3, 2026-10-19):** Se mantiene temporalmente el nombre interno `agent-native` en crates, binarios y rutas internas. Queda congelada toda publicación en crates.io, release público con branding definitivo y cambios de nombres de paquetes hasta recibir decisión humana de identidad. *(Nota histórica: esta restricción fue superada formalmente mediante ADR-008 y ejecutada en AN-077, AN-078 y AN-079, consolidando la identidad Wasma en crates, binario y repositorio)*.
 
 #### INIT-05-01: Bin `cli` con `build/verify/test/run/publish`
 
@@ -955,12 +955,12 @@ Store/instancia fresca.
 
 **Source signals:** Culminación del núcleo técnico (INI-001..INI-008, 67 Work Items completados); necesidad de unificar la identidad pública Wasma (`wasma.org`) con las interfaces técnicas internas y distribuir v0.1.0 con adopción externa validada.
 
-**Problem / opportunity:** El producto cuenta con presencia pública en `wasma.org` pero los binarios, crates y repositorio continúan con nombres heredados de Agent Native. La primera release oficial v0.1.0 es el momento de consolidar la identidad técnica, establecer versionamiento, firma y distribución reproducible, y comprobar mediante un piloto externo que desarrolladores ajenos al proyecto pueden adoptar Wasma de forma autónoma.
+**Problem / opportunity:** El producto contaba con presencia pública en `wasma.org` pero los binarios, crates y repositorio continuaban con nombres heredados de Agent Native. Mediante la Fase 0 de INI-009 (AN-077, AN-078 y AN-079) se consolidó la identidad técnica Wasma en crates, ejecutable y repositorio. La iniciativa avanza ahora hacia la Fase 1 (preparación y transparencia: AN-068, AN-071, AN-072) para establecer versionamiento, firma y distribución reproducible, y comprobar mediante un piloto externo que desarrolladores ajenos al proyecto pueden adoptar Wasma de forma autónoma.
 
 **Work Items candidatos materializados (12 WIs):**
 - AN-077: Evaluación de identidad técnica, disponibilidad de nombres y estrategia de migración (`spike`, P0, K3, completed)
 - AN-078: Migración técnica de Agent Native a Wasma (`feature`, P0, K4, completed, dep: AN-077)
-- AN-079: Migración de repositorio GitHub y continuidad de integraciones (`chore`, P0, K4, draft, dep: AN-078)
+- AN-079: Migración de repositorio GitHub y continuidad de integraciones (`chore`, P0, K4, completed, dep: AN-078)
 - AN-068: Auditoría de preparación de release y contrato de versionamiento (`chore`, P0, K3, draft, deps: AN-078, AN-079)
 - AN-069: Firma oficial, integridad y controles del pipeline de publicación (`feature`, P0, K4, draft, dep: AN-068)
 - AN-070: Empaquetado, instalación y prerelease multiplataforma (`feature`, P0, K3, draft, dep: AN-069)
@@ -1026,8 +1026,8 @@ INIT-08-01 → INIT-08-02; INIT-08-03 se completa por no adopción; INIT-08-04 a
 **Hito M8:** runtime caracterizado por benchmarks reproducibles.
 
 **Ola I — INI-009 (Public Release, Technical Identity & Developer Adoption):**
-Fase 0 (Identidad): AN-077 → AN-078 → AN-079
-Fase 1 (Preparación): AN-068, AN-071, AN-072
+Fase 0 (Identidad): AN-077 (completed) → AN-078 (completed) → AN-079 (completed) — Completada
+Fase 1 (Preparación): AN-068, AN-071, AN-072 — Siguiente fase de ejecución activa
 Fase 2 (Distribución): AN-069 → AN-070 → AN-073 / AN-074
 Fase 3 (Validación y Release): AN-075 → AN-076
 **Hito M9 (Objetivo):** Wasma v0.1.0 distribuido con identidad técnica unificada, verificación criptográfica y adopción externa validada.

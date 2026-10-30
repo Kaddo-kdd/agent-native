@@ -32,7 +32,6 @@ expected_value: >-
   Semantic IR/WIT, garantías de seguridad y trazabilidad.
 project_state: ai-assisted
 template_version: 1
-ready_at: '2026-10-28'
 ---
 
 # AN-078 — Migración técnica de Agent Native a Wasma
