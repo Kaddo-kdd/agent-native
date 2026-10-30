@@ -93,10 +93,10 @@ Fuentes:
 | INIT-08-02 | Línea base pública cross-OS | medium | INIT-08-01 | p50/p95/p99 publicados por operación | nuevo |
 | INIT-08-03 | Caché de componentes y warm pool | medium | INIT-06-03, INIT-08-02 | Decisión de no adopción documentada; Store/instancia fresca preservados | completed (AN-063, AN-064) |
 | INIT-08-04 | Concurrencia host-side (workers) | low | INIT-06-03, INIT-08-01, AN-055 | Workers acotados con aislamiento, backpressure y caracterización controlada | completed (AN-065, AN-066, AN-067) |
-| **INI-009** | **Public Release, Technical Identity & Developer Adoption** | high | INI-001..INI-008 | Wasma v0.1.0 publicado bajo identidad técnica coherente, distribución verificable y adopción externa validada | draft (3 de 12 completados, Fase 0 cerrada) |
+| **INI-009** | **Public Release, Technical Identity & Developer Adoption** | high | INI-001..INI-008 | Wasma v0.1.0 publicado bajo identidad técnica coherente, distribución verificable y adopción externa validada | draft (4 de 12 completados, Fase 0 cerrada) |
 | **Diferido** | Interoperabilidad con componentes WIT externos | — | — | Objetivo arquitectónico; sin iniciativa activa | diferido |
 
-Total: 8 bloques completados (núcleo técnico), 1 iniciativa activa de adopción y release (INI-009: 3 completados, 9 candidatos) y 1 objetivo diferido.
+Total: 8 bloques completados (núcleo técnico), 1 iniciativa activa de adopción y release (INI-009: 4 completados, 8 candidatos) y 1 objetivo diferido.
 
 ## Initiatives
 

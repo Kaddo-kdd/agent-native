@@ -22,7 +22,7 @@ candidates:
     priority: P0
     suggested_knowledge_level: K3
     expected_value: Versionamiento coherente de crates definitivos a 0.1.0, CLI y tags sin inconsistencias históricas
-    materialized_as: AN-068 (candidate)
+    materialized_as: AN-068 (completed)
     dependencies:
       - AN-078
       - AN-079
@@ -269,7 +269,7 @@ flowchart TD
 
 ### Fase 1 — Preparación y transparencia
 
-**Secuencia:** AN-068, AN-071 y AN-072.  
+**Secuencia:** AN-068 (completado), AN-071 y AN-072.  
 **Puerta de salida:** Versión objetivo `0.1.0` y changelog consistentes en paquetes definitivos, sección del autor validada y metadatos del despliegue verificables en footer. (AN-071 puede avanzar en paralelo tras AN-077; AN-072 tras AN-079).
 
 ### Fase 2 — Distribución y experiencia inicial

@@ -8,7 +8,7 @@ publish = false
 [workspace]
 
 [dependencies]
-wasma-runtime = { path = "../../crates/runtime" }
+wasma-runtime = { path = "../../crates/runtime", version = "0.1.0" }
 lambda_runtime = "0.13"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serde = { version = "1", features = ["derive"] }
@@ -18,7 +18,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 thiserror = "2"
 
 [build-dependencies]
-wasma-compiler = { path = "../../crates/compiler" }
+wasma-compiler = { path = "../../crates/compiler", version = "0.1.0" }
 serde_json = "1"
 
 [dev-dependencies]

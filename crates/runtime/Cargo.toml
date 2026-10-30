@@ -16,7 +16,7 @@ workspace = true
 experimental-workers = []
 
 [dependencies]
-wasma-ir = { path = "../ir" }
+wasma-ir = { path = "../ir", version = "0.1.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml2 = "0.1"
@@ -37,7 +37,7 @@ bytes = "1"
 # Compiler used only to produce WASM artifacts for smoke tests. ADR-002
 # forbids this dependency in [dependencies]; dev-dependencies do not reach
 # downstream consumers of wasma-runtime.
-wasma-compiler = { path = "../compiler" }
+wasma-compiler = { path = "../compiler", version = "0.1.0" }
 criterion = "0.5"
 wasm-encoder = "=0.221.3"
 # WASI fixtures (AN-044): minimal Component Model artifacts that import exact
