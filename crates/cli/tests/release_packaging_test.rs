@@ -392,6 +392,7 @@ fn test_sha256sums_generation_and_tamper_detection() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_release_workflow_security_invariants() {
     let workflow_path = repo_root()
         .join(".github")
@@ -482,6 +483,152 @@ fn test_release_workflow_security_invariants() {
         content.contains("gtar"),
         "Workflow must invoke gtar when available to avoid BSD tar incompatibility"
     );
+
+    // Build Invariant 10: Locked builds for reproducible dependency resolution
+    assert!(
+        content.contains("cargo build --release --locked"),
+        "Cargo build must use --locked to ensure deterministic dependencies matching Cargo.lock"
+    );
+
+    // Security Invariant 11: Non-declarative confirm_publish gate in official mode
+    assert!(
+        content.contains("INPUT_CONFIRM_PUBLISH"),
+        "Workflow must pass INPUT_CONFIRM_PUBLISH to the signing step"
+    );
+    assert!(
+        content.contains("confirm_publish is not set to 'true'"),
+        "Official signing must strictly enforce confirm_publish == 'true'"
+    );
+
+    // Version Invariant 12: Release tag must correspond to Cargo version
+    assert!(
+        content.contains("Verify Cargo version correspondence"),
+        "Workflow must explicitly verify that release tag matches Cargo package version"
+    );
+
+    // Integrity Invariant 13: Exact platform archives validated before checksums
+    assert!(
+        content.contains("Validate platform release packages"),
+        "Workflow must validate presence of all 3 canonical platform packages before checksums"
+    );
+
+    // Security Invariant 14: Strict secret isolation between validation and official mode
+    assert!(
+        content.contains("Execute Minisign Validation (Dry-Run Mode)"),
+        "Workflow must define a segregated dry-run validation step"
+    );
+    assert!(
+        content.contains("Execute Minisign Official Signing (Guarded Mode)"),
+        "Workflow must define a segregated official signing step"
+    );
+
+    // Extract the dry-run validation block and ensure no secrets are exposed in it
+    let val_start = content
+        .find("Execute Minisign Validation (Dry-Run Mode)")
+        .expect("val step");
+    let official_start = content
+        .find("Execute Minisign Official Signing (Guarded Mode)")
+        .expect("official step");
+    let val_block = &content[val_start..official_start];
+    assert!(
+        !val_block.contains("RELEASE_MINISIGN_SECRET_KEY"),
+        "Validation mode MUST NOT have access to RELEASE_MINISIGN_SECRET_KEY"
+    );
+    assert!(
+        !val_block.contains("RELEASE_MINISIGN_PASSWORD"),
+        "Validation mode MUST NOT have access to RELEASE_MINISIGN_PASSWORD"
+    );
+
+    // Official block must receive canonical secrets
+    let official_block = &content[official_start..];
+    assert!(
+        official_block.contains("RELEASE_MINISIGN_SECRET_KEY"),
+        "Official signing step must receive RELEASE_MINISIGN_SECRET_KEY"
+    );
+    assert!(
+        official_block.contains("RELEASE_MINISIGN_PASSWORD"),
+        "Official signing step must receive RELEASE_MINISIGN_PASSWORD"
+    );
+
+    // Governance Invariant 15: Human gate architecture references protected GitHub Environment
+    assert!(
+        content.contains("DISEÑO DE GATE DE APROBACIÓN HUMANA"),
+        "Workflow must document the human approval gate design"
+    );
+    assert!(
+        content.contains("Required Reviewers"),
+        "Human gate documentation must reference Required Reviewers requirement"
+    );
+}
+
+#[test]
+fn test_package_inventory_exact_validation_and_negative_rejections() {
+    let tag = "v0.1.0";
+    let canonical_linux = format!("wasma-{tag}-x86_64-unknown-linux-gnu.tar.gz");
+    let canonical_windows = format!("wasma-{tag}-x86_64-pc-windows-msvc.zip");
+    let canonical_macos = format!("wasma-{tag}-aarch64-apple-darwin.tar.gz");
+
+    let canonical_expected = vec![
+        canonical_macos.clone(),
+        canonical_linux.clone(),
+        canonical_windows.clone(),
+    ];
+
+    let validate_inventory = |files: &[&str]| -> Result<(), String> {
+        if files.len() != 3 {
+            return Err(format!("Expected exactly 3 files, found {}", files.len()));
+        }
+        for expected in &[&canonical_linux, &canonical_windows, &canonical_macos] {
+            if !files.contains(&expected.as_str()) {
+                return Err(format!("Missing expected archive: {expected}"));
+            }
+        }
+        let mut sorted_files = files.to_vec();
+        sorted_files.sort_unstable();
+        let mut sorted_expected = canonical_expected.clone();
+        sorted_expected.sort_unstable();
+        if sorted_files != sorted_expected {
+            return Err("Inventory mismatch".to_string());
+        }
+        Ok(())
+    };
+
+    // 1. Positive case: exactly the 3 canonical packages
+    let valid_inventory = [
+        canonical_linux.as_str(),
+        canonical_windows.as_str(),
+        canonical_macos.as_str(),
+    ];
+    assert!(validate_inventory(&valid_inventory).is_ok());
+
+    // 2. Negative case: missing target (only 2 packages)
+    let missing_macos = [canonical_linux.as_str(), canonical_windows.as_str()];
+    assert!(validate_inventory(&missing_macos).is_err());
+
+    // 3. Negative case: unexpected extra package (4 packages)
+    let extra_package = [
+        canonical_linux.as_str(),
+        canonical_windows.as_str(),
+        canonical_macos.as_str(),
+        "wasma-v0.1.0-extra-target.tar.gz",
+    ];
+    assert!(validate_inventory(&extra_package).is_err());
+
+    // 4. Negative case: version discrepancy (v0.2.0 mixed with v0.1.0)
+    let version_mismatch = [
+        "wasma-v0.2.0-x86_64-unknown-linux-gnu.tar.gz",
+        canonical_windows.as_str(),
+        canonical_macos.as_str(),
+    ];
+    assert!(validate_inventory(&version_mismatch).is_err());
+
+    // 5. Negative case: legacy name (agent-native instead of wasma)
+    let legacy_named = [
+        "agent-native-v0.1.0-x86_64-unknown-linux-gnu.tar.gz",
+        canonical_windows.as_str(),
+        canonical_macos.as_str(),
+    ];
+    assert!(validate_inventory(&legacy_named).is_err());
 }
 
 #[test]

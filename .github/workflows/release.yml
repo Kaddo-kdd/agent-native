@@ -67,7 +67,7 @@ jobs:
           key: ${{ matrix.target }}
 
       - name: Build CLI release binary
-        run: cargo build --release -p wasma-cli --bin wasma --target ${{ matrix.target }}
+        run: cargo build --release --locked -p wasma-cli --bin wasma --target ${{ matrix.target }}
 
       - name: Determine Version
         id: version
@@ -79,6 +79,21 @@ jobs:
             VER="v0.0.0-dev"
           fi
           echo "tag=${VER}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify Cargo version correspondence
+        shell: bash
+        run: |
+          set -euo pipefail
+          CARGO_PKG_VER=$(cargo pkgid -p wasma-cli | sed 's/.*@//')
+          echo "Cargo wasma-cli package version: ${CARGO_PKG_VER}"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG_VER="${GITHUB_REF#refs/tags/v}"
+            if [ "${TAG_VER}" != "${CARGO_PKG_VER}" ]; then
+              echo "ERROR: Release tag version '${TAG_VER}' does not match Cargo wasma-cli version '${CARGO_PKG_VER}'" >&2
+              exit 1
+            fi
+            echo "✓ Release tag matches Cargo version (${CARGO_PKG_VER})"
+          fi
 
       - name: Install GNU tar (macOS)
         if: runner.os == 'macOS'
@@ -185,6 +200,64 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Validate platform release packages
+        run: |
+          cd dist
+          set -euo pipefail
+          echo "Validating expected release archives..."
+
+          # 1. Determinar y validar TAG canónico a partir de Git ref y Cargo version
+          CARGO_PKG_VER=$(cargo pkgid -p wasma-cli | sed 's/.*@//')
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            TAG_VER="${TAG#v}"
+            if [ "${TAG_VER}" != "${CARGO_PKG_VER}" ]; then
+              echo "ERROR: Release tag '${TAG}' does not match wasma-cli Cargo version '${CARGO_PKG_VER}'" >&2
+              exit 1
+            fi
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="v0.0.0-dev"
+          fi
+          echo "Canonical release tag: ${TAG}"
+
+          # 2. Definir lista exacta de los 3 artefactos canónicos esperados
+          EXPECTED_LINUX="wasma-${TAG}-x86_64-unknown-linux-gnu.tar.gz"
+          EXPECTED_WINDOWS="wasma-${TAG}-x86_64-pc-windows-msvc.zip"
+          EXPECTED_MACOS="wasma-${TAG}-aarch64-apple-darwin.tar.gz"
+
+          # 3. Comprobar que cada uno de los 3 archivos esperados exista estrictamente
+          for expected in "${EXPECTED_LINUX}" "${EXPECTED_WINDOWS}" "${EXPECTED_MACOS}"; do
+            if [ ! -f "${expected}" ]; then
+              echo "ERROR: Expected archive '${expected}' not found in dist/" >&2
+              exit 1
+            fi
+          done
+
+          # 4. Rechazar archivos adicionales, duplicados o con versiones discrepantes en dist/
+          FOUND_ARCHIVES=$(ls -1 | grep -E '^wasma-.*\.(tar\.gz|zip)$' | LC_ALL=C sort)
+          EXPECTED_LIST=$(printf "%s\n%s\n%s\n" "${EXPECTED_MACOS}" "${EXPECTED_LINUX}" "${EXPECTED_WINDOWS}" | LC_ALL=C sort)
+
+          if [ "${FOUND_ARCHIVES}" != "${EXPECTED_LIST}" ]; then
+            echo "ERROR: Archive inventory in dist/ does not match canonical expected set exactly." >&2
+            echo "Expected:" >&2
+            echo "${EXPECTED_LIST}" >&2
+            echo "Found:" >&2
+            echo "${FOUND_ARCHIVES}" >&2
+            exit 1
+          fi
+
+          TOTAL_FILES=$(ls -1 | wc -l)
+          if [ "${TOTAL_FILES}" -ne 3 ]; then
+            echo "ERROR: Exactly 3 files expected in dist/ before manifest generation, found ${TOTAL_FILES}:" >&2
+            ls -la >&2
+            exit 1
+          fi
+
+          echo "✓ Archive inventory matches canonical release artifacts exactly (${TAG}):"
+          echo "${FOUND_ARCHIVES}"
+
       - name: Generate and sort SHA256SUMS manifest
         run: |
           cd dist
@@ -203,77 +276,93 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y minisign
 
-      - name: Execute Minisign Verification (Validation Mode vs Official Mode)
+      - name: Execute Minisign Validation (Dry-Run Mode)
+        if: ${{ (github.event.inputs.mode || 'validation') != 'official' }}
+        run: |
+          set -euo pipefail
+          cd dist
+          echo "=== EXECUTING VALIDATION (DRY-RUN) MODE ==="
+          echo "Generating ephemeral test Minisign keypair for end-to-end cryptographic verification..."
+          echo "Security note: Official release secrets are isolated and NOT accessible in this step."
+
+          EPHEMERAL_DIR=$(mktemp -d)
+          chmod 700 "${EPHEMERAL_DIR}"
+          trap 'shred -u "${EPHEMERAL_DIR}/test.key" 2>/dev/null || rm -f "${EPHEMERAL_DIR}/test.key"; rm -rf "${EPHEMERAL_DIR}"' EXIT
+
+          # Generar par de claves efímero de prueba
+          minisign -G -p "${EPHEMERAL_DIR}/test-minisign.pub" -s "${EPHEMERAL_DIR}/test.key" -W
+
+          # Firmar catálogo como artefacto de prueba explícito
+          minisign -S -s "${EPHEMERAL_DIR}/test.key" -m SHA256SUMS -x SHA256SUMS.test-minisig -t "wasma TEST DRY-RUN signature (NOT FOR OFFICIAL DISTRIBUTION)"
+
+          # Verificar firma con la clave pública de prueba
+          minisign -Vm SHA256SUMS -p "${EPHEMERAL_DIR}/test-minisign.pub" -x SHA256SUMS.test-minisig
+
+          # Copiar la clave pública de prueba para auditoría del bundle de validación
+          cp "${EPHEMERAL_DIR}/test-minisign.pub" ./test-minisign.pub
+
+          echo "================================================================================"
+          echo "✓ DRY-RUN VALIDATION SUCCESSFUL: Packages, SHA256SUMS, and Minisign verified."
+          echo "NOTICE: Signature generated with ephemeral test key (SHA256SUMS.test-minisig)."
+          echo "NOT FOR OFFICIAL PRODUCTION DISTRIBUTION (Decisión D3 activa)."
+          echo "================================================================================"
+
+      - name: Execute Minisign Official Signing (Guarded Mode)
+        if: ${{ (github.event.inputs.mode || 'validation') == 'official' }}
         env:
-          INPUT_MODE: ${{ github.event.inputs.mode || 'validation' }}
+          INPUT_CONFIRM_PUBLISH: ${{ github.event.inputs.confirm_publish || 'false' }}
           MINISIGN_SECRET_KEY: ${{ secrets.RELEASE_MINISIGN_SECRET_KEY }}
           MINISIGN_PASSWORD: ${{ secrets.RELEASE_MINISIGN_PASSWORD }}
         run: |
           set -euo pipefail
           cd dist
+          echo "=== EXECUTING OFFICIAL SIGNING MODE ==="
 
-          if [ "${INPUT_MODE}" = "official" ]; then
-            echo "=== EXECUTING OFFICIAL SIGNING MODE ==="
-
-            # 1. Verificar si la clave pública sigue siendo un placeholder (bloqueante)
-            if grep -q "PLACEHOLDER" ../knowledge/tech/release-signing-key.pub; then
-              echo "ERROR: Official signing is BLOCKED because knowledge/tech/release-signing-key.pub is still a placeholder." >&2
-              echo "A human maintainer must provision an authentic Minisign keypair before official mode can proceed." >&2
-              exit 1
-            fi
-
-            # 2. Verificar que los secretos requeridos existan
-            if [ -z "${MINISIGN_SECRET_KEY:-}" ]; then
-              echo "ERROR: Official signing requires RELEASE_MINISIGN_SECRET_KEY secret." >&2
-              exit 1
-            fi
-
-            # 3. Guardar clave privada en directorio temporal seguro con permisos 700/600 y trap de limpieza
-            SECURE_KEY_DIR=$(mktemp -d)
-            chmod 700 "${SECURE_KEY_DIR}"
-            trap 'shred -u "${SECURE_KEY_DIR}/minisign.key" 2>/dev/null || rm -f "${SECURE_KEY_DIR}/minisign.key"; rm -rf "${SECURE_KEY_DIR}"' EXIT
-
-            set +x
-            echo "${MINISIGN_SECRET_KEY}" > "${SECURE_KEY_DIR}/minisign.key"
-            chmod 600 "${SECURE_KEY_DIR}/minisign.key"
-
-            echo "Signing SHA256SUMS with official release key..."
-            if [ -n "${MINISIGN_PASSWORD:-}" ]; then
-              echo "${MINISIGN_PASSWORD}" | minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "wasma release ${{ github.ref_name }}"
-            else
-              minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "wasma release ${{ github.ref_name }}" -W
-            fi
-
-            echo "Verifying official signature against repository public key..."
-            minisign -Vm SHA256SUMS -p ../knowledge/tech/release-signing-key.pub
-            echo "✓ Official Minisign signature verified successfully!"
-
-          else
-            echo "=== EXECUTING VALIDATION (DRY-RUN) MODE ==="
-            echo "Generating ephemeral test Minisign keypair for end-to-end cryptographic verification..."
-
-            EPHEMERAL_DIR=$(mktemp -d)
-            chmod 700 "${EPHEMERAL_DIR}"
-            trap 'shred -u "${EPHEMERAL_DIR}/test.key" 2>/dev/null || rm -f "${EPHEMERAL_DIR}/test.key"; rm -rf "${EPHEMERAL_DIR}"' EXIT
-
-            # Generar par de claves efímero de prueba
-            minisign -G -p "${EPHEMERAL_DIR}/test-minisign.pub" -s "${EPHEMERAL_DIR}/test.key" -W
-
-            # Firmar catálogo como artefacto de prueba explícito
-            minisign -S -s "${EPHEMERAL_DIR}/test.key" -m SHA256SUMS -x SHA256SUMS.test-minisig -t "wasma TEST DRY-RUN signature (NOT FOR OFFICIAL DISTRIBUTION)"
-
-            # Verificar firma con la clave pública de prueba
-            minisign -Vm SHA256SUMS -p "${EPHEMERAL_DIR}/test-minisign.pub" -x SHA256SUMS.test-minisig
-
-            # Copiar la clave pública de prueba para auditoría del bundle de validación
-            cp "${EPHEMERAL_DIR}/test-minisign.pub" ./test-minisign.pub
-
-            echo "================================================================================"
-            echo "✓ DRY-RUN VALIDATION SUCCESSFUL: Packages, SHA256SUMS, and Minisign verified."
-            echo "NOTICE: Signature generated with ephemeral test key (SHA256SUMS.test-minisig)."
-            echo "NOT FOR OFFICIAL PRODUCTION DISTRIBUTION (Decisión D3 activa)."
-            echo "================================================================================"
+          # 1. Verificar confirm_publish explícito (no meramente declarativo)
+          if [ "${INPUT_CONFIRM_PUBLISH}" != "true" ]; then
+            echo "ERROR: Official release signing is BLOCKED because confirm_publish is not set to 'true'." >&2
+            echo "Official signing requires explicit human intent through workflow_dispatch input confirm_publish: true." >&2
+            exit 1
           fi
+
+          # 2. Verificar que se ejecute sobre un tag de release válido
+          if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
+            echo "ERROR: Official release signing requires a valid release tag matching refs/tags/v* (current: ${GITHUB_REF})." >&2
+            exit 1
+          fi
+
+          # 3. Verificar si la clave pública sigue siendo un placeholder (bloqueante)
+          if grep -q "PLACEHOLDER" ../knowledge/tech/release-signing-key.pub; then
+            echo "ERROR: Official signing is BLOCKED because knowledge/tech/release-signing-key.pub is still a placeholder." >&2
+            echo "A human maintainer must provision an authentic Minisign keypair before official mode can proceed." >&2
+            exit 1
+          fi
+
+          # 4. Verificar que los secretos requeridos existan
+          if [ -z "${MINISIGN_SECRET_KEY:-}" ]; then
+            echo "ERROR: Official signing requires RELEASE_MINISIGN_SECRET_KEY secret." >&2
+            exit 1
+          fi
+
+          # 5. Guardar clave privada en directorio temporal seguro con permisos 700/600 y trap de limpieza
+          SECURE_KEY_DIR=$(mktemp -d)
+          chmod 700 "${SECURE_KEY_DIR}"
+          trap 'shred -u "${SECURE_KEY_DIR}/minisign.key" 2>/dev/null || rm -f "${SECURE_KEY_DIR}/minisign.key"; rm -rf "${SECURE_KEY_DIR}"' EXIT
+
+          set +x
+          echo "${MINISIGN_SECRET_KEY}" > "${SECURE_KEY_DIR}/minisign.key"
+          chmod 600 "${SECURE_KEY_DIR}/minisign.key"
+
+          echo "Signing SHA256SUMS with official release key..."
+          if [ -n "${MINISIGN_PASSWORD:-}" ]; then
+            echo "${MINISIGN_PASSWORD}" | minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "wasma release ${{ github.ref_name }}"
+          else
+            minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "wasma release ${{ github.ref_name }}" -W
+          fi
+
+          echo "Verifying official signature against repository public key..."
+          minisign -Vm SHA256SUMS -p ../knowledge/tech/release-signing-key.pub
+          echo "✓ Official Minisign signature verified successfully!"
 
       - name: Upload validated release bundle artifact
         uses: actions/upload-artifact@v4
@@ -283,14 +372,22 @@ jobs:
           retention-days: 14
 
   # Job de publicación: estrictamente segregado y desactivado en cumplimiento de Decisión D3
+  # DISEÑO DE GATE DE APROBACIÓN HUMANA:
+  # 1. confirm_publish en workflow_dispatch representa la intención del operador, pero NO
+  #    sustituye la aprobación independiente de un GitHub Environment protegido.
+  # 2. La publicación oficial requerirá:
+  #    - GitHub Environment configurado (e.g. 'production') con Required Reviewers.
+  #    - Aprobación explícita de al menos un mantenedor autorizado en la interfaz de GitHub Actions.
+  #    - Clave privada Minisign y contraseña aprovisionadas en Secrets de dicho Environment.
+  # 3. Actualmente 'if: false' garantiza que ninguna ejecución automática o accidental publique artefactos.
   publish:
     name: Publish GitHub Release (Guarded by D3)
     needs: validate-and-sign
     runs-on: ubuntu-latest
+    # environment: production # Diseñado para activación futura en AN-076 con aprobación humana
     permissions:
       contents: write
     # PROTECCIÓN D3: La publicación formal permanece congelada hasta decisión humana explícita.
-    # En el futuro, se requerirá environment con aprobadores (Environment: production) y confirmación explícita.
     if: false
     steps:
       - name: Download bundle
