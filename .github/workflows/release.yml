@@ -145,9 +145,16 @@ jobs:
           ${TAR_BIN} --sort=name --mtime="2026-01-01 00:00:00Z" --owner=0 --group=0 --numeric-owner -czvf "${ARCHIVE_NAME}" -C "${STAGE_DIR}" .
           echo "Created archive: ${ARCHIVE_NAME}"
 
-          # Verificar contenido interno exacto del paquete y permisos
+          # Comprobar que el archivo .tar.gz existe y que su contenido es válido
+          if [ ! -f "${ARCHIVE_NAME}" ]; then
+            echo "ERROR: Archive ${ARCHIVE_NAME} was not created" >&2
+            exit 1
+          fi
           echo "Verifying archive contents:"
           ${TAR_BIN} -tvf "${ARCHIVE_NAME}"
+
+          # Eliminar el directorio temporal ${STAGE_DIR} únicamente después de validar el archivo comprimido
+          rm -rf "${STAGE_DIR}"
 
       - name: Package archive (Windows)
         if: runner.os == 'Windows'
@@ -173,13 +180,17 @@ jobs:
 
           $ArchiveName = "$StageDir.zip"
           Compress-Archive -Path "$StageDir\*" -DestinationPath $ArchiveName
+          if (-not (Test-Path -LiteralPath $ArchiveName)) {
+              throw "Archive not created at $ArchiveName"
+          }
           Write-Host "Created archive: $ArchiveName"
+          Remove-Item -LiteralPath $StageDir -Recurse -Force
 
       - name: Upload packaged artifact
         uses: actions/upload-artifact@v4
         with:
           name: package-${{ matrix.target }}
-          path: wasma-*.*
+          path: wasma-*.${{ matrix.archive_ext }}
           if-no-files-found: error
           retention-days: 7
 
@@ -227,36 +238,58 @@ jobs:
           EXPECTED_WINDOWS="wasma-${TAG}-x86_64-pc-windows-msvc.zip"
           EXPECTED_MACOS="wasma-${TAG}-aarch64-apple-darwin.tar.gz"
 
-          # 3. Comprobar que cada uno de los 3 archivos esperados exista estrictamente
+          # 3. Comprobar que cada uno de los 3 archivos esperados exista estrictamente y sea archivo regular
           for expected in "${EXPECTED_LINUX}" "${EXPECTED_WINDOWS}" "${EXPECTED_MACOS}"; do
             if [ ! -f "${expected}" ]; then
               echo "ERROR: Expected archive '${expected}' not found in dist/" >&2
               exit 1
             fi
+            if [ -L "${expected}" ]; then
+              echo "ERROR: Expected archive '${expected}' must not be a symlink" >&2
+              exit 1
+            fi
           done
 
-          # 4. Rechazar archivos adicionales, duplicados o con versiones discrepantes en dist/
-          FOUND_ARCHIVES=$(ls -1 | grep -E '^wasma-.*\.(tar\.gz|zip)$' | LC_ALL=C sort)
+          # 4. Inspeccionar la totalidad de elementos presentes en dist/ (no solo archivos regulares)
+          ALL_ENTRIES=$(ls -1A | LC_ALL=C sort)
           EXPECTED_LIST=$(printf "%s\n%s\n%s\n" "${EXPECTED_MACOS}" "${EXPECTED_LINUX}" "${EXPECTED_WINDOWS}" | LC_ALL=C sort)
 
-          if [ "${FOUND_ARCHIVES}" != "${EXPECTED_LIST}" ]; then
-            echo "ERROR: Archive inventory in dist/ does not match canonical expected set exactly." >&2
-            echo "Expected:" >&2
+          if [ "${ALL_ENTRIES}" != "${EXPECTED_LIST}" ]; then
+            echo "ERROR: Directory dist/ inventory mismatch! Found unexpected entries, directories, symlinks or mismatched versions." >&2
+            echo "Expected exact files:" >&2
             echo "${EXPECTED_LIST}" >&2
-            echo "Found:" >&2
-            echo "${FOUND_ARCHIVES}" >&2
+            echo "Found entries in dist/:" >&2
+            echo "${ALL_ENTRIES}" >&2
+            ls -la >&2
             exit 1
           fi
 
-          TOTAL_FILES=$(ls -1 | wc -l)
-          if [ "${TOTAL_FILES}" -ne 3 ]; then
-            echo "ERROR: Exactly 3 files expected in dist/ before manifest generation, found ${TOTAL_FILES}:" >&2
+          # 5. Rechazar explícitamente cualquier elemento que no sea archivo regular (directorios, FIFOs, symlinks)
+          for entry in *; do
+            if [ -d "${entry}" ]; then
+              echo "ERROR: Unexpected directory found in dist/: ${entry}" >&2
+              exit 1
+            fi
+            if [ -L "${entry}" ]; then
+              echo "ERROR: Unexpected symlink found in dist/: ${entry}" >&2
+              exit 1
+            fi
+            if [ ! -f "${entry}" ]; then
+              echo "ERROR: Entry in dist/ is not a regular file: ${entry}" >&2
+              exit 1
+            fi
+          done
+
+          # 6. Conteo estricto de entradas totales (debe ser exactamente 3)
+          TOTAL_ENTRIES=$(ls -1A | wc -l)
+          if [ "${TOTAL_ENTRIES}" -ne 3 ]; then
+            echo "ERROR: Exactly 3 entries expected in dist/ before manifest generation, found ${TOTAL_ENTRIES}:" >&2
             ls -la >&2
             exit 1
           fi
 
           echo "✓ Archive inventory matches canonical release artifacts exactly (${TAG}):"
-          echo "${FOUND_ARCHIVES}"
+          echo "${ALL_ENTRIES}"
 
       - name: Generate and sort SHA256SUMS manifest
         run: |
@@ -266,6 +299,13 @@ jobs:
           sha256sum wasma-* | LC_ALL=C sort -k 2 > SHA256SUMS
           echo "=== SHA256SUMS Catalog ==="
           cat SHA256SUMS
+
+          # Verificar que SHA256SUMS contenga estrictamente 3 entradas correspondientes a los paquetes canónicos
+          MANIFEST_COUNT=$(wc -l < SHA256SUMS | tr -d ' ')
+          if [ "${MANIFEST_COUNT}" -ne 3 ]; then
+            echo "ERROR: SHA256SUMS contains ${MANIFEST_COUNT} entries, expected exactly 3." >&2
+            exit 1
+          fi
 
       - name: Verify SHA256 checksums of packaged archives
         run: |

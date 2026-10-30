@@ -559,9 +559,45 @@ fn test_release_workflow_security_invariants() {
         content.contains("Required Reviewers"),
         "Human gate documentation must reference Required Reviewers requirement"
     );
+
+    // Packaging Invariant 16: Temporary staging directories excluded from artifact uploads
+    assert!(
+        content.contains("rm -rf \"${STAGE_DIR}\""),
+        "Unix packaging must remove staging directory after archive verification"
+    );
+    assert!(
+        content.contains("Remove-Item -LiteralPath $StageDir -Recurse -Force"),
+        "Windows packaging must remove staging directory after archive creation"
+    );
+    assert!(
+        content.contains("path: wasma-*.${{ matrix.archive_ext }}"),
+        "Upload artifact must target archive extension directly, not generic glob"
+    );
+
+    // Inventory Invariant 17: Strict directory inspection rejecting non-regular files and extra entries
+    assert!(
+        content.contains("ALL_ENTRIES=$(ls -1A | LC_ALL=C sort)"),
+        "Validation step must inspect ALL entries in dist/ without pre-filtering"
+    );
+    assert!(
+        content.contains("[ -d \"${entry}\" ]"),
+        "Validation step must reject directories in dist/"
+    );
+    assert!(
+        content.contains("[ -L \"${entry}\" ]"),
+        "Validation step must reject symlinks in dist/"
+    );
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FsEntryKind {
+    RegularFile,
+    Directory,
+    Symlink,
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn test_package_inventory_exact_validation_and_negative_rejections() {
     let tag = "v0.1.0";
     let canonical_linux = format!("wasma-{tag}-x86_64-unknown-linux-gnu.tar.gz");
@@ -574,61 +610,117 @@ fn test_package_inventory_exact_validation_and_negative_rejections() {
         canonical_windows.clone(),
     ];
 
-    let validate_inventory = |files: &[&str]| -> Result<(), String> {
-        if files.len() != 3 {
-            return Err(format!("Expected exactly 3 files, found {}", files.len()));
+    let validate_dist_inventory = |entries: &[(&str, FsEntryKind)]| -> Result<(), String> {
+        // Step 1: Reject any non-regular files (directories, symlinks, etc.)
+        for &(name, kind) in entries {
+            if kind == FsEntryKind::Directory {
+                return Err(format!("Unexpected directory found in dist/: {name}"));
+            }
+            if kind == FsEntryKind::Symlink {
+                return Err(format!("Unexpected symlink found in dist/: {name}"));
+            }
+            if kind != FsEntryKind::RegularFile {
+                return Err(format!("Entry is not a regular file: {name}"));
+            }
         }
+
+        // Step 2: Total count must be exactly 3
+        if entries.len() != 3 {
+            return Err(format!(
+                "Expected exactly 3 entries, found {}",
+                entries.len()
+            ));
+        }
+
+        // Step 3: Check existence of all 3 canonical files
+        let names: Vec<&str> = entries.iter().map(|(n, _)| *n).collect();
         for expected in &[&canonical_linux, &canonical_windows, &canonical_macos] {
-            if !files.contains(&expected.as_str()) {
+            if !names.contains(&expected.as_str()) {
                 return Err(format!("Missing expected archive: {expected}"));
             }
         }
-        let mut sorted_files = files.to_vec();
-        sorted_files.sort_unstable();
+
+        // Step 4: Strict equality against expected inventory list
+        let mut sorted_names = names;
+        sorted_names.sort_unstable();
         let mut sorted_expected = canonical_expected.clone();
         sorted_expected.sort_unstable();
-        if sorted_files != sorted_expected {
+        if sorted_names != sorted_expected {
             return Err("Inventory mismatch".to_string());
         }
+
         Ok(())
     };
 
-    // 1. Positive case: exactly the 3 canonical packages
+    // 1. Positive case: exactly the 3 canonical regular files
     let valid_inventory = [
-        canonical_linux.as_str(),
-        canonical_windows.as_str(),
-        canonical_macos.as_str(),
+        (canonical_linux.as_str(), FsEntryKind::RegularFile),
+        (canonical_windows.as_str(), FsEntryKind::RegularFile),
+        (canonical_macos.as_str(), FsEntryKind::RegularFile),
     ];
-    assert!(validate_inventory(&valid_inventory).is_ok());
+    assert!(validate_dist_inventory(&valid_inventory).is_ok());
 
     // 2. Negative case: missing target (only 2 packages)
-    let missing_macos = [canonical_linux.as_str(), canonical_windows.as_str()];
-    assert!(validate_inventory(&missing_macos).is_err());
+    let missing_macos = [
+        (canonical_linux.as_str(), FsEntryKind::RegularFile),
+        (canonical_windows.as_str(), FsEntryKind::RegularFile),
+    ];
+    assert!(validate_dist_inventory(&missing_macos).is_err());
 
     // 3. Negative case: unexpected extra package (4 packages)
     let extra_package = [
-        canonical_linux.as_str(),
-        canonical_windows.as_str(),
-        canonical_macos.as_str(),
-        "wasma-v0.1.0-extra-target.tar.gz",
+        (canonical_linux.as_str(), FsEntryKind::RegularFile),
+        (canonical_windows.as_str(), FsEntryKind::RegularFile),
+        (canonical_macos.as_str(), FsEntryKind::RegularFile),
+        ("wasma-v0.1.0-extra-target.tar.gz", FsEntryKind::RegularFile),
     ];
-    assert!(validate_inventory(&extra_package).is_err());
+    assert!(validate_dist_inventory(&extra_package).is_err());
 
     // 4. Negative case: version discrepancy (v0.2.0 mixed with v0.1.0)
     let version_mismatch = [
-        "wasma-v0.2.0-x86_64-unknown-linux-gnu.tar.gz",
-        canonical_windows.as_str(),
-        canonical_macos.as_str(),
+        (
+            "wasma-v0.2.0-x86_64-unknown-linux-gnu.tar.gz",
+            FsEntryKind::RegularFile,
+        ),
+        (canonical_windows.as_str(), FsEntryKind::RegularFile),
+        (canonical_macos.as_str(), FsEntryKind::RegularFile),
     ];
-    assert!(validate_inventory(&version_mismatch).is_err());
+    assert!(validate_dist_inventory(&version_mismatch).is_err());
 
     // 5. Negative case: legacy name (agent-native instead of wasma)
     let legacy_named = [
-        "agent-native-v0.1.0-x86_64-unknown-linux-gnu.tar.gz",
-        canonical_windows.as_str(),
-        canonical_macos.as_str(),
+        (
+            "agent-native-v0.1.0-x86_64-unknown-linux-gnu.tar.gz",
+            FsEntryKind::RegularFile,
+        ),
+        (canonical_windows.as_str(), FsEntryKind::RegularFile),
+        (canonical_macos.as_str(), FsEntryKind::RegularFile),
     ];
-    assert!(validate_inventory(&legacy_named).is_err());
+    assert!(validate_dist_inventory(&legacy_named).is_err());
+
+    // 6. Negative case: staging directory included alongside 3 archives (CI run 41137309657 regression test)
+    let staging_dir_leak = [
+        (canonical_linux.as_str(), FsEntryKind::RegularFile),
+        (canonical_windows.as_str(), FsEntryKind::RegularFile),
+        (canonical_macos.as_str(), FsEntryKind::RegularFile),
+        (
+            "wasma-v0.1.0-x86_64-unknown-linux-gnu",
+            FsEntryKind::Directory,
+        ),
+    ];
+    let res = validate_dist_inventory(&staging_dir_leak);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("Unexpected directory"));
+
+    // 7. Negative case: symlink inside dist/
+    let symlink_in_dist = [
+        (canonical_linux.as_str(), FsEntryKind::RegularFile),
+        (canonical_windows.as_str(), FsEntryKind::RegularFile),
+        (canonical_macos.as_str(), FsEntryKind::Symlink),
+    ];
+    let res = validate_dist_inventory(&symlink_in_dist);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("Unexpected symlink"));
 }
 
 #[test]
