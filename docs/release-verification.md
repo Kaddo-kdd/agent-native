@@ -1,6 +1,6 @@
 # Verificación de Integridad y Firmas de Release en Wasma
 
-Este documento describe el modelo de integridad criptográfica, los procedimientos de verificación para consumidores, la diferenciación de firmas, la política de custodia de claves y los controles de aprobación humana de Wasma.
+Este documento describe el modelo de integridad criptográfica, los procedimientos de verificación para consumidores, la arquitectura de jobs en GitHub Actions, la política de custodia humana de claves y los controles de aprobación escalonada de Wasma.
 
 ---
 
@@ -49,7 +49,7 @@ Descargar desde la release de GitHub (`https://github.com/Kaddo-kdd/wasma/releas
    - Windows x86_64: `wasma-v0.1.0-x86_64-pc-windows-msvc.zip`
    - macOS arm64: `wasma-v0.1.0-aarch64-apple-darwin.tar.gz`
 2. El catálogo de checksums: `SHA256SUMS`
-3. La firma Minisign: `SHA256SUMS.minisig`
+3. La firma Minisign oficial: `SHA256SUMS.minisig`
 4. La clave pública oficial de release (disponible en el repositorio en `knowledge/tech/release-signing-key.pub`).
 
 ### 2.3 Paso 1: Verificar la Firma Criptográfica del Catálogo
@@ -98,103 +98,147 @@ wasma-v0.1.0-x86_64-unknown-linux-gnu.tar.gz: OK
 
 ---
 
-## 3. Modos de Firma y Aislamiento de Secretos en CI
+## 3. Arquitectura del Pipeline y Segregación de Responsabilidades
 
-El workflow `.github/workflows/release.yml` implementa una separación estricta por diseño entre validación rutinaria y firma productiva oficial:
+El workflow [`.github/workflows/release.yml`](file:///.github/workflows/release.yml) está modularizado en 4 jobs con estricto principio de menor privilegio:
 
-### 3.1 Control Estricto de Inventario de Paquetes
-Previo a la generación del catálogo de checksums y la firma, el job `validate-and-sign` ejecuta un control exhaustivo del inventario de paquetes en `dist/`:
-- **Determinación canónica de `TAG`:** Derivado de `GITHUB_REF` y validado frente a la versión de `wasma-cli` en Cargo (`0.1.0`).
-- **Comprobación de paquetes esperados:** Exige exactamente los tres archivos canónicos:
-  * `wasma-${TAG}-x86_64-unknown-linux-gnu.tar.gz`
-  * `wasma-${TAG}-x86_64-pc-windows-msvc.zip`
-  * `wasma-${TAG}-aarch64-apple-darwin.tar.gz`
-- **Rechazo determinista:** Cualquier archivo faltante, paquete adicional, artefacto duplicado o archivo con versión diferente provoca el fallo inmediato del pipeline con salida de error explícita.
+```
+[build (Linux, Windows, macOS)] ──► package-* (sin secretos)
+              │
+              ▼
+[validate] ───────────────────────► release-bundle (sin secretos, firma efímera en validation)
+              │
+              ▼ (si mode == official)
+[sign-official] ──────────────────► Environment 'release' (Required Reviewers, actualmente if: false)
+              │                     Produce: official-release-bundle (SHA256SUMS.minisig)
+              ▼
+[publish] ────────────────────────► GitHub Release formal (Decisión D3: if: false hasta AN-076)
+```
 
-### 3.2 Modo de Validación (`mode: validation` — Dry-Run)
-- **Propósito:** Validar el empaquetado, la generación de `SHA256SUMS` y el flujo criptográfico end-to-end en entornos de CI sin requerir ni exponer secretos productivos.
-- **Aislamiento de secretos:** Este paso **no tiene acceso a secretos oficiales** en su bloque `env`. Los secretos no se inyectan en el entorno del proceso.
-- **Mecanismo:** Genera un par de claves Minisign efímero (`minisign -G`) en memoria temporal.
-- **Firma producida:** `SHA256SUMS.test-minisig` (con extensión `.test-minisig` explícita).
-- **Comentario confiable:** `"wasma TEST DRY-RUN signature (NOT FOR OFFICIAL DISTRIBUTION)"`.
-- **Artefactos exportados:** Incluye `test-minisign.pub` en el bundle de validación para trazabilidad.
+### 3.1 Job `build`: Compilación y Empaquetado
+- Compilación determinista bloqueada (`cargo build --release --locked`).
+- Validación de arquitectura real (`arm64` en macOS).
+- Normalización de permisos (`755` ejecutable, `644` docs) y timestamps fijos.
+- Empaquetado con GNU tar (`--sort=name`) en Unix y PowerShell `Compress-Archive` en Windows.
+- Eliminación estricta del directorio de staging temporal inmediatamente tras la verificación de cada archivo comprimido.
+- Subida de artefactos específicos (`path: wasma-*.${{ matrix.archive_ext }}`).
+- **Cero acceso a secretos.**
 
-### 3.3 Modo Oficial (`mode: official`)
-- **Propósito:** Generar la firma criptográfica canónica de distribución para releases públicas.
-- **Acceso a secretos:** Exclusivamente el paso `Execute Minisign Official Signing (Guarded Mode)` recibe los secretos canónicos `RELEASE_MINISIGN_SECRET_KEY` y `RELEASE_MINISIGN_PASSWORD`.
-- **Firma producida:** `SHA256SUMS.minisig`.
-- **Controles de seguridad obligatorios (Gating):**
-  1. `confirm_publish == 'true'`: Intención de ejecución del operador formalmente declarada.
-  2. `GITHUB_REF` válido: Debe ejecutarse sobre un tag de release que cumpla `refs/tags/v*`.
-  3. Correspondencia de versión: El tag debe coincidir exactamente con la versión de `wasma-cli` en Cargo (`0.1.0`).
-  4. Clave pública auténtica: El archivo `knowledge/tech/release-signing-key.pub` no debe contener el marcador `PLACEHOLDER`.
-  5. Secreto configurado: El secreto `RELEASE_MINISIGN_SECRET_KEY` debe estar presente en el entorno de GitHub Actions.
-  6. Memoria segura: La clave privada se procesa en un directorio temporal aislado (`chmod 700 / 600`), con `set +x` para evitar fugas en logs y destrucción segura mediante `trap ... shred -u`.
+### 3.2 Job `validate`: Integridad de Inventario y Checksums
+- Descarga los 3 paquetes de plataforma.
+- Inspecciona la totalidad de entradas en `dist/` (`ls -1A | LC_ALL=C sort`): rechaza directorios, enlaces simbólicos, archivos extra o paquetes faltantes.
+- Genera el catálogo determinista `SHA256SUMS` (exactamente 3 entradas).
+- Comprueba los hashes con `sha256sum -c SHA256SUMS`.
+- **Modo Validation (Dry-Run):** Genera claves efímeras en memoria (`minisign -G`), firma `SHA256SUMS.test-minisig` y valida la firma.
+- Exporta el artefacto `release-bundle` (bundle validado sin firma oficial).
+- **Cero acceso a secretos.**
+
+### 3.3 Job `sign-official`: Firma Oficial Criptográfica (Gate Humano)
+- **Estructura:** Asociado al GitHub Environment `release`.
+- **Protección activa:** Deshabilitado mediante `if: false` hasta la autorización humana formal y configuración de Required Reviewers.
+- Requisitos previos para su habilitación:
+  1. Environment `release` existente en GitHub.
+  2. *Required Reviewers* configurados con los mantenedores autorizados requeridos.
+  3. *Prevent self-review* habilitado cuando exista un segundo mantenedor.
+  4. *Bypass administrativo* deshabilitado.
+  5. Restricción del Environment exclusivamente a tags `refs/tags/v*`.
+  6. Autorización humana independiente mediante aprobación en GitHub Actions.
+  7. Secretos oficiales `RELEASE_MINISIGN_SECRET_KEY` y `RELEASE_MINISIGN_PASSWORD` aprovisionados en el Environment.
+- Operación criptográfica: Re-verifica inventario y checksums, comprueba correspondencia de versión Cargo y tag, verifica que `release-signing-key.pub` no tenga `PLACEHOLDER`, opera sobre sistema de archivos en RAM (`tmpfs`), genera `SHA256SUMS.minisig` oficial y produce `official-release-bundle`.
+
+### 3.4 Job `publish`: Publicación Formal en GitHub Releases
+- Reservado para **AN-076**.
+- Mantenido estrictamente con `if: false` bajo la **Decisión D3**.
+- Requerirá un gate de publicación independiente del gate de firma, asegurando que la firma criptográfica y la liberación al público constituyan decisiones humanas separadas.
 
 ---
 
-## 4. Política de Custodia, Rotación y Revocación de Claves
+## 4. Trazabilidad de Versión y Nomenclatura de Artefactos
 
-### 4.1 Custodia de Claves
-- La clave privada de release **nunca** debe almacenarse en repositorios de código ni compartirse en canales inseguros.
-- El almacenamiento maestro de la clave privada debe residir en hardware seguro offline (HSM o dispositivo de almacenamiento cifrado bajo custodia del mantenedor principal).
-- La copia utilizada en CI reside exclusivamente como secreto cifrado en GitHub Actions (`RELEASE_MINISIGN_SECRET_KEY`), protegido con contraseña (`RELEASE_MINISIGN_PASSWORD`).
+Para garantizar que ningún artefacto intermedio oculte su procedencia, se implementa una nomenclatura determinista:
 
-### 4.2 Provisión Inicial de Claves (Requisito Humano Pendiente)
-Actualmente, el archivo `knowledge/tech/release-signing-key.pub` contiene un marcador de posición (`PLACEHOLDER`). Para activar la primera release oficial:
-1. El mantenedor autorizado debe ejecutar localmente:
+$$\text{TAG} = \begin{cases}
+\text{Git Tag (e.g. } \texttt{v0.1.0}\text{)}, & \text{si el evento es } \texttt{refs/tags/v*} \\
+\texttt{v}\{\text{Cargo Version}\}\texttt{-dev-}\{\text{Short SHA}\}, & \text{en ramas, PRs o pruebas manuales}
+\end{cases}$$
+
+### Reglas de Trazabilidad:
+1. **Releases Oficiales:** Exigen correspondencia biunívoca exacta entre el tag de Git (`v0.1.0`) y la versión declarada en `Cargo.toml` (`0.1.0`). Cualquier discrepancia aborta el pipeline inmediatamente.
+2. **Pruebas y Validación:** Utilizan el esquema `v{CARGO_VERSION}-dev-{SHORT_SHA}` (ejemplo: `v0.1.0-dev-d3e0d54`).
+3. **Metadatos de Procedencia:** Los logs de CI y los bundles registran explícitamente tanto el `SHORT_SHA` (7 caracteres para legibilidad) como el `FULL_COMMIT_SHA` (40 caracteres hexadecimales para trazabilidad criptográfica unívoca).
+
+---
+
+## 5. Protocolo de Custodia Humana de Claves Minisign
+
+> [!CAUTION]
+> **Aislamiento Absoluto de Claves Maestras:** La clave privada Minisign y su contraseña son de custodia humana exclusiva. Nunca deben entregarse, transferirse, pegarse ni mostrarse al asistente de IA, ni almacenarse en repositorios Git ni logs de ejecución.
+
+### 5.1 Advertencia sobre Medios de Almacenamiento y SSDs
+No se deben almacenar claves maestras en directorios temporales no cifrados del sistema operativo ni confiar exclusivamente en utilidades como `shred` o `srm` para su destrucción en unidades de estado sólido (SSD / NVMe / eMMC). Debido al algoritmo de nivelación de desgaste (*wear-leveling*) y la capa de traducción de flash (*Flash Translation Layer* / FTL), los bloques sobreescritos se reasignan lógicamente en lugar de ser eliminados físicamente de las celdas NAND, dejando copias residuales en memoria no volátil.
+
+### 5.2 Procedimiento de Generación Local (Entorno Aislado)
+El mantenedor humano debe ejecutar en una estación de trabajo confiable, preferiblemente offline o aislada:
+
+```bash
+# 1. Crear directorio en memoria RAM (tmpfs) para que la clave nunca toque el disco físico:
+mkdir -p -m 700 /tmp/wasma-key-ram
+sudo mount -t tmpfs -o size=10M,mode=0700 tmpfs /tmp/wasma-key-ram
+cd /tmp/wasma-key-ram
+
+# 2. Generar el par de claves Minisign:
+#    Se solicitará una contraseña robusta (mínimo 24 caracteres aleatorios / Diceware)
+minisign -G -p wasma-release.pub -s wasma-release.key
+
+# 3. Exportar inmediatamente la clave privada al medio de respaldo seguro (ver 5.3)
+```
+
+### 5.3 Respaldo y Almacenamiento Seguro (Cold Storage)
+1. **Almacenamiento Primario:** Gestor de contraseñas corporativo/personal con cifrado de conocimiento cero (*zero-knowledge*), autenticación multifactor (MFA por token físico FIDO2/WebAuthn) y acceso de emergencia formalizado.
+2. **Respaldo Frío (Disaster Recovery):** Dispositivo USB físico con cifrado por hardware (o partición LUKS / BitLocker) depositado en caja fuerte física bajo control del mantenedor responsable.
+3. **Limpieza del Entorno Temporal:**
    ```bash
-   minisign -G -p release-signing-key.pub -s release-signing-key.key
+   shred -u wasma-release.key 2>/dev/null || rm -f wasma-release.key
+   cd ~
+   sudo umount /tmp/wasma-key-ram
+   rm -rf /tmp/wasma-key-ram
    ```
-2. Configurar en el repositorio de GitHub los secretos:
-   - `RELEASE_MINISIGN_SECRET_KEY`: Contenido del archivo `release-signing-key.key`.
-   - `RELEASE_MINISIGN_PASSWORD`: Contraseña asignada al generar la clave.
-3. Reemplazar `knowledge/tech/release-signing-key.pub` en el repositorio con la clave pública generada mediante un commit auditado y revisado.
 
-### 4.3 Procedimiento de Rotación de Claves
-- Si se programa una rotación de rutina:
-  1. Generar un nuevo par de claves Minisign.
-  2. Publicar la nueva clave pública en `knowledge/tech/release-signing-key.pub`.
-  3. Registrar la transición y huella digital en el `CHANGELOG.md` de la versión correspondiente.
-  4. Actualizar los secretos en GitHub Actions.
-
-### 4.4 Procedimiento ante Sospecha de Compromiso (Revocación)
-- En caso de sospecha razonable de compromiso de la clave privada:
-  1. Eliminar inmediatamente los secretos `RELEASE_MINISIGN_SECRET_KEY` y `RELEASE_MINISIGN_PASSWORD` de la configuración del repositorio en GitHub.
-  2. Publicar una notificación de seguridad (Security Advisory) detallando las versiones afectadas.
-  3. Deshabilitar los flujos de release automáticos.
-  4. Generar un nuevo par de claves y desplegar una versión de parche correctiva con la nueva clave pública.
+### 5.4 Procedimiento de Provisión en GitHub Actions
+La clave pública y los secretos se provisionan de manera humana e independiente:
+1. **Clave Pública:** El mantenedor copia el contenido de `wasma-release.pub` (archivo de texto público de 2 líneas) y sustituye el `PLACEHOLDER` en [`knowledge/tech/release-signing-key.pub`](file:///knowledge/tech/release-signing-key.pub) mediante un commit firmado y auditado.
+2. **Environment en GitHub:**
+   - Navegar a **Settings → Environments → New environment**.
+   - Nombre: `release`.
+   - Activar **Required reviewers** (asignar mantenedores autorizados requeridos).
+   - Activar **Prevent self-review** (cuando exista un segundo mantenedor).
+   - Desactivar **Allow administrators to bypass configured rules**.
+   - Configurar **Deployment branches**: Restringir a tags `refs/tags/v*`.
+3. **Secretos del Environment (NO secrets de repositorio):**
+   - `RELEASE_MINISIGN_SECRET_KEY`: Contenido completo de `wasma-release.key`.
+   - `RELEASE_MINISIGN_PASSWORD`: Contraseña asignada a la clave privada.
 
 ---
 
-## 5. Arquitectura del Gate de Aprobación Humana y Salvaguarda D3
+## 6. Procedimiento de Rotación y Revocación
 
-### 5.1 Distinción entre `confirm_publish` y GitHub Environment
-Es fundamental entender la arquitectura en dos niveles para la autorización de releases:
+### 6.1 Rotación Programada
+1. Generar un nuevo par de claves bajo el protocolo 5.2.
+2. Actualizar `knowledge/tech/release-signing-key.pub` en el repositorio.
+3. Registrar la nueva clave y fecha efectiva en `CHANGELOG.md`.
+4. Actualizar los secretos en el GitHub Environment `release`.
 
-```
-[Trigger manual (workflow_dispatch)]
-       │
-       ▼
-  confirm_publish: true  ──► (Nivel 1: Intención del operador en CI)
-       │
-       ▼
- [validate-and-sign (official)]
-       │
-       ▼
-[Job publish: Environment 'production'] ──► (Nivel 2: Aprobación formal independiente)
-       │                                       Requiere:
-       │                                       - Aprobación explícita de Required Reviewers
-       │                                       - Acceso restringido a secretos de release
-       ▼
-[GitHub Releases Publicación]
-```
+### 6.2 Revocación por Sospecha de Compromiso
+1. Eliminar inmediatamente los secretos `RELEASE_MINISIGN_SECRET_KEY` y `RELEASE_MINISIGN_PASSWORD` del Environment `release`.
+2. Publicar un GitHub Security Advisory y emitir aviso en `wasma.org`.
+3. Deshabilitar los pipelines de release en GitHub Actions.
+4. Generar un nuevo par de claves y lanzar un parche correctivo con la nueva clave pública.
 
-> [!WARNING]
-> El parámetro de entrada `confirm_publish: true` representa únicamente la **intención de ejecución** del operador al disparar el workflow. **No sustituye ni anula** la aprobación independiente que otorga un GitHub Environment protegido con revisores humanos requeridos (*Required Reviewers*).
+---
 
-### 5.2 Salvaguarda Activa (Decisión D3)
-Conforme a la **Decisión D3** de gobernanza del proyecto:
-- El job `publish` en `.github/workflows/release.yml` permanece formalmente congelado con `if: false`.
-- Ningún pipeline automatizado tiene autorización de publicar releases en GitHub ni en registros públicos sin aprobación humana previa y explícita.
-- La eliminación de esta salvaguarda requerirá una decisión formal del equipo de desarrollo, la verificación completa de los criterios de aceptación de la iniciativa INI-009, la configuración del Environment protegido con revisores humanos y la provisión exitosa de las claves de firma oficiales (previstas para AN-076).
+## 7. Salvaguarda Activa de Gobernanza (Decisión D3)
+
+Conforme a la **Decisión D3**:
+- Tanto el job `sign-official` como el job `publish` permanecen deshabilitados con `if: false`.
+- La activación de `sign-official` requiere la provisión formal de claves y la configuración del Environment `release`.
+- La activación de `publish` está reservada para **AN-076**, requiriendo un gate humano independiente y la verificación completa de la iniciativa INI-009.

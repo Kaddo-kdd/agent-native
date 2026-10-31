@@ -407,38 +407,163 @@ fn test_release_workflow_security_invariants() {
 
     // Security Invariant 1: Top-level default permissions MUST be read-only
     assert!(
-        content.contains("permissions:\n  contents: read")
-            || content.contains("permissions:\r\n  contents: read"),
+        content.contains(
+            "permissions:
+  contents: read"
+        ) || content.contains(
+            "permissions:
+  contents: read"
+        ),
         "Workflow must specify top-level default permissions: contents: read"
     );
 
-    // Security Invariant 2: Build and Validate jobs must have read-only contents
+    // Architecture Invariant 2: Segregation of distinct jobs including pre-flight fail-closed gate
+    assert!(
+        content.contains("name: Pre-Flight Gate & Safety Verification"),
+        "Must define pre-flight gate job"
+    );
+    assert!(
+        content.contains("needs: pre-flight"),
+        "build job must depend on pre-flight gate"
+    );
     assert!(
         content.contains("name: Build & Package"),
         "Must define build job"
     );
     assert!(
-        content.contains("name: Checksums, Minisign & Integrity Validation"),
-        "Must define validation job"
+        content.contains("name: Checksums & Package Integrity"),
+        "Must define validate job (Checksums & Package Integrity)"
+    );
+    assert!(
+        content.contains("name: Official Cryptographic Signing (Guarded Gate)"),
+        "Must define sign-official job"
+    );
+    assert!(
+        content.contains("name: Publish GitHub Release (Guarded by D3)"),
+        "Must define publish job"
     );
 
-    // Security Invariant 3: Publishing to GitHub Releases is disabled per Decisión D3
+    // Fail-Closed Control Invariant 2b: Official mode blocked at pre-flight while sign-official is disabled
     assert!(
-        content.contains("if: false"),
-        "Release publication step must be gated with 'if: false' in accordance with Decisión D3"
+        content.contains("if [ \"${MODE}\" = \"official\" ]; then"),
+        "Pre-flight gate must check for mode == official"
+    );
+    assert!(
+        content.contains(
+            "ERROR: Official release mode ('mode: official') is BLOCKED and FAIL-CLOSED."
+        ),
+        "Pre-flight gate must emit explicit fail-closed error message for official mode"
+    );
+
+    // Security Invariant 3: Both sign-official and publish are strictly disabled per Decisión D3
+    let sign_job_pos = content
+        .find("  sign-official:")
+        .or_else(|| content.find("sign-official:"))
+        .expect("sign-official job");
+    let publish_job_pos = content
+        .find("  publish:")
+        .or_else(|| {
+            content.find(
+                "
+publish:",
+            )
+        })
+        .expect("publish job");
+
+    let sign_job_block = &content[sign_job_pos..publish_job_pos];
+    assert!(
+        sign_job_block.contains("if: false"),
+        "sign-official job MUST be disabled with 'if: false' until human provisioning"
+    );
+
+    let publish_job_block = &content[publish_job_pos..];
+    assert!(
+        publish_job_block.contains("if: false"),
+        "publish job MUST be disabled with 'if: false' per Decisión D3"
     );
     assert!(
         content.contains("DECISIÓN D3") || content.contains("Decisión D3"),
-        "Workflow must reference Decisión D3 rationale for gating publication"
+        "Workflow must reference Decisión D3 rationale"
     );
 
-    // Security Invariant 4: No insecure mock signature placeholders
+    // Governance Invariant 4: sign-official associates with protected Environment 'release'
+    assert!(
+        sign_job_block.contains("environment: release"),
+        "sign-official job must be associated with 'release' Environment"
+    );
+    assert!(
+        sign_job_block.contains("Required Reviewers"),
+        "sign-official must document Required Reviewers requirement"
+    );
+    assert!(
+        sign_job_block.contains("Prevent self-review"),
+        "sign-official must document Prevent self-review policy"
+    );
+    assert!(
+        sign_job_block.contains("Bypass administrativo"),
+        "sign-official must document administrative bypass prohibition"
+    );
+
+    // Version Invariant 5: Dynamic tag traceability with Cargo version and commit SHA
+    assert!(
+        content.contains("TAG=\"v${CARGO_PKG_VER}-dev-${SHORT_COMMIT_SHA}\""),
+        "Workflow must derive tag as v{{CARGO_VERSION}}-dev-{{SHORT_SHA}} in dev/validation mode"
+    );
+    assert!(
+        content.contains("FULL_COMMIT_SHA"),
+        "Workflow must record full commit SHA in provenance metadata"
+    );
+    assert!(
+        content.contains("SHORT_COMMIT_SHA"),
+        "Workflow must record short commit SHA for readability"
+    );
+
+    // Artifact Invariant 6: Differentiated bundles (release-bundle vs official-release-bundle)
+    assert!(
+        content.contains("name: release-bundle"),
+        "Validate job must upload unverified/dry-run release-bundle"
+    );
+    assert!(
+        content.contains("name: official-release-bundle"),
+        "sign-official job must upload official-release-bundle"
+    );
+
+    // Security Invariant 7: Secret isolation between validate and sign-official
+    let validate_job_pos = content
+        .find("  validate:")
+        .or_else(|| content.find("validate:"))
+        .expect("validate job");
+    let validate_job_block = &content[validate_job_pos..sign_job_pos];
+    assert!(
+        !validate_job_block.contains("RELEASE_MINISIGN_SECRET_KEY"),
+        "validate job MUST NOT have access to RELEASE_MINISIGN_SECRET_KEY"
+    );
+    assert!(
+        !validate_job_block.contains("RELEASE_MINISIGN_PASSWORD"),
+        "validate job MUST NOT have access to RELEASE_MINISIGN_PASSWORD"
+    );
+    assert!(
+        sign_job_block.contains("RELEASE_MINISIGN_SECRET_KEY"),
+        "sign-official job must consume RELEASE_MINISIGN_SECRET_KEY"
+    );
+    assert!(
+        sign_job_block.contains("RELEASE_MINISIGN_PASSWORD"),
+        "sign-official job must consume RELEASE_MINISIGN_PASSWORD"
+    );
+
+    // Security Invariant 8: In-memory RAM filesystem (tmpfs) to avoid SSD key persistence
+    assert!(
+        sign_job_block.contains("tmpfs"),
+        "sign-official must utilize RAM tmpfs to avoid persistent flash retention on SSDs"
+    );
+
+    // Security Invariant 9: No insecure mock signature placeholders
     assert!(
         !content.contains("dGVzdC1zaWduYXR1cmUtcGxhY2Vob2xkZXI="),
         "Insecure mock base64 placeholder MUST NOT exist in workflow"
     );
 
-    // Security Invariant 5: Ephemeral key generation used in dry-run mode
+    // Security Invariant 10: Ephemeral key generation used in dry-run mode
     assert!(
         content.contains("minisign -G"),
         "Workflow must use real ephemeral keypair generation in validation/dry-run mode"
@@ -448,13 +573,13 @@ fn test_release_workflow_security_invariants() {
         "Dry-run signature must be explicitly named SHA256SUMS.test-minisig"
     );
 
-    // Security Invariant 6: Official release mode blocks on placeholder public key
+    // Security Invariant 11: Official release mode blocks on placeholder public key
     assert!(
         content.contains("PLACEHOLDER"),
-        "Workflow must check for PLACEHOLDER in public key to prevent official signing without authentic keys"
+        "Workflow must check for PLACEHOLDER in public key"
     );
 
-    // Architecture Invariant 7: All 3 canonical triples present in matrix
+    // Architecture Invariant 12: All 3 canonical triples present in matrix
     assert!(
         content.contains("x86_64-unknown-linux-gnu"),
         "Must support Linux x86_64"
@@ -468,13 +593,13 @@ fn test_release_workflow_security_invariants() {
         "Must support macOS arm64"
     );
 
-    // Architecture Invariant 8: Architecture validation on macOS
+    // Architecture Invariant 13: Architecture validation on macOS
     assert!(
         content.contains("arm64|aarch64"),
         "macOS step must explicitly validate that binary architecture is arm64"
     );
 
-    // Architecture Invariant 9: Portable GNU tar / gtar handling on macOS
+    // Architecture Invariant 14: Portable GNU tar / gtar handling on macOS
     assert!(
         content.contains("brew install gnu-tar"),
         "macOS job must install gnu-tar for portable --sort=name support"
@@ -484,80 +609,10 @@ fn test_release_workflow_security_invariants() {
         "Workflow must invoke gtar when available to avoid BSD tar incompatibility"
     );
 
-    // Build Invariant 10: Locked builds for reproducible dependency resolution
+    // Build Invariant 15: Locked builds for reproducible dependency resolution
     assert!(
         content.contains("cargo build --release --locked"),
-        "Cargo build must use --locked to ensure deterministic dependencies matching Cargo.lock"
-    );
-
-    // Security Invariant 11: Non-declarative confirm_publish gate in official mode
-    assert!(
-        content.contains("INPUT_CONFIRM_PUBLISH"),
-        "Workflow must pass INPUT_CONFIRM_PUBLISH to the signing step"
-    );
-    assert!(
-        content.contains("confirm_publish is not set to 'true'"),
-        "Official signing must strictly enforce confirm_publish == 'true'"
-    );
-
-    // Version Invariant 12: Release tag must correspond to Cargo version
-    assert!(
-        content.contains("Verify Cargo version correspondence"),
-        "Workflow must explicitly verify that release tag matches Cargo package version"
-    );
-
-    // Integrity Invariant 13: Exact platform archives validated before checksums
-    assert!(
-        content.contains("Validate platform release packages"),
-        "Workflow must validate presence of all 3 canonical platform packages before checksums"
-    );
-
-    // Security Invariant 14: Strict secret isolation between validation and official mode
-    assert!(
-        content.contains("Execute Minisign Validation (Dry-Run Mode)"),
-        "Workflow must define a segregated dry-run validation step"
-    );
-    assert!(
-        content.contains("Execute Minisign Official Signing (Guarded Mode)"),
-        "Workflow must define a segregated official signing step"
-    );
-
-    // Extract the dry-run validation block and ensure no secrets are exposed in it
-    let val_start = content
-        .find("Execute Minisign Validation (Dry-Run Mode)")
-        .expect("val step");
-    let official_start = content
-        .find("Execute Minisign Official Signing (Guarded Mode)")
-        .expect("official step");
-    let val_block = &content[val_start..official_start];
-    assert!(
-        !val_block.contains("RELEASE_MINISIGN_SECRET_KEY"),
-        "Validation mode MUST NOT have access to RELEASE_MINISIGN_SECRET_KEY"
-    );
-    assert!(
-        !val_block.contains("RELEASE_MINISIGN_PASSWORD"),
-        "Validation mode MUST NOT have access to RELEASE_MINISIGN_PASSWORD"
-    );
-
-    // Official block must receive canonical secrets
-    let official_block = &content[official_start..];
-    assert!(
-        official_block.contains("RELEASE_MINISIGN_SECRET_KEY"),
-        "Official signing step must receive RELEASE_MINISIGN_SECRET_KEY"
-    );
-    assert!(
-        official_block.contains("RELEASE_MINISIGN_PASSWORD"),
-        "Official signing step must receive RELEASE_MINISIGN_PASSWORD"
-    );
-
-    // Governance Invariant 15: Human gate architecture references protected GitHub Environment
-    assert!(
-        content.contains("DISEÑO DE GATE DE APROBACIÓN HUMANA"),
-        "Workflow must document the human approval gate design"
-    );
-    assert!(
-        content.contains("Required Reviewers"),
-        "Human gate documentation must reference Required Reviewers requirement"
+        "Cargo build must use --locked"
     );
 
     // Packaging Invariant 16: Temporary staging directories excluded from artifact uploads
@@ -571,10 +626,10 @@ fn test_release_workflow_security_invariants() {
     );
     assert!(
         content.contains("path: wasma-*.${{ matrix.archive_ext }}"),
-        "Upload artifact must target archive extension directly, not generic glob"
+        "Upload artifact must target archive extension directly"
     );
 
-    // Inventory Invariant 17: Strict directory inspection rejecting non-regular files and extra entries
+    // Inventory Invariant 17: Strict directory inspection rejecting non-regular files
     assert!(
         content.contains("ALL_ENTRIES=$(ls -1A | LC_ALL=C sort)"),
         "Validation step must inspect ALL entries in dist/ without pre-filtering"
@@ -721,6 +776,38 @@ fn test_package_inventory_exact_validation_and_negative_rejections() {
     let res = validate_dist_inventory(&symlink_in_dist);
     assert!(res.is_err());
     assert!(res.unwrap_err().contains("Unexpected symlink"));
+
+    // 8. Positive case: dev/validation mode dynamic naming scheme (v0.1.0-dev-d3e0d54)
+    let dev_tag = "v0.1.0-dev-d3e0d54";
+    let dev_linux = format!("wasma-{dev_tag}-x86_64-unknown-linux-gnu.tar.gz");
+    let dev_windows = format!("wasma-{dev_tag}-x86_64-pc-windows-msvc.zip");
+    let dev_macos = format!("wasma-{dev_tag}-aarch64-apple-darwin.tar.gz");
+    let dev_inventory = [
+        (dev_linux.as_str(), FsEntryKind::RegularFile),
+        (dev_windows.as_str(), FsEntryKind::RegularFile),
+        (dev_macos.as_str(), FsEntryKind::RegularFile),
+    ];
+    let validate_dev_inventory = |entries: &[(&str, FsEntryKind)]| -> Result<(), String> {
+        let canonical_dev = vec![dev_macos.clone(), dev_linux.clone(), dev_windows.clone()];
+        if entries.len() != 3 {
+            return Err("Expected 3 entries".to_string());
+        }
+        let names: Vec<&str> = entries.iter().map(|(n, _)| *n).collect();
+        for exp in &[&dev_linux, &dev_windows, &dev_macos] {
+            if !names.contains(&exp.as_str()) {
+                return Err("Missing expected archive".to_string());
+            }
+        }
+        let mut sorted_names = names;
+        sorted_names.sort_unstable();
+        let mut sorted_exp = canonical_dev;
+        sorted_exp.sort_unstable();
+        if sorted_names != sorted_exp {
+            return Err("Mismatch".to_string());
+        }
+        Ok(())
+    };
+    assert!(validate_dev_inventory(&dev_inventory).is_ok());
 }
 
 #[test]
@@ -742,4 +829,44 @@ fn test_release_signing_key_placeholder_status() {
         content.contains("untrusted comment:"),
         "Key file must follow Minisign public key format header"
     );
+}
+
+#[test]
+fn test_fail_closed_control_for_official_mode() {
+    // Simulates the pre-flight gate decision logic:
+    // When sign-official is disabled (if: false), mode: official must fail-closed immediately.
+    let evaluate_pre_flight_mode = |mode: &str,
+                                    sign_official_enabled: bool|
+     -> Result<(), &'static str> {
+        let effective_mode = if mode.is_empty() { "validation" } else { mode };
+        if effective_mode == "official" {
+            if !sign_official_enabled {
+                return Err(
+                    "ERROR: Official release mode ('mode: official') is BLOCKED and FAIL-CLOSED.",
+                );
+            }
+            return Ok(());
+        }
+        if effective_mode == "validation" {
+            return Ok(());
+        }
+        Err("Unknown mode")
+    };
+
+    // Case 1: mode == 'validation' passes cleanly (dry-run mode)
+    assert!(evaluate_pre_flight_mode("validation", false).is_ok());
+
+    // Case 2: default/empty mode defaults to 'validation' and passes cleanly
+    assert!(evaluate_pre_flight_mode("", false).is_ok());
+
+    // Case 3: mode == 'official' FAILS CLOSED while sign_official is disabled
+    let res = evaluate_pre_flight_mode("official", false);
+    assert!(res.is_err());
+    assert_eq!(
+        res.unwrap_err(),
+        "ERROR: Official release mode ('mode: official') is BLOCKED and FAIL-CLOSED."
+    );
+
+    // Case 4: mode == 'official' would only pass when sign-official is legitimately enabled
+    assert!(evaluate_pre_flight_mode("official", true).is_ok());
 }

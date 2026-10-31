@@ -4,33 +4,66 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Release mode: "validation" (dry-run with test keys) or "official" (requires authentic project keys)'
+        description: 'Modo de ejecución: "validation" (dry-run seguro con clave efímera) u "official" (firma oficial Minisign)'
         required: true
+        default: 'validation'
         type: choice
         options:
           - validation
           - official
-        default: validation
       confirm_publish:
-        description: 'Set to true ONLY if Decisión D3 is formally lifted and you intend to publish an official release'
+        description: 'Confirmación explícita de publicación para modo oficial (debe ser "true")'
         required: false
-        type: boolean
-        default: false
-  push:
-    tags:
-      - 'v*'
+        default: 'false'
+        type: string
 
-# Restringir permisos por defecto al mínimo privilegio (ADR-004)
+# SEGURIDAD POR DEFECTO: Permisos mínimos de solo lectura a nivel de workflow
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
+  # ============================================================================
+  # 0. CONTROL FAIL-CLOSED Y SEGURIDAD PRE-RELEASE (Antes de la compilación)
+  # ============================================================================
+  pre-flight:
+    name: Pre-Flight Gate & Safety Verification
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Enforce fail-closed policy for official mode
+        run: |
+          set -euo pipefail
+          MODE="${{ github.event.inputs.mode || 'validation' }}"
+          echo "Selected release workflow mode: ${MODE}"
+
+          # CONTROL FAIL-CLOSED: Si se solicita explícitamente modo 'official' mientras
+          # sign-official permanece congelado por Decisión D3, abortar inmediatamente
+          # antes de iniciar la compilación en los runners.
+          if [ "${MODE}" = "official" ]; then
+            echo "================================================================================" >&2
+            echo "ERROR: Official release mode ('mode: official') is BLOCKED and FAIL-CLOSED." >&2
+            echo "Official signing ('sign-official') is currently disabled (if: false)." >&2
+            echo "Preconditions pending before official mode can execute:" >&2
+            echo "  1. GitHub Environment 'release' configured with Required Reviewers." >&2
+            echo "  2. Authentic Minisign keypair provisioned (replacing PLACEHOLDER)." >&2
+            echo "  3. Secrets RELEASE_MINISIGN_SECRET_KEY / RELEASE_MINISIGN_PASSWORD set in Environment." >&2
+            echo "  4. Human authorization of AN-076 release initiative." >&2
+            echo "" >&2
+            echo "No successful execution in mode 'official' is permitted without an authentic signature." >&2
+            echo "To validate build and packaging integrity safely, execute with mode: validation." >&2
+            echo "================================================================================" >&2
+            exit 1
+          fi
+
+          echo "✓ Pre-flight safety check passed for mode: ${MODE}"
+
+  # ============================================================================
+  # 1. COMPILACIÓN Y EMPAQUETADO MULTIPLATAFORMA (Sin secretos)
+  # ============================================================================
   build:
     name: Build & Package (${{ matrix.target }})
+    needs: pre-flight
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -55,7 +88,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install Rust toolchain
+      - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85.0
@@ -69,31 +102,39 @@ jobs:
       - name: Build CLI release binary
         run: cargo build --release --locked -p wasma-cli --bin wasma --target ${{ matrix.target }}
 
-      - name: Determine Version
+      - name: Determine release version and provenance
         id: version
-        shell: bash
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            VER="${GITHUB_REF#refs/tags/}"
-          else
-            VER="v0.0.0-dev"
-          fi
-          echo "tag=${VER}" >> "$GITHUB_OUTPUT"
-
-      - name: Verify Cargo version correspondence
         shell: bash
         run: |
           set -euo pipefail
           CARGO_PKG_VER=$(cargo pkgid -p wasma-cli | sed 's/.*@//')
+          FULL_COMMIT_SHA="${GITHUB_SHA}"
+          SHORT_COMMIT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+
           echo "Cargo wasma-cli package version: ${CARGO_PKG_VER}"
+          echo "Source commit full SHA: ${FULL_COMMIT_SHA}"
+          echo "Source commit short SHA: ${SHORT_COMMIT_SHA}"
+
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            TAG_VER="${GITHUB_REF#refs/tags/v}"
+            TAG="${GITHUB_REF#refs/tags/}"
+            TAG_VER="${TAG#v}"
             if [ "${TAG_VER}" != "${CARGO_PKG_VER}" ]; then
               echo "ERROR: Release tag version '${TAG_VER}' does not match Cargo wasma-cli version '${CARGO_PKG_VER}'" >&2
               exit 1
             fi
             echo "✓ Release tag matches Cargo version (${CARGO_PKG_VER})"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            # Trazabilidad determinista: versión Cargo + commit SHA
+            TAG="v${CARGO_PKG_VER}-dev-${SHORT_COMMIT_SHA}"
           fi
+
+          echo "Canonical release tag: ${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "cargo_version=${CARGO_PKG_VER}" >> "$GITHUB_OUTPUT"
+          echo "full_sha=${FULL_COMMIT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_COMMIT_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Install GNU tar (macOS)
         if: runner.os == 'macOS'
@@ -194,8 +235,11 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  validate-and-sign:
-    name: Checksums, Minisign & Integrity Validation
+  # ============================================================================
+  # 2. VALIDACIÓN DE INTEGRIDAD, INVENTARIO Y CATÁLOGO SHA-256 (Sin secretos)
+  # ============================================================================
+  validate:
+    name: Checksums & Package Integrity
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -219,6 +263,13 @@ jobs:
 
           # 1. Determinar y validar TAG canónico a partir de Git ref y Cargo version
           CARGO_PKG_VER=$(cargo pkgid -p wasma-cli | sed 's/.*@//')
+          FULL_COMMIT_SHA="${GITHUB_SHA}"
+          SHORT_COMMIT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+
+          echo "Cargo wasma-cli package version: ${CARGO_PKG_VER}"
+          echo "Source commit full SHA: ${FULL_COMMIT_SHA}"
+          echo "Source commit short SHA: ${SHORT_COMMIT_SHA}"
+
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
             TAG_VER="${TAG#v}"
@@ -229,7 +280,7 @@ jobs:
           elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            TAG="v0.0.0-dev"
+            TAG="v${CARGO_PKG_VER}-dev-${SHORT_COMMIT_SHA}"
           fi
           echo "Canonical release tag: ${TAG}"
 
@@ -347,8 +398,49 @@ jobs:
           echo "NOT FOR OFFICIAL PRODUCTION DISTRIBUTION (Decisión D3 activa)."
           echo "================================================================================"
 
-      - name: Execute Minisign Official Signing (Guarded Mode)
-        if: ${{ (github.event.inputs.mode || 'validation') == 'official' }}
+      - name: Upload validated release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: dist/*
+          retention-days: 14
+
+  # ============================================================================
+  # 3. FIRMA CRIPTOGRÁFICA OFICIAL (Job independiente protegido por Gate Humano)
+  # ============================================================================
+  sign-official:
+    name: Official Cryptographic Signing (Guarded Gate)
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+    # CONDICIONES PREVIAS PARA LA ACTIVACIÓN DE sign-official:
+    # 1. Existencia verificada del Environment 'release' en GitHub Repository Settings.
+    # 2. Required Reviewers configurados con mantenedores autorizados requeridos.
+    # 3. Prevent self-review habilitado cuando exista un segundo mantenedor autorizado.
+    # 4. Bypass administrativo deshabilitado para garantizar que ningún admin eluda la revisión.
+    # 5. Restricción del Environment exclusivamente a tags 'v*' (refs/tags/v*).
+    # 6. Autorización humana independiente mediante revisión formal en GitHub Actions.
+    # 7. Provisión de secretos oficiales RELEASE_MINISIGN_SECRET_KEY y RELEASE_MINISIGN_PASSWORD en el Environment.
+    #
+    # PROTECCIÓN ACTIVA: Deshabilitado mediante 'if: false' hasta cumplir formalmente todas las precondiciones.
+    if: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download validated bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: release-bundle
+          path: dist
+
+      - name: Install Minisign
+        run: |
+          sudo apt-get update && sudo apt-get install -y minisign
+
+      - name: Verify release invariants & execute official signing
         env:
           INPUT_CONFIRM_PUBLISH: ${{ github.event.inputs.confirm_publish || 'false' }}
           MINISIGN_SECRET_KEY: ${{ secrets.RELEASE_MINISIGN_SECRET_KEY }}
@@ -371,29 +463,60 @@ jobs:
             exit 1
           fi
 
-          # 3. Verificar si la clave pública sigue siendo un placeholder (bloqueante)
+          # 3. Trazabilidad de versión y commit SHA
+          CARGO_PKG_VER=$(cargo pkgid -p wasma-cli | sed 's/.*@//')
+          TAG="${GITHUB_REF#refs/tags/}"
+          TAG_VER="${TAG#v}"
+          if [ "${TAG_VER}" != "${CARGO_PKG_VER}" ]; then
+            echo "ERROR: Official release tag '${TAG}' does not match Cargo wasma-cli version '${CARGO_PKG_VER}'" >&2
+            exit 1
+          fi
+          FULL_COMMIT_SHA="${GITHUB_SHA}"
+          SHORT_COMMIT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          echo "✓ Verified tag matches Cargo version (${CARGO_PKG_VER})"
+          echo "Provenance: Full commit SHA ${FULL_COMMIT_SHA} (short: ${SHORT_COMMIT_SHA})"
+
+          # 4. Re-verificar inventario y checksums de artefactos validados
+          EXPECTED_LINUX="wasma-${TAG}-x86_64-unknown-linux-gnu.tar.gz"
+          EXPECTED_WINDOWS="wasma-${TAG}-x86_64-pc-windows-msvc.zip"
+          EXPECTED_MACOS="wasma-${TAG}-aarch64-apple-darwin.tar.gz"
+          for expected in "${EXPECTED_LINUX}" "${EXPECTED_WINDOWS}" "${EXPECTED_MACOS}"; do
+            if [ ! -f "${expected}" ] || [ -L "${expected}" ]; then
+              echo "ERROR: Canonical package '${expected}' missing or invalid in validated bundle" >&2
+              exit 1
+            fi
+          done
+          sha256sum -c SHA256SUMS
+
+          # 5. Verificar si la clave pública sigue siendo un placeholder (bloqueante)
           if grep -q "PLACEHOLDER" ../knowledge/tech/release-signing-key.pub; then
             echo "ERROR: Official signing is BLOCKED because knowledge/tech/release-signing-key.pub is still a placeholder." >&2
             echo "A human maintainer must provision an authentic Minisign keypair before official mode can proceed." >&2
             exit 1
           fi
 
-          # 4. Verificar que los secretos requeridos existan
+          # 6. Verificar que los secretos requeridos existan en el Environment
           if [ -z "${MINISIGN_SECRET_KEY:-}" ]; then
-            echo "ERROR: Official signing requires RELEASE_MINISIGN_SECRET_KEY secret." >&2
+            echo "ERROR: Official signing requires RELEASE_MINISIGN_SECRET_KEY secret from 'release' Environment." >&2
             exit 1
           fi
 
-          # 5. Guardar clave privada en directorio temporal seguro con permisos 700/600 y trap de limpieza
+          # 7. Procesar clave en memoria aislada (evitar retención en disco o SSD)
           SECURE_KEY_DIR=$(mktemp -d)
           chmod 700 "${SECURE_KEY_DIR}"
-          trap 'shred -u "${SECURE_KEY_DIR}/minisign.key" 2>/dev/null || rm -f "${SECURE_KEY_DIR}/minisign.key"; rm -rf "${SECURE_KEY_DIR}"' EXIT
+          # Montar tmpfs si está disponible para asegurar retención exclusivamente en RAM
+          if sudo mount -t tmpfs -o size=10M,mode=0700 tmpfs "${SECURE_KEY_DIR}" 2>/dev/null; then
+            RAM_MOUNTED=true
+          else
+            RAM_MOUNTED=false
+          fi
+          trap 'shred -u "${SECURE_KEY_DIR}/minisign.key" 2>/dev/null || rm -f "${SECURE_KEY_DIR}/minisign.key"; if [ "${RAM_MOUNTED}" = "true" ]; then sudo umount "${SECURE_KEY_DIR}" 2>/dev/null || true; fi; rm -rf "${SECURE_KEY_DIR}"' EXIT
 
           set +x
           echo "${MINISIGN_SECRET_KEY}" > "${SECURE_KEY_DIR}/minisign.key"
           chmod 600 "${SECURE_KEY_DIR}/minisign.key"
 
-          echo "Signing SHA256SUMS with official release key..."
+          echo "Signing validated SHA256SUMS with official release key..."
           if [ -n "${MINISIGN_PASSWORD:-}" ]; then
             echo "${MINISIGN_PASSWORD}" | minisign -S -s "${SECURE_KEY_DIR}/minisign.key" -m SHA256SUMS -t "wasma release ${{ github.ref_name }}"
           else
@@ -404,36 +527,37 @@ jobs:
           minisign -Vm SHA256SUMS -p ../knowledge/tech/release-signing-key.pub
           echo "✓ Official Minisign signature verified successfully!"
 
-      - name: Upload validated release bundle artifact
+          # Limpiar cualquier residuo de prueba antes de empaquetar el bundle oficial
+          rm -f SHA256SUMS.test-minisig test-minisign.pub 2>/dev/null || true
+
+      - name: Upload official release bundle artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-bundle
+          name: official-release-bundle
           path: dist/*
-          retention-days: 14
+          retention-days: 30
 
-  # Job de publicación: estrictamente segregado y desactivado en cumplimiento de Decisión D3
-  # DISEÑO DE GATE DE APROBACIÓN HUMANA:
-  # 1. confirm_publish en workflow_dispatch representa la intención del operador, pero NO
-  #    sustituye la aprobación independiente de un GitHub Environment protegido.
-  # 2. La publicación oficial requerirá:
-  #    - GitHub Environment configurado (e.g. 'production') con Required Reviewers.
-  #    - Aprobación explícita de al menos un mantenedor autorizado en la interfaz de GitHub Actions.
-  #    - Clave privada Minisign y contraseña aprovisionadas en Secrets de dicho Environment.
-  # 3. Actualmente 'if: false' garantiza que ninguna ejecución automática o accidental publique artefactos.
+  # ============================================================================
+  # 4. PUBLICACIÓN FORMAL EN GITHUB RELEASES (Segregada y reservada para AN-076)
+  # ============================================================================
+  # DISEÑO DE GATE DE PUBLICACIÓN:
+  # 1. AN-076 requerirá un gate de publicación independiente del gate de firma,
+  #    asegurando que la firma criptográfica y la liberación al público general
+  #    constituyan decisiones humanas separadas.
+  # 2. La publicación formal permanece congelada hasta decisión humana explícita en AN-076.
   publish:
     name: Publish GitHub Release (Guarded by D3)
-    needs: validate-and-sign
+    needs: [validate, sign-official]
     runs-on: ubuntu-latest
-    # environment: production # Diseñado para activación futura en AN-076 con aprobación humana
     permissions:
       contents: write
     # PROTECCIÓN D3: La publicación formal permanece congelada hasta decisión humana explícita.
     if: false
     steps:
-      - name: Download bundle
+      - name: Download official bundle
         uses: actions/download-artifact@v4
         with:
-          name: release-bundle
+          name: official-release-bundle
           path: dist
 
       - name: Create GitHub Release
