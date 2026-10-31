@@ -1,7 +1,7 @@
 ---
 id: AN-070
 type: feature
-status: ready
+status: in-progress
 created_at: 2026-10-26T00:00:00.000Z
 title: 'Empaquetado, instalación y prerelease multiplataforma'
 knowledge_level: K3

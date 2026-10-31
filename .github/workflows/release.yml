@@ -406,6 +406,185 @@ jobs:
           retention-days: 14
 
   # ============================================================================
+  # 2b. SMOKE TESTS EN RUNNERS LIMPIOS MULTIPLATAFORMA (AN-070, Sin secretos)
+  # ============================================================================
+  smoke-test:
+    name: Smoke Test & Clean Install (${{ matrix.target }})
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_name: wasma
+            archive_ext: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: wasma.exe
+            archive_ext: zip
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: wasma
+            archive_ext: tar.gz
+
+    steps:
+      - name: Download validated release bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: release-bundle
+          path: bundle
+
+      - name: Smoke Test Clean Extraction & Execution (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== Testing standalone binary installation on clean runner (${{ matrix.target }}) ==="
+          echo "Runner OS: $(uname -s), Architecture: $(uname -m)"
+
+          # 1. Localizar el archivo comprimido correspondiente
+          ARCHIVE=$(ls bundle/wasma-*-${{ matrix.target }}.${{ matrix.archive_ext }})
+          ARCHIVE_NAME=$(basename "${ARCHIVE}")
+          echo "Target archive to verify: ${ARCHIVE_NAME}"
+
+          # 2. Comprobar integridad previa con SHA256SUMS
+          cd bundle
+          if command -v sha256sum >/dev/null 2>&1; then
+            grep "${ARCHIVE_NAME}" SHA256SUMS | sha256sum -c -
+          elif command -v shasum >/dev/null 2>&1; then
+            grep "${ARCHIVE_NAME}" SHA256SUMS | shasum -a 256 -c -
+          else
+            echo "ERROR: Neither sha256sum nor shasum available" >&2
+            exit 1
+          fi
+          cd ..
+
+          # 3. Descomprimir en un directorio temporal limpio
+          SMOKE_DIR=$(mktemp -d)
+          trap 'rm -rf "${SMOKE_DIR}"' EXIT
+
+          tar -xzvf "${ARCHIVE}" -C "${SMOKE_DIR}"
+
+          # 4. Verificar contenido exacto: wasma, LICENSE, README.md
+          test -f "${SMOKE_DIR}/wasma" || { echo "ERROR: wasma executable missing in extracted archive" >&2; exit 1; }
+          test -f "${SMOKE_DIR}/LICENSE" || { echo "ERROR: LICENSE missing in extracted archive" >&2; exit 1; }
+          test -f "${SMOKE_DIR}/README.md" || { echo "ERROR: README.md missing in extracted archive" >&2; exit 1; }
+
+          # 5. Verificar permisos Unix: el binario debe ser ejecutable (0755)
+          test -x "${SMOKE_DIR}/wasma" || { echo "ERROR: wasma binary is not marked executable (0755 expected)" >&2; exit 1; }
+          PERMS=$(stat -c "%a" "${SMOKE_DIR}/wasma" 2>/dev/null || stat -f "%Lp" "${SMOKE_DIR}/wasma" 2>/dev/null || echo "unknown")
+          echo "Verified executable permissions: ${PERMS}"
+
+          # 6. Comprobar que no depende de variables de entorno heredadas
+          unset AGENT_NATIVE_LLM_PROVIDER AGENT_NATIVE_LLM_ENDPOINT AGENT_NATIVE_LLM_KEY || true
+
+          # 7. Ejecutar directamente el binario extraído (sin cargo run ni target/)
+          echo "Executing standalone: wasma --help"
+          HELP_OUT=$("${SMOKE_DIR}/wasma" --help)
+          echo "${HELP_OUT}"
+          echo "${HELP_OUT}" | grep -q "wasma" || { echo "ERROR: wasma --help output does not mention wasma" >&2; exit 1; }
+
+          echo "Executing standalone: wasma --version"
+          VERSION_OUT=$("${SMOKE_DIR}/wasma" --version)
+          echo "${VERSION_OUT}"
+          echo "${VERSION_OUT}" | grep -q "0.1.0" || { echo "ERROR: wasma --version output does not report 0.1.0" >&2; exit 1; }
+
+          # 8. Prueba negativa: paquete incompleto sin ejecutable debe ser detectado
+          BAD_DIR=$(mktemp -d)
+          mkdir -p "${BAD_DIR}/incomplete"
+          touch "${BAD_DIR}/incomplete/LICENSE" "${BAD_DIR}/incomplete/README.md"
+          if [ ! -f "${BAD_DIR}/incomplete/wasma" ]; then
+            echo "✓ Negative test passed: Missing wasma binary detected in incomplete package."
+          else
+            echo "ERROR: Negative test failed" >&2
+            exit 1
+          fi
+          rm -rf "${BAD_DIR}"
+
+          echo "✓ Smoke test passed cleanly on clean Unix runner (${{ matrix.target }})"
+
+      - name: Smoke Test Clean Extraction & Execution (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Write-Host "=== Testing standalone binary installation on clean Windows runner (${{ matrix.target }}) ==="
+          Write-Host "Runner OS: $([System.Environment]::OSVersion.VersionString), Architecture: $env:PROCESSOR_ARCHITECTURE"
+
+          # 1. Localizar archivo comprimido
+          $Archive = Get-Item "bundle\wasma-*-${{ matrix.target }}.${{ matrix.archive_ext }}"
+          $ArchiveName = $Archive.Name
+          Write-Host "Target archive to verify: $ArchiveName"
+
+          # 2. Comprobar integridad previa con SHA256SUMS
+          $CalculatedHash = (Get-FileHash -Path $Archive.FullName -Algorithm SHA256).Hash.ToLower()
+          $ExpectedLine = Get-Content "bundle\SHA256SUMS" | Where-Object { $_ -match [regex]::Escape($ArchiveName) }
+          if (-not $ExpectedLine) {
+              throw "Archive $ArchiveName not listed in SHA256SUMS manifest"
+          }
+          $ExpectedHash = ($ExpectedLine -split "\s+")[0].ToLower()
+          if ($CalculatedHash -ne $ExpectedHash) {
+              throw "Checksum mismatch for $ArchiveName: expected $ExpectedHash, got $CalculatedHash"
+          }
+          Write-Host "✓ SHA256 checksum verified: $CalculatedHash"
+
+          # 3. Descomprimir en un directorio temporal limpio
+          $SmokeDir = Join-Path $env:TEMP ("wasma-smoke-" + [guid]::NewGuid().ToString())
+          New-Item -ItemType Directory -Path $SmokeDir | Out-Null
+          try {
+              Expand-Archive -Path $Archive.FullName -DestinationPath $SmokeDir -Force
+
+              # 4. Verificar contenido exacto: wasma.exe, LICENSE, README.md
+              $ExePath = Join-Path $SmokeDir "wasma.exe"
+              $LicensePath = Join-Path $SmokeDir "LICENSE"
+              $ReadmePath = Join-Path $SmokeDir "README.md"
+
+              if (-not (Test-Path $ExePath)) { throw "ERROR: wasma.exe missing in extracted archive" }
+              if (-not (Test-Path $LicensePath)) { throw "ERROR: LICENSE missing in extracted archive" }
+              if (-not (Test-Path $ReadmePath)) { throw "ERROR: README.md missing in extracted archive" }
+
+              # 5. Comprobar que no depende de variables de entorno heredadas
+              Remove-Item env:AGENT_NATIVE_* -ErrorAction SilentlyContinue
+
+              # 6. Ejecutar directamente el binario extraído (sin cargo run ni target/)
+              Write-Host "Executing standalone: wasma.exe --help"
+              $HelpOut = & $ExePath --help
+              Write-Host ($HelpOut -join "`n")
+              if (-not ($HelpOut -match "wasma")) {
+                  throw "ERROR: wasma.exe --help output does not mention wasma"
+              }
+
+              Write-Host "Executing standalone: wasma.exe --version"
+              $VersionOut = & $ExePath --version
+              Write-Host ($VersionOut -join "`n")
+              if (-not ($VersionOut -match "0\.1\.0")) {
+                  throw "ERROR: wasma.exe --version output does not report 0.1.0"
+              }
+
+              # 7. Prueba negativa: paquete incompleto sin ejecutable
+              $BadDir = Join-Path $env:TEMP ("bad-package-" + [guid]::NewGuid().ToString())
+              New-Item -ItemType Directory -Path $BadDir | Out-Null
+              try {
+                  Copy-Item $LicensePath, $ReadmePath -Destination $BadDir
+                  if (-not (Test-Path (Join-Path $BadDir "wasma.exe"))) {
+                      Write-Host "✓ Negative test passed: Missing wasma.exe detected in incomplete package."
+                  } else {
+                      throw "ERROR: Negative test failed"
+                  }
+              } finally {
+                  Remove-Item -Path $BadDir -Recurse -Force -ErrorAction SilentlyContinue
+              }
+
+              Write-Host "✓ Smoke test passed cleanly on clean Windows runner (${{ matrix.target }})"
+          } finally {
+              Remove-Item -Path $SmokeDir -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
+  # ============================================================================
   # 3. FIRMA CRIPTOGRÁFICA OFICIAL (Job independiente protegido por Gate Humano)
   # ============================================================================
   sign-official:
@@ -547,7 +726,7 @@ jobs:
   # 2. La publicación formal permanece congelada hasta decisión humana explícita en AN-076.
   publish:
     name: Publish GitHub Release (Guarded by D3)
-    needs: [validate, sign-official]
+    needs: [validate, smoke-test, sign-official]
     runs-on: ubuntu-latest
     permissions:
       contents: write

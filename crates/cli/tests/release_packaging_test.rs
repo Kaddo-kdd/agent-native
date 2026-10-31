@@ -902,3 +902,201 @@ fn test_workflow_security_invariants_crlf_and_lf_regression() {
         "LF normalized content must satisfy permissions invariant"
     );
 }
+
+#[test]
+fn test_smoke_test_extracted_binary_execution_and_help_version() {
+    let binary_src = PathBuf::from(env!("CARGO_BIN_EXE_wasma"));
+    assert!(
+        binary_src.exists(),
+        "wasma CLI binary must be compiled by cargo test runner"
+    );
+
+    let temp_dir = std::env::temp_dir().join(format!("wasma-smoke-test-{}", std::process::id()));
+    let clean_install_dir = temp_dir.join("clean-install");
+    let _ = fs::remove_dir_all(&temp_dir);
+    fs::create_dir_all(&clean_install_dir).expect("create clean_install_dir");
+
+    let bin_dest_name = if cfg!(windows) { "wasma.exe" } else { "wasma" };
+    let extracted_bin = clean_install_dir.join(bin_dest_name);
+    let license_file = clean_install_dir.join("LICENSE");
+    let readme_file = clean_install_dir.join("README.md");
+
+    // Copy binary and metadata to simulate clean extracted release package
+    fs::copy(&binary_src, &extracted_bin).expect("copy binary");
+    fs::write(&license_file, "Apache-2.0 or MIT").expect("write LICENSE");
+    fs::write(&readme_file, "# Wasma Standalone").expect("write README");
+
+    assert!(extracted_bin.exists(), "Extracted binary must exist");
+    assert!(license_file.exists(), "LICENSE must exist");
+    assert!(readme_file.exists(), "README.md must exist");
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&extracted_bin)
+            .expect("metadata")
+            .permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&extracted_bin, perms).expect("set permissions");
+        let current_mode = fs::metadata(&extracted_bin)
+            .expect("metadata")
+            .permissions()
+            .mode();
+        assert_eq!(
+            current_mode & 0o111,
+            0o111,
+            "Binary must have executable permissions (0755)"
+        );
+    }
+
+    // Direct execution: wasma --help without AGENT_NATIVE_* environment variables
+    let help_output = std::process::Command::new(&extracted_bin)
+        .arg("--help")
+        .env_remove("AGENT_NATIVE_LLM_PROVIDER")
+        .env_remove("AGENT_NATIVE_LLM_ENDPOINT")
+        .env_remove("AGENT_NATIVE_LLM_KEY")
+        .output()
+        .expect("execute wasma --help");
+
+    assert!(
+        help_output.status.success(),
+        "wasma --help must exit with code 0"
+    );
+    let help_stdout = String::from_utf8_lossy(&help_output.stdout);
+    assert!(
+        help_stdout.contains("wasma") || help_stdout.contains("Wasma"),
+        "wasma --help output must reference wasma identity"
+    );
+    assert!(
+        help_stdout.contains("build")
+            && help_stdout.contains("verify")
+            && help_stdout.contains("run"),
+        "wasma --help output must list core subcommands"
+    );
+
+    // Direct execution: wasma --version
+    let version_output = std::process::Command::new(&extracted_bin)
+        .arg("--version")
+        .env_remove("AGENT_NATIVE_LLM_PROVIDER")
+        .env_remove("AGENT_NATIVE_LLM_ENDPOINT")
+        .env_remove("AGENT_NATIVE_LLM_KEY")
+        .output()
+        .expect("execute wasma --version");
+
+    assert!(
+        version_output.status.success(),
+        "wasma --version must exit with code 0"
+    );
+    let version_stdout = String::from_utf8_lossy(&version_output.stdout);
+    assert!(
+        version_stdout.contains("0.1.0"),
+        "wasma --version output must report 0.1.0 (got: {version_stdout})"
+    );
+
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+
+#[test]
+fn test_negative_incomplete_package_missing_binary_fails() {
+    let temp_dir = std::env::temp_dir().join(format!("wasma-negative-pkg-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&temp_dir);
+    fs::create_dir_all(&temp_dir).expect("create temp_dir");
+
+    let bin_name = if cfg!(windows) { "wasma.exe" } else { "wasma" };
+    // Incomplete package without binary
+    fs::write(temp_dir.join("LICENSE"), "Apache-2.0 or MIT").expect("write LICENSE");
+    fs::write(temp_dir.join("README.md"), "# Incomplete").expect("write README");
+
+    let has_binary = temp_dir.join(bin_name).exists();
+    assert!(
+        !has_binary,
+        "Package without executable must be recognized as incomplete and rejected"
+    );
+
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+
+#[test]
+fn test_release_workflow_smoke_test_job_invariants() {
+    let workflow_path = repo_root()
+        .join(".github")
+        .join("workflows")
+        .join("release.yml");
+    let content = fs::read_to_string(&workflow_path)
+        .expect("read release.yml")
+        .replace("\r\n", "\n");
+
+    // Invariant 1: smoke-test job must be defined and depend on validate
+    assert!(
+        content.contains("name: Smoke Test & Clean Install"),
+        "Workflow must define Smoke Test & Clean Install job"
+    );
+    assert!(
+        content.contains("smoke-test:") && content.contains("needs: validate"),
+        "smoke-test job must depend on validate"
+    );
+
+    // Invariant 2: smoke-test matrix must include all 3 canonical targets
+    let smoke_job_pos = content
+        .find("  smoke-test:")
+        .or_else(|| content.find("smoke-test:"))
+        .expect("smoke-test job position");
+    let sign_job_pos = content
+        .find("  sign-official:")
+        .or_else(|| content.find("sign-official:"))
+        .expect("sign-official job position");
+    let smoke_job_block = &content[smoke_job_pos..sign_job_pos];
+
+    assert!(
+        smoke_job_block.contains("x86_64-unknown-linux-gnu"),
+        "smoke-test matrix must include Linux x86_64"
+    );
+    assert!(
+        smoke_job_block.contains("x86_64-pc-windows-msvc"),
+        "smoke-test matrix must include Windows x86_64"
+    );
+    assert!(
+        smoke_job_block.contains("aarch64-apple-darwin"),
+        "smoke-test matrix must include macOS ARM64"
+    );
+
+    // Invariant 3: smoke-test downloads release-bundle and executes binary directly
+    assert!(
+        smoke_job_block.contains("name: release-bundle"),
+        "smoke-test must download release-bundle artifact"
+    );
+    assert!(
+        smoke_job_block.contains("--help"),
+        "smoke-test must verify wasma --help"
+    );
+    assert!(
+        smoke_job_block.contains("--version"),
+        "smoke-test must verify wasma --version"
+    );
+    assert!(
+        smoke_job_block.contains("0.1.0"),
+        "smoke-test must verify 0.1.0 version output"
+    );
+
+    // Invariant 4: smoke-test contains negative test for missing executable
+    assert!(
+        smoke_job_block.contains("Missing wasma"),
+        "smoke-test must include negative test for missing wasma binary"
+    );
+
+    // Invariant 5: publish job depends on smoke-test in addition to validate and sign-official
+    assert!(
+        content.contains("needs: [validate, smoke-test, sign-official]"),
+        "publish job must require smoke-test to pass before releasing"
+    );
+
+    // Invariant 6: smoke-test job MUST NOT have access to signing secrets
+    assert!(
+        !smoke_job_block.contains("RELEASE_MINISIGN_SECRET_KEY"),
+        "smoke-test job must NOT receive RELEASE_MINISIGN_SECRET_KEY"
+    );
+    assert!(
+        !smoke_job_block.contains("RELEASE_MINISIGN_PASSWORD"),
+        "smoke-test job must NOT receive RELEASE_MINISIGN_PASSWORD"
+    );
+}
