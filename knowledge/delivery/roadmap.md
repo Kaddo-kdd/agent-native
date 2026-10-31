@@ -961,9 +961,9 @@ Store/instancia fresca.
 - AN-077: Evaluación de identidad técnica, disponibilidad de nombres y estrategia de migración (`spike`, P0, K3, completed)
 - AN-078: Migración técnica de Agent Native a Wasma (`feature`, P0, K4, completed, dep: AN-077)
 - AN-079: Migración de repositorio GitHub y continuidad de integraciones (`chore`, P0, K4, completed, dep: AN-078)
-- AN-068: Auditoría de preparación de release y contrato de versionamiento (`chore`, P0, K3, draft, deps: AN-078, AN-079)
-- AN-069: Firma oficial, integridad y controles del pipeline de publicación (`feature`, P0, K4, draft, dep: AN-068)
-- AN-070: Empaquetado, instalación y prerelease multiplataforma (`feature`, P0, K3, draft, dep: AN-069)
+- AN-068: Auditoría de preparación de release y contrato de versionamiento (`chore`, P0, K3, completed, deps: AN-078, AN-079)
+- AN-069: Firma oficial, integridad y controles del pipeline de publicación (`feature`, P0, K4, completed, dep: AN-068)
+- AN-070: Empaquetado, instalación y prerelease multiplataforma (`feature`, P0, K3, ready, dep: AN-069)
 - AN-071: Sección de autor e identidad editorial del proyecto (`feature`, P1, K2, draft, dep: AN-077)
 - AN-072: Versión, commit y procedencia del despliegue en el footer (`feature`, P1, K2, draft, dep: AN-079)
 - AN-073: Onboarding, quickstart y reconciliación de documentación (`docs`, P0, K3, draft, deps: AN-068, AN-070)
@@ -1027,8 +1027,8 @@ INIT-08-01 → INIT-08-02; INIT-08-03 se completa por no adopción; INIT-08-04 a
 
 **Ola I — INI-009 (Public Release, Technical Identity & Developer Adoption):**
 Fase 0 (Identidad): AN-077 (completed) → AN-078 (completed) → AN-079 (completed) — Completada
-Fase 1 (Preparación): AN-068, AN-071, AN-072 — Siguiente fase de ejecución activa
-Fase 2 (Distribución): AN-069 → AN-070 → AN-073 / AN-074
+Fase 1 (Preparación): AN-068 (completed), AN-071, AN-072 — Siguiente fase de ejecución activa
+Fase 2 (Distribución): AN-069 (completed) → AN-070 → AN-073 / AN-074
 Fase 3 (Validación y Release): AN-075 → AN-076
 **Hito M9 (Objetivo):** Wasma v0.1.0 distribuido con identidad técnica unificada, verificación criptográfica y adopción externa validada.
 

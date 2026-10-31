@@ -32,7 +32,7 @@ candidates:
     priority: P0
     suggested_knowledge_level: K4
     expected_value: Catálogo SHA-256 y firma Minisign con clave oficial en GitHub Actions y verificación de artefactos finales
-    materialized_as: AN-069 (candidate)
+    materialized_as: AN-069 (completed)
     dependencies:
       - AN-068
   - id: INIT-09-03
