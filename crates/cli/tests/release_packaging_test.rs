@@ -403,14 +403,13 @@ fn test_release_workflow_security_invariants() {
         "Workflow .github/workflows/release.yml must exist"
     );
 
-    let content = fs::read_to_string(&workflow_path).expect("read release.yml");
+    let content = fs::read_to_string(&workflow_path)
+        .expect("read release.yml")
+        .replace("\r\n", "\n");
 
     // Security Invariant 1: Top-level default permissions MUST be read-only
     assert!(
         content.contains(
-            "permissions:
-  contents: read"
-        ) || content.contains(
             "permissions:
   contents: read"
         ),
@@ -869,4 +868,37 @@ fn test_fail_closed_control_for_official_mode() {
 
     // Case 4: mode == 'official' would only pass when sign-official is legitimately enabled
     assert!(evaluate_pre_flight_mode("official", true).is_ok());
+}
+
+#[test]
+fn test_workflow_security_invariants_crlf_and_lf_regression() {
+    let workflow_path = repo_root()
+        .join(".github")
+        .join("workflows")
+        .join("release.yml");
+    let raw_content = fs::read_to_string(&workflow_path).expect("read release.yml");
+
+    // Simulate CRLF line endings (as created on Windows runner checkout)
+    let crlf_content = raw_content.replace("\r\n", "\n").replace('\n', "\r\n");
+    let normalized_crlf = crlf_content.replace("\r\n", "\n");
+
+    // Simulate LF line endings (as created on Linux/macOS runner checkout)
+    let lf_content = raw_content.replace("\r\n", "\n");
+    let normalized_lf = lf_content.replace("\r\n", "\n");
+
+    assert_eq!(normalized_crlf, normalized_lf);
+    assert!(
+        normalized_crlf.contains(
+            "permissions:
+  contents: read"
+        ),
+        "CRLF normalized content must satisfy permissions invariant"
+    );
+    assert!(
+        normalized_lf.contains(
+            "permissions:
+  contents: read"
+        ),
+        "LF normalized content must satisfy permissions invariant"
+    );
 }
